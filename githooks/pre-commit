@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Pre-commit hook: lint with ruff before any commit lands.
+# Install once per clone:  git config core.hooksPath githooks
+# Bypass for WIP commits:  git commit --no-verify
+
+set -euo pipefail
+
+# Project root = parent of the githooks/ directory.
+# Works whether or not this project is the git repo root.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$HOOK_DIR")"
+
+# Prefer the project's uv-managed ruff, fall back to system ruff.
+if command -v uv >/dev/null 2>&1; then
+    RUFF="uv run ruff"
+else
+    RUFF="ruff"
+fi
+
+echo "▸ ruff check (src/, scripts/)"
+( cd "$PROJECT_DIR" && $RUFF check src scripts )
+status=$?
+
+if [ $status -ne 0 ]; then
+    echo ""
+    echo "✗ ruff check failed."
+    echo "  Auto-fix what's safe:    uv run ruff check --fix src scripts"
+    echo "  Bypass for WIP commits:  git commit --no-verify"
+    exit 1
+fi
+
+echo "✓ ruff check passed."
+exit 0

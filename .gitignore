@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.ruff_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Runtime data (created on demand, never commit)
+sessions/
+jobs/
+*.log
+*.mp4
+*.webm
+*.mov
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local secrets / overrides
+.env
+.env.local
+*.local
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+tmp/

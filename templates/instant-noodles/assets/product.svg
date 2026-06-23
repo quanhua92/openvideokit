@@ -1,0 +1,60 @@
+<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#3a2418"/>
+      <stop offset="100%" stop-color="#1a100a"/>
+    </radialGradient>
+    <linearGradient id="bowl" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e8703a"/>
+      <stop offset="100%" stop-color="#b04020"/>
+    </linearGradient>
+    <linearGradient id="soup" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f0b060"/>
+      <stop offset="100%" stop-color="#d08040"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="500" height="500" fill="url(#bg)" />
+
+  <!-- Steam -->
+  <g opacity="0.25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M180 130 Q168 100 180 70 Q192 40 180 10" />
+    <path d="M250 135 Q238 100 250 65 Q262 30 250 5" opacity="0.7" />
+    <path d="M320 130 Q308 100 320 70 Q332 40 320 10" opacity="0.8" />
+  </g>
+
+  <!-- Bowl shadow -->
+  <ellipse cx="250" cy="295" rx="205" ry="35" fill="#000000" opacity="0.3" />
+
+  <!-- Bowl body -->
+  <path d="M50 285 Q55 430 250 430 Q445 430 450 285 Z" fill="url(#bowl)" />
+  <!-- Bowl rim -->
+  <ellipse cx="250" cy="285" rx="200" ry="32" fill="url(#soup)" />
+  <ellipse cx="250" cy="283" rx="200" ry="30" fill="#f0c070" opacity="0.3" />
+
+  <!-- Noodles (curved strands) -->
+  <g stroke="#f5dca8" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.95">
+    <path d="M130 278 Q190 255 250 275 Q310 255 370 280" />
+    <path d="M140 290 Q200 270 260 288 Q320 270 360 292" opacity="0.8" stroke-width="4" />
+    <path d="M150 270 Q210 248 270 268 Q320 250 350 272" opacity="0.7" stroke-width="3.5" />
+  </g>
+
+  <!-- Egg -->
+  <ellipse cx="190" cy="282" rx="28" ry="20" fill="#fff8e8" />
+  <ellipse cx="190" cy="282" rx="14" ry="10" fill="#ff8030" />
+  <ellipse cx="186" cy="278" rx="5" ry="3" fill="#ffc060" opacity="0.6" />
+
+  <!-- Green onions -->
+  <circle cx="305" cy="275" r="5" fill="#4a8c3a" />
+  <circle cx="325" cy="285" r="4" fill="#5a9c4a" />
+  <circle cx="285" cy="290" r="4.5" fill="#4a8c3a" />
+  <circle cx="340" cy="272" r="3.5" fill="#6aac5a" />
+
+  <!-- Chili flakes -->
+  <circle cx="220" cy="290" r="2.5" fill="#d03020" />
+  <circle cx="270" cy="278" r="2" fill="#d03020" />
+  <circle cx="340" cy="288" r="2.5" fill="#c02010" />
+
+  <!-- Bowl highlight -->
+  <ellipse cx="250" cy="285" rx="180" ry="8" fill="#ffffff" opacity="0.1" />
+</svg>
