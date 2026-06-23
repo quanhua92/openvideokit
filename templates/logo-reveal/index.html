@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>Logo Reveal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=block" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1920px; height: 1080px; background: #080808; overflow: hidden; font-family: 'Inter', sans-serif; }
+    #logo-reveal { position: relative; width: 1920px; height: 1080px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+    .logo-img { width: 160px; height: 160px; will-change: transform, opacity; }
+    .brand-name { font-size: 88px; font-weight: 900; color: #fff; letter-spacing: -0.03em; will-change: opacity, y; }
+    .tagline { font-size: 32px; font-weight: 500; color: rgba(255,255,255,0.5); will-change: opacity; }
+    .url-text { font-size: 22px; font-weight: 600; color: #ff5a3c; margin-top: 12px; font-family: 'JetBrains Mono', monospace; will-change: opacity; }
+  </style>
+</head>
+<body>
+  <div id="logo-reveal" data-composition-id="logo-reveal" data-start="0" data-width="1920" data-height="1080" data-duration="5">
+    <img src="{{ logo_src }}" alt="Logo" class="logo-img" id="logo-el">
+    <div class="brand-name" id="brand-el">{{ brand_name }}</div>
+    <div class="tagline" id="tagline-el">{{ tagline }}</div>
+    <div class="url-text" id="url-el">{{ url }}</div>
+
+    <audio id="music-bed" src="assets/music-bed.mp3" data-start="0" data-duration="5" data-volume="0.15" data-track-index="0" loop preload="auto"></audio>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      (function () {
+        var tl = gsap.timeline({ paused: true });
+        gsap.set(['#logo-el', '#brand-el', '#tagline-el', '#url-el'], { opacity: 0 });
+
+        tl.to('#logo-el', { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.4)' }, 0)
+          .from('#logo-el', { scale: 0.5, duration: 0.6, ease: 'back.out(1.4)' }, 0)
+          .to('#brand-el', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.3)
+          .from('#brand-el', { y: 30, duration: 0.5, ease: 'power2.out' }, 0.3)
+          .to('#tagline-el', { opacity: 1, duration: 0.4, ease: 'power2.out' }, 0.7)
+          .to('#url-el', { opacity: 1, duration: 0.4, ease: 'power2.out' }, 1.0)
+          .to({}, { duration: 5 }, 0);
+
+        window.__timelines['logo-reveal'] = tl;
+      })();
+    </script>
+  </div>
+</body>
+</html>

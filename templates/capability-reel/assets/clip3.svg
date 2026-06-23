@@ -1,0 +1,13 @@
+<svg viewBox="0 0 1440 810" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="810" fill="#000"/>
+  <rect x="0" y="0" width="1440" height="60" fill="#111"/>
+  <circle cx="30" cy="30" r="8" fill="#ff5f57"/><circle cx="55" cy="30" r="8" fill="#febc2e"/><circle cx="80" cy="30" r="8" fill="#28c840"/>
+  <text x="100" y="38" font-size="16" fill="rgba(255,255,255,0.5)" font-family="monospace">framer.com</text>
+  <text x="720" y="350" text-anchor="middle" font-size="120" font-weight="900" fill="url(#g)" font-family="sans-serif">Design</text>
+  <text x="720" y="480" text-anchor="middle" font-size="120" font-weight="900" fill="rgba(255,255,255,0.9)" font-family="sans-serif">Anything</text>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#ff5a3c"/><stop offset="100%" stop-color="#2dd4bf"/></linearGradient>
+  </defs>
+  <rect x="600" y="550" width="240" height="60" rx="30" fill="#fff"/>
+  <text x="720" y="588" text-anchor="middle" font-size="22" font-weight="700" fill="#000" font-family="sans-serif">Get Started</text>
+</svg>

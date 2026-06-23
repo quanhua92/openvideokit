@@ -1,0 +1,20 @@
+{
+  "id": "cli-tutorial",
+  "name": "CLI Terminal Tutorial",
+  "description": "3-step terminal install guide. Customize commands, output, and branding.",
+  "duration": 15.0,
+  "slots": [
+    {"id": "product_name", "type": "text", "label": "Product name", "default": "MyDevTool", "max_length": 30, "applies_to": "index.html"},
+    {"id": "tagline", "type": "text", "label": "Tagline", "default": "Ship faster with one command", "max_length": 60, "applies_to": "index.html"},
+    {"id": "step1_headline", "type": "text", "label": "Step 1 — headline", "default": "Install", "max_length": 30, "applies_to": "index.html"},
+    {"id": "step1_command", "type": "text", "label": "Step 1 — command", "default": "npm install mydevtool", "max_length": 80, "applies_to": "index.html"},
+    {"id": "step1_output", "type": "text", "label": "Step 1 — output", "default": "✓ Added 42 packages in 3s", "max_length": 80, "applies_to": "index.html"},
+    {"id": "step2_headline", "type": "text", "label": "Step 2 — headline", "default": "Configure", "max_length": 30, "applies_to": "index.html"},
+    {"id": "step2_command", "type": "text", "label": "Step 2 — command", "default": "mydevtool init", "max_length": 80, "applies_to": "index.html"},
+    {"id": "step2_output", "type": "text", "label": "Step 2 — output", "default": "✓ Config created at .mydevtool", "max_length": 80, "applies_to": "index.html"},
+    {"id": "step3_headline", "type": "text", "label": "Step 3 — headline", "default": "Deploy", "max_length": 30, "applies_to": "index.html"},
+    {"id": "step3_command", "type": "text", "label": "Step 3 — command", "default": "mydevtool deploy", "max_length": 80, "applies_to": "index.html"},
+    {"id": "step3_output", "type": "text", "label": "Step 3 — output", "default": "✓ Live at https://myapp.dev", "max_length": 80, "applies_to": "index.html"},
+    {"id": "logo", "type": "image", "label": "Logo (SVG)", "path": "assets/logo", "default": "assets/logo.svg", "src_var": "logo_src", "applies_to": "index.html"}
+  ]
+}

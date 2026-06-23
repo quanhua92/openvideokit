@@ -1,0 +1,19 @@
+{
+  "id": "capability-reel",
+  "name": "Capability Reel",
+  "description": "Hard-cut montage of 3 clips with numbered captions and music. Swap images and captions.",
+  "duration": 15.0,
+  "slots": [
+    {"id": "reel_title", "type": "text", "label": "Reel title", "default": "Look what we built", "max_length": 40, "applies_to": "index.html"},
+    {"id": "clip1_image", "type": "image", "label": "Clip 1 — image", "path": "assets/clip1", "default": "assets/clip1.svg", "src_var": "clip1_src", "applies_to": "index.html"},
+    {"id": "clip1_category", "type": "text", "label": "Clip 1 — category", "default": "Product Launch", "max_length": 30, "applies_to": "index.html"},
+    {"id": "clip1_caption", "type": "text", "label": "Clip 1 — caption", "default": "stripe.com", "max_length": 40, "applies_to": "index.html"},
+    {"id": "clip2_image", "type": "image", "label": "Clip 2 — image", "path": "assets/clip2", "default": "assets/clip2.svg", "src_var": "clip2_src", "applies_to": "index.html"},
+    {"id": "clip2_category", "type": "text", "label": "Clip 2 — category", "default": "Feature Showcase", "max_length": 30, "applies_to": "index.html"},
+    {"id": "clip2_caption", "type": "text", "label": "Clip 2 — caption", "default": "linear.app", "max_length": 40, "applies_to": "index.html"},
+    {"id": "clip3_image", "type": "image", "label": "Clip 3 — image", "path": "assets/clip3", "default": "assets/clip3.svg", "src_var": "clip3_src", "applies_to": "index.html"},
+    {"id": "clip3_category", "type": "text", "label": "Clip 3 — category", "default": "Brand Reel", "max_length": 30, "applies_to": "index.html"},
+    {"id": "clip3_caption", "type": "text", "label": "Clip 3 — caption", "default": "framer.com", "max_length": 40, "applies_to": "index.html"},
+    {"id": "music_bed", "type": "image", "label": "Music bed (MP3)", "path": "assets/music-bed.mp3", "default": "assets/music-bed.mp3"}
+  ]
+}

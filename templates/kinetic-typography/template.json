@@ -1,0 +1,12 @@
+{
+  "id": "kinetic-typography",
+  "name": "Kinetic Typography",
+  "description": "4 full-frame headline beats with fade and scale transitions. Punchy statement video.",
+  "duration": 12.0,
+  "slots": [
+    {"id": "beat1_text", "type": "text", "label": "Beat 1", "default": "Making video is hard.", "max_length": 80, "applies_to": "index.html"},
+    {"id": "beat2_text", "type": "text", "label": "Beat 2", "default": "But it shouldn't be.", "max_length": 80, "applies_to": "index.html"},
+    {"id": "beat3_text", "type": "text", "label": "Beat 3", "default": "Type. Click. Ship.", "max_length": 80, "applies_to": "index.html"},
+    {"id": "beat4_text", "type": "text", "label": "Beat 4", "default": "That's it.", "max_length": 80, "applies_to": "index.html"}
+  ]
+}
