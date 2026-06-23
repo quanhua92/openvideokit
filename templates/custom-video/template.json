@@ -14,7 +14,7 @@
       "fields": [
         {"id": "title", "type": "text", "label": "Title", "default": "Product Name"},
         {"id": "body", "type": "text", "label": "Description", "default": "Short description"},
-        {"id": "image", "type": "image", "label": "Image"},
+        {"id": "image", "type": "image", "label": "Image", "default": "assets/placeholder.svg"},
         {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
       ]
     },
