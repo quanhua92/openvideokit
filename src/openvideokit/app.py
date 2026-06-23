@@ -103,7 +103,7 @@ async def create_preview(template_id: str, request: Request) -> RedirectResponse
     upload_meta: dict[str, dict] = {}
     for slot in meta["slots"]:
         sid = slot["id"]
-        if slot["type"] == "text":
+        if slot["type"] == "text" or slot["type"] == "voiceover":
             form_values[sid] = str(form.get(sid, "") or "")
         elif slot["type"] == "image":
             f = form.get(sid)

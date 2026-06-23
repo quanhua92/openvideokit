@@ -1,0 +1,48 @@
+{
+  "id": "eco-bottle",
+  "name": "Eco Bottle — Product Demo",
+  "description": "8-slide narrated product showcase. Each slide has a product image, title, description, and Vietnamese voiceover with word-by-word text highlighting.",
+  "priority": 90,
+  "duration": 60.0,
+  "slots": [
+    {"group": "Slide 1 — Giới thiệu", "id": "s1_title", "type": "text", "label": "Title", "default": "Bình nước Eco", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 1 — Giới thiệu", "id": "s1_body", "type": "text", "label": "Body text", "default": "Chính hãng Tupperware Masib", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 1 — Giới thiệu", "id": "s1_image", "type": "image", "label": "Product image", "path": "assets/s1_image", "default": "assets/s1_image.svg", "src_var": "s1_image_src", "applies_to": "index.html"},
+    {"group": "Slide 1 — Giới thiệu", "id": "s1_voice", "type": "voiceover", "label": "Voiceover script", "default": "Sở hữu cuộc sống năng động với bình nước Eco chính hãng từ Tupperware Masib.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
+
+    {"group": "Slide 2 — Vật liệu", "id": "s2_title", "type": "text", "label": "Title", "default": "An toàn tuyệt đối", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 2 — Vật liệu", "id": "s2_body", "type": "text", "label": "Body text", "default": "100% nhựa nguyên sinh", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 2 — Vật liệu", "id": "s2_image", "type": "image", "label": "Product image", "path": "assets/s2_image", "default": "assets/s2_image.svg", "src_var": "s2_image_src", "applies_to": "index.html"},
+    {"group": "Slide 2 — Vật liệu", "id": "s2_voice", "type": "voiceover", "label": "Voiceover script", "default": "Bình được làm từ một trăm phần trăm nhựa nguyên sinh, an toàn tuyệt đối cho sức khỏe.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
+
+    {"group": "Slide 3 — Nắp kín nước", "id": "s3_title", "type": "text", "label": "Title", "default": "Kín nước tuyệt đối", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 3 — Nắp kín nước", "id": "s3_body", "type": "text", "label": "Body text", "default": "Không rò rỉ nước", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 3 — Nắp kín nước", "id": "s3_image", "type": "image", "label": "Product image", "path": "assets/s3_image", "default": "assets/s3_image.svg", "src_var": "s3_image_src", "applies_to": "index.html"},
+    {"group": "Slide 3 — Nắp kín nước", "id": "s3_voice", "type": "voiceover", "label": "Voiceover script", "default": "Thiết kế nắp kín nước tuyệt đối, ngăn chặn hoàn toàn việc rò rỉ nước ra ngoài.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
+
+    {"group": "Slide 4 — Tiện lợi", "id": "s4_title", "type": "text", "label": "Title", "default": "Đưa theo mọi nơi", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 4 — Tiện lợi", "id": "s4_body", "type": "text", "label": "Body text", "default": "Tự tin để trong balo", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 4 — Tiện lợi", "id": "s4_image", "type": "image", "label": "Product image", "path": "assets/s4_image", "default": "assets/s4_image.svg", "src_var": "s4_image_src", "applies_to": "index.html"},
+    {"group": "Slide 4 — Tiện lợi", "id": "s4_voice", "type": "voiceover", "label": "Voiceover script", "default": "Bạn có thể tự tin đặt bình trong balo hay túi xách khi di chuyển.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
+
+    {"group": "Slide 5 — Thiết kế", "id": "s5_title", "type": "text", "label": "Title", "default": "Eo thon thời thượng", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 5 — Thiết kế", "id": "s5_body", "type": "text", "label": "Body text", "default": "Dễ cầm nắm, màu trẻ trung", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 5 — Thiết kế", "id": "s5_image", "type": "image", "label": "Product image", "path": "assets/s5_image", "default": "assets/s5_image.svg", "src_var": "s5_image_src", "applies_to": "index.html"},
+    {"group": "Slide 5 — Thiết kế", "id": "s5_voice", "type": "voiceover", "label": "Voiceover script", "default": "Kiểu dáng eo thon dễ cầm nắm cùng gam màu trẻ trung thời thượng.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
+
+    {"group": "Slide 6 — Dung tích", "id": "s6_title", "type": "text", "label": "Title", "default": "Nhiều dung tích", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 6 — Dung tích", "id": "s6_body", "type": "text", "label": "Body text", "default": "Từ 310ml đến 2 lít", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 6 — Dung tích", "id": "s6_image", "type": "image", "label": "Product image", "path": "assets/s6_image", "default": "assets/s6_image.svg", "src_var": "s6_image_src", "applies_to": "index.html"},
+    {"group": "Slide 6 — Dung tích", "id": "s6_voice", "type": "voiceover", "label": "Voiceover script", "default": "Sản phẩm có đầy đủ dung tích từ ba trăm mười mi li lít đến hai lít.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
+
+    {"group": "Slide 7 — Bền bỉ", "id": "s7_title", "type": "text", "label": "Title", "default": "Bền vượt trội", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 7 — Bền bỉ", "id": "s7_body", "type": "text", "label": "Body text", "default": "Dễ vệ sinh, thân thiện môi trường", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 7 — Bền bỉ", "id": "s7_image", "type": "image", "label": "Product image", "path": "assets/s7_image", "default": "assets/s7_image.svg", "src_var": "s7_image_src", "applies_to": "index.html"},
+    {"group": "Slide 7 — Bền bỉ", "id": "s7_voice", "type": "voiceover", "label": "Voiceover script", "default": "Độ bền vượt trội, dễ dàng vệ sinh và giúp hạn chế rác thải nhựa ra môi trường.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
+
+    {"group": "Slide 8 — Call to action", "id": "s8_title", "type": "text", "label": "Title", "default": "Mua ngay hôm nay", "max_length": 40, "applies_to": "index.html"},
+    {"group": "Slide 8 — Call to action", "id": "s8_body", "type": "text", "label": "Body text", "default": "Nhận nhiều ưu đãi tại Tupperware Masib", "max_length": 80, "applies_to": "index.html"},
+    {"group": "Slide 8 — Call to action", "id": "s8_image", "type": "image", "label": "Product image", "path": "assets/s8_image", "default": "assets/s8_image.svg", "src_var": "s8_image_src", "applies_to": "index.html"},
+    {"group": "Slide 8 — Call to action", "id": "s8_voice", "type": "voiceover", "label": "Voiceover script", "default": "Mua ngay bình nước Eco chính hãng tại Tupperware Masib để nhận nhiều ưu đãi nhé!", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"}
+  ]
+}

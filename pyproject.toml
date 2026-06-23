@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Deterministic video templating pipeline — form-driven, minimal LLM, HyperFrames underneath."
 requires-python = ">=3.13"
 dependencies = [
+    "edge-tts>=6.1.0",
     "fastapi>=0.138.0",
     "jinja2>=3.1.6",
     "python-multipart>=0.0.32",

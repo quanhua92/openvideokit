@@ -36,13 +36,14 @@ def load_template_meta(template_id: str) -> dict:
 
 
 def list_templates() -> list[dict]:
-    """List all template metadata dicts, sorted by id."""
+    """List all template metadata dicts, sorted by priority (desc) then name."""
     out = []
     if not TEMPLATES_DIR.is_dir():
         return out
     for d in sorted(TEMPLATES_DIR.iterdir()):
         if (d / "template.json").is_file():
             out.append(load_template_meta(d.name))
+    out.sort(key=lambda m: (-(m.get("priority", 0)), m.get("name", m.get("id", ""))))
     return out
 
 
@@ -95,6 +96,9 @@ def stamp_session(
     - Image slots: write uploaded bytes to the slot's `path` (with the
       uploaded file's real extension). If `src_var` is declared, inject the
       resolved path as a Jinja2 variable so ``<img src="{{ src_var }}">`` works.
+    - Voiceover slots: run the edge-tts pipeline on the user's script to
+      generate ``assets/voiceover.mp3`` + ``assets/voiceover_timings.json``,
+      then inject caption HTML and GSAP karaoke JS into ``applies_to``.
     """
     upload_meta = upload_meta or {}
     render_targets: dict[Path, dict[str, str]] = {}
@@ -136,11 +140,118 @@ def stamp_session(
                 target = session_dir / applies_to
                 render_targets.setdefault(target, {})[src_var] = rel_dest
 
+        elif slot["type"] == "voiceover":
+            pass  # handled in batch below
+
+    # Batch all voiceover slots: collect scripts, run ONE TTS pipeline with smart timing
+    voiceover_slots = [s for s in meta["slots"] if s["type"] == "voiceover"]
+    if voiceover_slots:
+        _stamp_voiceover_batch(session_dir, voiceover_slots, form_values, meta)
+
     for target, variables in render_targets.items():
         if not target.is_file():
             continue
         tmpl = _jinja.from_string(target.read_text(encoding="utf-8"))
         target.write_text(tmpl.render(**variables), encoding="utf-8")
+
+
+def _stamp_voiceover_batch(
+    session_dir: Path,
+    voiceover_slots: list[dict],
+    form_values: dict[str, str],
+    meta: dict,
+) -> None:
+    """Run ONE TTS pipeline for all voiceover slots with smart auto-timing.
+
+    Each voiceover slot is one slide's narration. The pipeline:
+      1. Collects scripts from all voiceover slots (form value or default)
+      2. TTS each sentence, measures actual duration
+      3. Auto-calculates start times (slide N starts after N-1 ends + gap)
+      4. Generates voiceover.mp3 + voiceover_timings.json
+      5. Injects caption HTML + caption GSAP + scene transition GSAP into applies_to
+
+    Slot schema (per voiceover slot):
+      - voice:     edge-tts voice ID (default: vi-VN-HoaiMyNeural)
+      - applies_to: HTML file to inject into (from first voiceover slot)
+      - gap_between_slides: pause between slides (default: 0.8s)
+      - start_offset: first slide start (default: 0.5s)
+      - emphasis_map: {slide_index: [word_indices]} for keyword highlight
+    """
+    text_parts: list[str] = []
+    for slot in voiceover_slots:
+        raw = form_values.get(slot["id"], "") or slot.get("default", "")
+        if not raw.strip():
+            continue
+        lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
+        text_parts.extend(lines) if len(lines) > 1 else text_parts.append(raw.strip())
+
+    if not text_parts:
+        return
+
+    first_slot = voiceover_slots[0]
+    voice = first_slot.get("voice", "vi-VN-HoaiMyNeural")
+    applies_to = first_slot.get("applies_to", "index.html")
+    start_offset = float(first_slot.get("start_offset", 0.5))
+    gap_between_slides = float(first_slot.get("gap_between_slides", 0.8))
+    emphasis_map = first_slot.get("emphasis_map", {})
+    slide_prefix = first_slot.get("slide_prefix", "slide")
+
+    from .voiceover import generate_voiceover_smart
+
+    assets_dir = session_dir / "assets"
+    timings = generate_voiceover_smart(
+        text_parts,
+        assets_dir,
+        voice=voice,
+        start_offset=start_offset,
+        gap_between_slides=gap_between_slides,
+    )
+
+    # Update template duration to match actual voiceover length
+    meta["duration"] = timings["total_duration"]
+
+    from .captions import (
+        build_caption_html,
+        build_caption_timeline_js,
+        build_scene_transitions_js,
+    )
+
+    caption_html = build_caption_html(timings, emphasis_map)
+    caption_js = build_caption_timeline_js(timings, indent="        ")
+    scene_js = build_scene_transitions_js(timings, slide_prefix=slide_prefix, indent="        ")
+
+    target_file = session_dir / applies_to
+    if target_file.is_file():
+        content = target_file.read_text(encoding="utf-8")
+
+        # Inject caption HTML
+        if "<!-- CAPTION_LAYER -->" in content:
+            content = content.replace("<!-- CAPTION_LAYER -->", caption_html)
+
+        # Inject caption karaoke timeline
+        if "// CAPTION_TIMELINE" in content:
+            content = content.replace("// CAPTION_TIMELINE", caption_js)
+
+        # Inject scene transitions (slide show/hide driven by TTS timings)
+        if "// SCENE_TRANSITIONS" in content:
+            content = content.replace("// SCENE_TRANSITIONS", scene_js)
+
+        # Update total duration in data-duration attribute
+        import re
+
+        content = re.sub(
+            r'data-duration="[\d.]+"',
+            f'data-duration="{timings["total_duration"]:.1f}"',
+            content,
+        )
+        # Update DUR variable in JS
+        content = re.sub(
+            r"var DUR\s*=\s*[\d.]+;",
+            f'var DUR = {timings["total_duration"]:.1f};',
+            content,
+        )
+
+        target_file.write_text(content, encoding="utf-8")
 
 
 # ─── HTML page generators ──────────────────────────────────────────────────
@@ -277,16 +388,28 @@ def _template_card(meta: dict) -> str:
 def render_editor_page(meta: dict, template_id: str) -> str:
     """Auto-generate an HTML form from a template's slot schema."""
     slots_html = []
+    seen_groups: set[str] = set()
     for slot in meta.get("slots", []):
         sid = slot["id"]
         label = slot.get("label", sid)
         default = slot.get("default", "")
         maxlen = slot.get("max_length", "")
+
+        # Render group header when entering a new group
+        group = slot.get("group")
+        if group and group not in seen_groups:
+            seen_groups.add(group)
+            slots_html.append(f"""
+            <div class="border-t border-zinc-300 pt-4 mt-6 first:border-t-0 first:mt-0 first:pt-0">
+              <h2 class="text-sm font-bold text-zinc-700 uppercase tracking-wide mb-3">{group}</h2>
+            </div>""")
+
         if slot["type"] == "text":
+            rows = 2 if len(str(default)) < 80 else 3
             slots_html.append(f"""
             <div>
               <label for="f-{sid}" class="block font-semibold text-sm mb-1.5">{label}</label>
-              <textarea id="f-{sid}" name="{sid}" rows="2" maxlength="{maxlen}"
+              <textarea id="f-{sid}" name="{sid}" rows="{rows}" maxlength="{maxlen}"
                 class="w-full px-3 py-2 border border-zinc-300 rounded-md bg-white
                        focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand
                        font-inherit resize-y">{default}</textarea>
@@ -301,6 +424,17 @@ def render_editor_page(meta: dict, template_id: str) -> str:
                        file:mr-3 file:px-3 file:py-1 file:rounded file:border-0
                        file:bg-zinc-900 file:text-white file:font-medium file:cursor-pointer">
               <p class="text-xs text-zinc-500 mt-1">Default: {default}</p>
+            </div>""")
+        elif slot["type"] == "voiceover":
+            voice = slot.get("voice", "vi-VN-HoaiMyNeural")
+            slots_html.append(f"""
+            <div>
+              <label for="f-{sid}" class="block font-semibold text-sm mb-1.5">{label}</label>
+              <textarea id="f-{sid}" name="{sid}" rows="2"
+                class="w-full px-3 py-2 border border-zinc-300 rounded-md bg-amber-50
+                       focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400
+                       font-inherit resize-y">{default}</textarea>
+              <p class="text-xs text-amber-700 mt-1">🔊 TTS · {voice}</p>
             </div>""")
     name = meta.get("name", template_id)
     description = meta.get("description", "")
@@ -336,6 +470,29 @@ def render_editor_page(meta: dict, template_id: str) -> str:
 
 def render_player_page(src: str, title: str, session_id: str) -> str:
     """Wrapper HTML with <hyperframes-player> pointed at a session."""
+    voiceover_path = SESSIONS_DIR / session_id / "assets" / "voiceover.mp3"
+    if voiceover_path.is_file():
+        _voiceover_audio = (
+            f'    <audio id="ext-voiceover" src="/session/{session_id}/assets/voiceover.mp3" '
+            f'preload="auto" hidden></audio>'
+        )
+        _voiceover_js = """
+    const _vo = document.getElementById('ext-voiceover');
+    _vo.volume = 1.0;
+    _player.addEventListener('play', () => {
+      _vo.currentTime = _player.currentTime || 0;
+      _vo.play().catch(() => {});
+    });
+    _player.addEventListener('pause', () => { _vo.pause(); });
+    _player.addEventListener('ended', () => { _vo.pause(); _vo.currentTime = 0; });
+    _player.addEventListener('timeupdate', (e) => {
+      const t = (e.detail && e.detail.currentTime) || _player.currentTime || 0;
+      if (Math.abs(_vo.currentTime - t) > 0.3) _vo.currentTime = t;
+    });"""
+    else:
+        _voiceover_audio = ""
+        _voiceover_js = ""
+
     return f"""<!doctype html>
 <html lang="en"><head>
   <meta charset="utf-8">
@@ -380,13 +537,14 @@ def render_player_page(src: str, title: str, session_id: str) -> str:
     </div>
 
     <!-- External audio synced to player (bypasses HF player's internal muting) -->
-    <audio id="ext-audio" src="/session/{session_id}/assets/music-bed.mp3" preload="auto" hidden></audio>
+    <audio id="ext-music" src="/session/{session_id}/assets/music-bed.mp3" preload="auto" hidden></audio>
+{_voiceover_audio}
 
     <div class="flex gap-3 mt-3 items-center">
       <form method="post" action="/render/{session_id}">
         <button type="submit"
           class="px-4 py-2 bg-zinc-900 text-white rounded-md text-sm font-medium hover:bg-zinc-700 transition-colors border border-zinc-700">
-          ⏵ Render MP4
+          ▶ Render MP4
         </button>
       </form>
       <button id="fullscreen-btn"
@@ -402,23 +560,24 @@ def render_player_page(src: str, title: str, session_id: str) -> str:
 
   <script>
     const _player = document.querySelector('hyperframes-player');
-    const _ext = document.getElementById('ext-audio');
+    const _music = document.getElementById('ext-music');
     const _fsBtn = document.getElementById('fullscreen-btn');
     const _exitFsBtn = document.getElementById('exit-fullscreen-btn');
-    _ext.volume = 0.5;
-    _ext.loop = true;
+    _music.volume = 0.08;
+    _music.loop = true;
 
-    // Sync external audio to player playback (bypasses HF player's internal muting).
+    // Sync music-bed to player playback (bypasses HF player's internal muting).
     _player.addEventListener('play', () => {{
-      _ext.currentTime = _player.currentTime || 0;
-      _ext.play().catch(() => {{}});
+      _music.currentTime = _player.currentTime || 0;
+      _music.play().catch(() => {{}});
     }});
-    _player.addEventListener('pause', () => {{ _ext.pause(); }});
-    _player.addEventListener('ended', () => {{ _ext.pause(); _ext.currentTime = 0; }});
+    _player.addEventListener('pause', () => {{ _music.pause(); }});
+    _player.addEventListener('ended', () => {{ _music.pause(); _music.currentTime = 0; }});
     _player.addEventListener('timeupdate', (e) => {{
       const t = (e.detail && e.detail.currentTime) || _player.currentTime || 0;
-      if (Math.abs(_ext.currentTime - t) > 0.3) _ext.currentTime = t;
+      if (Math.abs(_music.currentTime - t) > 0.3) _music.currentTime = t;
     }});
+{_voiceover_js}
 
     // Fullscreen the wrapper (contains both player + exit button)
     const _fsWrapper = document.getElementById('fs-wrapper');

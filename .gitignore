@@ -20,6 +20,10 @@ jobs/
 *.webm
 *.mov
 
+# Generated TTS artifacts (not source)
+templates/*/assets/voiceover.mp3
+templates/*/assets/voiceover_timings.json
+
 # OS / editor
 .DS_Store
 .idea/

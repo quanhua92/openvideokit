@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <rect width="600" height="600" rx="24" fill="#0f1f17"/>
+  <g opacity="0.8">
+    <path d="M150 300 h25 v15 l10 15 v100 h-45 v-100 l10-15 z" fill="#22c55e"/>
+    <text x="162" y="460" font-family="Inter,sans-serif" font-size="14" fill="#4ade80" text-anchor="middle">310ml</text>
+  </g>
+  <g opacity="0.85">
+    <path d="M230 260 h35 v18 l14 20 v140 h-63 v-140 l14-20 z" fill="#4ade80"/>
+    <text x="252" y="460" font-family="Inter,sans-serif" font-size="14" fill="#4ade80" text-anchor="middle">500ml</text>
+  </g>
+  <g opacity="0.9">
+    <path d="M320 220 h45 v22 l18 25 v170 h-81 v-170 l18-25 z" fill="#16a34a"/>
+    <text x="342" y="460" font-family="Inter,sans-serif" font-size="14" fill="#4ade80" text-anchor="middle">1L</text>
+  </g>
+  <g>
+    <path d="M425 180 h55 v28 l22 30 v200 h-99 v-200 l22-30 z" fill="#15803d"/>
+    <text x="452" y="460" font-family="Inter,sans-serif" font-size="14" fill="#4ade80" text-anchor="middle">2L</text>
+  </g>
+  <text x="300" y="540" font-family="Inter,sans-serif" font-size="24" font-weight="700" fill="#4ade80" text-anchor="middle" opacity="0.6">310ml → 2L</text>
+</svg>

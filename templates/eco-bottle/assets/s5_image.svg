@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <defs>
+    <linearGradient id="bottle5" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22c55e"/><stop offset="50%" stop-color="#4ade80"/><stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" rx="24" fill="#0f1f17"/>
+  <path d="M270 100 h60 v30 h10 v45 l18 30 Q280 230 282 260 Q284 380 300 450 Q316 380 318 260 Q320 230 280 205 l18-30 v-45 h10 v-30 h60 z" fill="url(#bottle5)" opacity="0.8"/>
+  <path d="M270 100 h60 v30 M330 100 h60 v30" stroke="#15803d" stroke-width="3" fill="none"/>
+  <g opacity="0.3">
+    <path d="M180 280 Q200 250 230 270" stroke="#4ade80" stroke-width="2" fill="none"/>
+    <path d="M400 280 Q420 250 450 270" stroke="#4ade80" stroke-width="2" fill="none"/>
+  </g>
+  <text x="300" y="540" font-family="Inter,sans-serif" font-size="24" font-weight="700" fill="#4ade80" text-anchor="middle" opacity="0.6">Eo thon thời thượng</text>
+</svg>
