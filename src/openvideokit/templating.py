@@ -345,6 +345,10 @@ def render_player_page(src: str, title: str, session_id: str) -> str:
   <style type="text/tailwindcss">
     hyperframes-player:fullscreen {{ width: 100vw; height: 100vh; aspect-ratio: unset; border-radius: 0; }}
     hyperframes-player:-webkit-full-screen {{ width: 100vw; height: 100vh; aspect-ratio: unset; border-radius: 0; }}
+    #fs-wrapper:fullscreen {{ background: #000; }}
+    #fs-wrapper:fullscreen hyperframes-player {{ width: 100vw; height: 100vh; aspect-ratio: unset; border-radius: 0; }}
+    #fs-wrapper:-webkit-full-screen {{ background: #000; }}
+    #fs-wrapper:-webkit-full-screen hyperframes-player {{ width: 100vw; height: 100vh; aspect-ratio: unset; border-radius: 0; }}
   </style>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@hyperframes/player"></script>
 </head>
@@ -359,11 +363,20 @@ def render_player_page(src: str, title: str, session_id: str) -> str:
       <span class="text-xs text-zinc-700 font-mono ml-auto">{session_id}</span>
     </div>
 
-    <div id="player-container" class="relative">
+    <div id="fs-wrapper" class="relative">
       <hyperframes-player
         src="{src}" controls muted="false"
         class="block w-full aspect-video bg-black rounded-lg overflow-hidden"
       ></hyperframes-player>
+
+      <!-- Exit-fullscreen button (only visible when wrapper is fullscreen) -->
+      <button id="exit-fullscreen-btn"
+        style="display:none"
+        class="absolute top-4 right-4 z-[9999] flex items-center gap-2 px-4 py-2.5
+               bg-black/70 backdrop-blur text-white rounded-full text-sm font-medium
+               hover:bg-black/90 transition-colors border border-white/20 shadow-lg">
+        ✕ Exit
+      </button>
     </div>
 
     <!-- External audio synced to player (bypasses HF player's internal muting) -->
@@ -390,6 +403,8 @@ def render_player_page(src: str, title: str, session_id: str) -> str:
   <script>
     const _player = document.querySelector('hyperframes-player');
     const _ext = document.getElementById('ext-audio');
+    const _fsBtn = document.getElementById('fullscreen-btn');
+    const _exitFsBtn = document.getElementById('exit-fullscreen-btn');
     _ext.volume = 0.5;
     _ext.loop = true;
 
@@ -404,14 +419,32 @@ def render_player_page(src: str, title: str, session_id: str) -> str:
       if (Math.abs(_ext.currentTime - t) > 0.3) _ext.currentTime = t;
     }});
 
-    document.getElementById('fullscreen-btn').addEventListener('click', () => {{
-      if (!document.fullscreenElement) {{
-        _player.requestFullscreen().catch(() => {{
-          if (_player.webkitRequestFullscreen) _player.webkitRequestFullscreen();
+    // Fullscreen the wrapper (contains both player + exit button)
+    const _fsWrapper = document.getElementById('fs-wrapper');
+    function _isFullscreen() {{
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }}
+    function _onFsChange() {{
+      _exitFsBtn.style.display = _isFullscreen() ? 'flex' : 'none';
+    }}
+    document.addEventListener('fullscreenchange', _onFsChange);
+    document.addEventListener('webkitfullscreenchange', _onFsChange);
+
+    _fsBtn.addEventListener('click', () => {{
+      if (!_isFullscreen()) {{
+        _fsWrapper.requestFullscreen().catch(() => {{
+          if (_fsWrapper.webkitRequestFullscreen) _fsWrapper.webkitRequestFullscreen();
         }});
       }} else {{
-        document.exitFullscreen();
+        document.exitFullscreen().catch(() => {{
+          if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }});
       }}
+    }});
+    _exitFsBtn.addEventListener('click', () => {{
+      document.exitFullscreen().catch(() => {{
+        if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }});
     }});
   </script>
 </body></html>"""
