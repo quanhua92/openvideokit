@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>Custom Video</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=block" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; background: #0a0a14; overflow: hidden; font-family: 'Inter', sans-serif; }
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+
+    /* Caption layer — only CSS in root, everything else lives in sub-comps */
+    /* CAPTION_CSS */
+
+    .progress-track {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 4px; background: rgba(255,255,255,0.06); z-index: 9999;
+    }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #818cf8, #c084fc, #f472b6); }
+  </style>
+</head>
+<body>
+  <div id="stage"
+       data-composition-id="custom-video"
+       data-start="0"
+       data-width="1920"
+       data-height="1080"
+       data-duration="60">
+
+    <!-- SLIDES_HERE -->
+    <!-- End slides -->
+
+    <!-- CAPTION_LAYER -->
+    <!-- End caption layer -->
+
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+    <audio id="music-bed" src="assets/music-bed.mp3"
+      data-start="0" data-duration="60" data-volume="0.08"
+      data-track-index="0" loop preload="auto"></audio>
+    <audio id="voiceover" src="assets/voiceover.mp3"
+      data-start="0" data-duration="60" data-volume="1.0"
+      data-track-index="1" preload="auto"></audio>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      (function () {
+        var tl = gsap.timeline({ paused: true });
+        var DUR = 60.0;
+
+        // SCENE_TRANSITIONS
+        // End scene transitions
+
+        tl.fromTo('#progress-fill',
+          { width: '0%' },
+          { width: '100%', duration: DUR, ease: 'none' },
+          0
+        );
+
+        // CAPTION_TIMELINE
+        // End caption timeline
+
+        tl.to({}, { duration: DUR }, 0);
+        window.__timelines['custom-video'] = tl;
+      })();
+    </script>
+  </div>
+</body>
+</html>

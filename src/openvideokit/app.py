@@ -78,6 +78,8 @@ async def editor(template_id: str) -> HTMLResponse:
         meta = templating.load_template_meta(template_id)
     except FileNotFoundError as e:
         raise HTTPException(404, str(e)) from e
+    if meta.get("mode") == "slide-editor":
+        return HTMLResponse(templating.render_slide_editor_page(meta, template_id))
     return HTMLResponse(templating.render_editor_page(meta, template_id))
 
 
@@ -101,18 +103,25 @@ async def create_preview(template_id: str, request: Request) -> RedirectResponse
     form_values: dict[str, str] = {}
     uploads: dict[str, bytes] = {}
     upload_meta: dict[str, dict] = {}
-    for slot in meta["slots"]:
-        sid = slot["id"]
-        if slot["type"] == "text" or slot["type"] == "voiceover":
-            form_values[sid] = str(form.get(sid, "") or "")
-        elif slot["type"] == "image":
-            f = form.get(sid)
-            if f is not None and getattr(f, "filename", ""):
-                uploads[sid] = await f.read()
-                upload_meta[sid] = {
-                    "filename": getattr(f, "filename", ""),
-                    "content_type": getattr(f, "content_type", ""),
-                }
+
+    if meta.get("mode") == "slide-editor":
+        form_values["slides_json"] = str(form.get("slides_json", "[]") or "")
+        for key in form:
+            if key.startswith("slide_") and key.endswith("_image"):
+                f = form.get(key)
+                if f is not None and getattr(f, "filename", ""):
+                    uploads[key] = await f.read()
+                    upload_meta[key] = {"filename": getattr(f, "filename", ""), "content_type": getattr(f, "content_type", "")}
+    else:
+        for slot in meta["slots"]:
+            sid = slot["id"]
+            if slot["type"] == "text" or slot["type"] == "voiceover":
+                form_values[sid] = str(form.get(sid, "") or "")
+            elif slot["type"] == "image":
+                f = form.get(sid)
+                if f is not None and getattr(f, "filename", ""):
+                    uploads[sid] = await f.read()
+                    upload_meta[sid] = {"filename": getattr(f, "filename", ""), "content_type": getattr(f, "content_type", "")}
 
     templating.stamp_session(session_dir, meta, form_values, uploads, upload_meta)
     return RedirectResponse(f"/preview/{session_id}", status_code=303)

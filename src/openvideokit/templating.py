@@ -103,6 +103,10 @@ def stamp_session(
     upload_meta = upload_meta or {}
     render_targets: dict[Path, dict[str, str]] = {}
 
+    if meta.get("mode") == "slide-editor":
+        _stamp_slides(session_dir, meta, form_values, uploads, upload_meta)
+        return
+
     for slot in meta["slots"]:
         sid = slot["id"]
         if slot["type"] == "text":
@@ -153,6 +157,145 @@ def stamp_session(
             continue
         tmpl = _jinja.from_string(target.read_text(encoding="utf-8"))
         target.write_text(tmpl.render(**variables), encoding="utf-8")
+
+
+# ─── slide-editor mode (HF sub-composition model) ─────────────────────────
+def _stamp_slides(
+    session_dir: Path,
+    meta: dict,
+    form_values: dict[str, str],
+    uploads: dict[str, bytes],
+    upload_meta: dict[str, dict],
+) -> None:
+    """Stamp a slide-editor template using HF sub-compositions.
+
+    For each slide: copy layout → compositions/slide-N.html (unique IDs),
+    generate host div with data-composition-src + data-variable-values + z-index.
+    """
+    import json as _json
+    import re
+
+    slides_json = form_values.get("slides_json", "[]")
+    try:
+        slides = _json.loads(slides_json)
+    except (ValueError, TypeError):
+        slides = []
+    if not slides:
+        return
+
+    assets_dir = session_dir / "assets"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    comps_dir = session_dir / "compositions"
+    comps_dir.mkdir(parents=True, exist_ok=True)
+    layouts_dir = session_dir / "layouts"
+    layout_map = {lt["id"]: lt for lt in meta.get("layouts", [])}
+
+    # Process image uploads + copy layout files
+    voice_texts: list[str] = []
+    for idx, slide in enumerate(slides):
+        layout = slide.get("layout", "feature-center")
+        slide_id = f"slide-{idx}"
+
+        # Image uploads
+        layout_def = layout_map.get(layout, {})
+        for field in layout_def.get("fields", []):
+            if field.get("type") != "image":
+                continue
+            fid = field["id"]
+            upload_key = f"slide_{idx}_{fid}"
+            if upload_key in uploads:
+                fname = upload_meta.get(upload_key, {}).get("filename", "")
+                ext = Path(fname).suffix or ".svg"
+                dest = assets_dir / f"slide_{idx}_{fid}{ext}"
+                dest.write_bytes(uploads[upload_key])
+                slide[fid] = f"assets/slide_{idx}_{fid}{ext}"
+
+        # Copy layout → compositions/slide-N.html with unique IDs
+        layout_file = layouts_dir / f"{layout}.html"
+        if layout_file.is_file():
+            comp_html = layout_file.read_text(encoding="utf-8")
+            comp_html = comp_html.replace("__SLIDE_ID__", slide_id)
+            (comps_dir / f"slide-{idx}.html").write_text(comp_html, encoding="utf-8")
+
+        if slide.get("voice", "").strip():
+            voice_texts.append(slide["voice"].strip())
+
+    # Voiceover pipeline
+    timings_data = None
+    total_duration = meta.get("duration", 60.0)
+    if voice_texts:
+        from .voiceover import generate_voiceover_smart
+
+        timings_data = generate_voiceover_smart(
+            voice_texts, assets_dir, voice="vi-VN-HoaiMyNeural",
+            start_offset=0.5, gap_between_slides=0.8,
+        )
+        total_duration = timings_data["total_duration"]
+
+    # Generate host divs (always visible, z-index managed by root timeline)
+    host_divs: list[str] = []
+    for idx, slide in enumerate(slides):
+        slide_id = f"slide-{idx}"
+        var_fields = {k: v for k, v in slide.items() if k not in ("layout", "voice")}
+        var_json = _json.dumps(var_fields, ensure_ascii=False)
+
+        if timings_data and idx < len(timings_data["sentences"]):
+            s = timings_data["sentences"][idx]
+            start, dur = s["start"], s["duration"]
+        else:
+            per = total_duration / len(slides) if slides else 5.0
+            start, dur = idx * per, per
+
+        z = 100 - idx
+        host_divs.append(
+            f'      <div data-composition-id="{slide_id}"\n'
+            f'           data-composition-src="compositions/slide-{idx}.html"\n'
+            f'           data-start="{start:.1f}" data-duration="{dur:.1f}"\n'
+            f'           class="clip" style="z-index:{z};"\n'
+            f'           data-variable-values=\'{var_json}\'></div>'
+        )
+
+    host_html = "\n".join(host_divs)
+
+    # Captions + z-index scene transitions
+    caption_html = caption_js = scene_js = ""
+    if timings_data:
+        from .captions import (
+            build_caption_html,
+            build_caption_timeline_js,
+            build_scene_transitions_js,
+        )
+        caption_html = build_caption_html(timings_data)
+        caption_js = build_caption_timeline_js(timings_data, indent="        ")
+        scene_js = build_scene_transitions_js(timings_data, indent="        ")
+    else:
+        from .captions import build_scene_transitions_js
+        per = total_duration / len(slides) if slides else 5.0
+        scene_js = build_scene_transitions_js(
+            {"sentences": [{"index": i, "start": i * per, "end": (i+1)*per, "duration": per}
+                           for i in range(len(slides))]},
+            indent="        ",
+        )
+
+    # Inject into index.html
+    index_path = session_dir / "index.html"
+    if index_path.is_file():
+        content = index_path.read_text(encoding="utf-8")
+        content = re.sub(r'data-duration="[\d.]+"', f'data-duration="{total_duration:.1f}"', content)
+        content = re.sub(r"var DUR\s*=\s*[\d.]+;", f"var DUR = {total_duration:.1f};", content)
+        if "<!-- SLIDES_HERE -->" in content:
+            content = content.replace("<!-- SLIDES_HERE -->", host_html)
+        if "<!-- CAPTION_LAYER -->" in content and caption_html:
+            content = content.replace("<!-- CAPTION_LAYER -->", caption_html)
+        if "/* CAPTION_CSS */" in content:
+            from .captions import CAPTION_STYLES
+            cap_style = meta.get("caption_style", "highlight")
+            content = content.replace("/* CAPTION_CSS */", CAPTION_STYLES.get(cap_style, CAPTION_STYLES["highlight"]))
+        if "// SCENE_TRANSITIONS" in content and scene_js:
+            content = content.replace("// SCENE_TRANSITIONS", scene_js)
+        if "// CAPTION_TIMELINE" in content and caption_js:
+            content = content.replace("// CAPTION_TIMELINE", caption_js)
+        index_path.write_text(content, encoding="utf-8")
 
 
 def _stamp_voiceover_batch(
@@ -465,6 +608,143 @@ def render_editor_page(meta: dict, template_id: str) -> str:
       </div>
     </form>
   </div>
+</body></html>"""
+
+
+def render_slide_editor_page(meta: dict, template_id: str) -> str:
+    """Interactive slide editor for 'mode: slide-editor' templates."""
+    import json as _json
+
+    layouts = meta.get("layouts", [])
+    layouts_json = _json.dumps(layouts, ensure_ascii=False)
+    name = meta.get("name", template_id)
+    description = meta.get("description", "")
+
+    layout_buttons = "\n".join(
+        f'<button type="button" onclick="addSlide(\'{lt["id"]}\')" '
+        f'class="px-3 py-1.5 text-sm font-medium rounded-md border '
+        f'border-zinc-300 bg-white hover:bg-zinc-100 transition-colors">'
+        f'+ {lt["name"]}</button>'
+        for lt in layouts
+    )
+
+    return f"""<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenVideoKit — {name}</title>
+  {_TAILWIND_HEAD}
+  <style>
+    .slide-card {{
+      border: 1px solid #d4d4d8; border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #fff;
+    }}
+    .slide-card .header {{ display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }}
+    .slide-card .field {{ margin-bottom: 8px; }}
+    .slide-card label {{ font-size: 12px; font-weight: 600; color: #52525b; display: block; margin-bottom: 2px; }}
+    .slide-card input[type="text"], .slide-card textarea {{
+      width: 100%; padding: 6px 8px; border: 1px solid #d4d4d8; border-radius: 4px; font-size: 14px;
+    }}
+    .slide-card .voice-field textarea {{ background: #fffbeb; border-color: #fcd34d; }}
+    .layout-picker {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+  </style>
+</head>
+<body class="bg-stone-100 text-zinc-900 min-h-screen p-8">
+  <div class="max-w-2xl mx-auto">
+    <a href="/" class="text-sm text-zinc-500 hover:text-zinc-700">← templates</a>
+    <h1 class="text-2xl font-bold mt-4 mb-1">
+      <span class="text-brand">OpenVideoKit</span> · {name}
+    </h1>
+    <p class="text-zinc-600 mb-6">{description}</p>
+
+    <form id="slide-form" action="/preview/{template_id}" method="post" enctype="multipart/form-data">
+      <div id="slides-container"></div>
+      <input type="hidden" name="slides_json" id="slides_json" value="[]">
+
+      <div class="layout-picker mt-2">{layout_buttons}</div>
+
+      <div class="pt-2 sticky bottom-4 bg-stone-100 py-3">
+        <button type="submit"
+          class="px-5 py-2.5 bg-zinc-900 text-white rounded-md font-medium hover:bg-zinc-700 transition-colors">
+          ▶ Preview →
+        </button>
+        <span class="text-xs text-zinc-500 ml-3" id="slide-count">0 slides</span>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const LAYOUTS = {layouts_json};
+    const layoutMap = {{}};
+    LAYOUTS.forEach(l => layoutMap[l.id] = l);
+    let slides = [];
+
+    function addSlide(layoutId) {{
+      const layout = layoutMap[layoutId];
+      if (!layout) return;
+      const slide = {{ layout: layoutId }};
+      layout.fields.forEach(f => {{ slide[f.id] = f.default || ''; }});
+      slides.push(slide);
+      render();
+    }}
+
+    function removeSlide(idx) {{ slides.splice(idx, 1); render(); }}
+    function moveSlide(idx, dir) {{
+      const ni = idx + dir;
+      if (ni < 0 || ni >= slides.length) return;
+      [slides[idx], slides[ni]] = [slides[ni], slides[idx]];
+      render();
+    }}
+    function updateField(idx, fieldId, value) {{ slides[idx][fieldId] = value; }}
+
+    function render() {{
+      const container = document.getElementById('slides-container');
+      container.innerHTML = '';
+      slides.forEach((slide, idx) => {{
+        const layout = layoutMap[slide.layout];
+        const card = document.createElement('div');
+        card.className = 'slide-card';
+        const fieldsHtml = layout.fields.map(f => {{
+          if (f.type === 'image') {{
+            return `<div class="field">
+              <label>${{f.label}}</label>
+              <input type="file" name="slide_${{idx}}_${{f.id}}" accept="image/svg+xml,image/png,image/jpeg">
+            </div>`;
+          }}
+          const cls = f.type === 'voiceover' ? 'voice-field' : '';
+          const val = slide[f.id] || '';
+          const tts = f.type === 'voiceover' ? '<p class="text-xs text-amber-700 mt-1">🔊 TTS · vi-VN-HoaiMyNeural</p>' : '';
+          return `<div class="field ${{cls}}">
+            <label>${{f.label}}</label>
+            <textarea rows="2" onchange="updateField(${{idx}}, '${{f.id}}', this.value)">${{val}}</textarea>
+            ${{tts}}
+          </div>`;
+        }}).join('');
+        card.innerHTML = `
+          <div class="header">
+            <span class="text-xs font-mono text-zinc-500">${{String(idx + 1).padStart(2, '0')}}</span>
+            <span class="text-sm font-semibold text-zinc-700">${{layout.name}}</span>
+            <div class="ml-auto flex gap-1">
+              <button type="button" onclick="moveSlide(${{idx}}, -1)" class="px-2 py-0.5 text-xs rounded border border-zinc-300 hover:bg-zinc-100">↑</button>
+              <button type="button" onclick="moveSlide(${{idx}}, 1)" class="px-2 py-0.5 text-xs rounded border border-zinc-300 hover:bg-zinc-100">↓</button>
+              <button type="button" onclick="removeSlide(${{idx}})" class="px-2 py-0.5 text-xs rounded border border-red-300 text-red-600 hover:bg-red-50">✕</button>
+            </div>
+          </div>
+          ${{fieldsHtml}}
+        `;
+        container.appendChild(card);
+      }});
+      const payload = slides.map(s => {{
+        const out = {{ layout: s.layout }};
+        layoutMap[s.layout].fields.forEach(f => {{ if (f.type !== 'image') out[f.id] = s[f.id] || ''; }});
+        return out;
+      }});
+      document.getElementById('slides_json').value = JSON.stringify(payload);
+      document.getElementById('slide-count').textContent = `${{slides.length}} slide${{slides.length !== 1 ? 's' : ''}}`;
+    }}
+
+    addSlide('feature-center');
+    addSlide('cta-big');
+  </script>
 </body></html>"""
 
 

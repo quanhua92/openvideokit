@@ -1,0 +1,23 @@
+<html data-composition-variables='[
+  {"id":"title","type":"string","default":"Get Started"},
+  {"id":"body","type":"string","default":"Visit our website"}
+]'>
+<template>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080"
+       style="position:absolute;inset:0;background:#0a0a14;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+    <div style="max-width:1400px;padding:0 80px;">
+      <h1 id="el-title" style="font-size:140px;font-weight:900;background:linear-gradient(135deg,#818cf8,#c084fc,#f472b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.04em;margin:0;"></h1>
+      <p id="el-body" style="font-size:48px;font-weight:500;color:rgba(255,255,255,0.6);margin-top:32px;"></p>
+    </div>
+  </div>
+  <script>
+    const V = __hyperframes.getVariables();
+    document.getElementById('el-title').textContent = V.title;
+    document.getElementById('el-body').textContent = V.body;
+    var tl = gsap.timeline({ paused: true });
+    tl.from('#__SLIDE_ID__ h1', { opacity: 0, scale: 0.8, duration: 0.6, ease: 'back.out(1.5)' });
+    tl.from('#__SLIDE_ID__ p', { opacity: 0, y: 20, duration: 0.4 }, 0.3);
+    window.__timelines['__SLIDE_ID__'] = tl;
+  </script>
+</template>
+</html>

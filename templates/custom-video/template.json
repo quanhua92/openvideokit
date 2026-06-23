@@ -1,0 +1,74 @@
+{
+  "id": "custom-video",
+  "name": "Custom Video — Build Your Own",
+  "description": "Start from scratch. Add slides, pick layouts, customize content, and generate Vietnamese voiceover automatically.",
+  "duration": 60.0,
+  "priority": 200,
+  "caption_style": "neon",
+  "mode": "slide-editor",
+  "layouts": [
+    {
+      "id": "product-split",
+      "name": "Product",
+      "icon": "box",
+      "fields": [
+        {"id": "title", "type": "text", "label": "Title", "default": "Product Name"},
+        {"id": "body", "type": "text", "label": "Description", "default": "Short description"},
+        {"id": "image", "type": "image", "label": "Image"},
+        {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
+      ]
+    },
+    {
+      "id": "feature-center",
+      "name": "Feature",
+      "icon": "star",
+      "fields": [
+        {"id": "title", "type": "text", "label": "Title", "default": "Key Feature"},
+        {"id": "body", "type": "text", "label": "Description", "default": "Why it matters"},
+        {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
+      ]
+    },
+    {
+      "id": "cta-big",
+      "name": "Call to Action",
+      "icon": "arrow-right",
+      "fields": [
+        {"id": "title", "type": "text", "label": "Headline", "default": "Get Started Today"},
+        {"id": "body", "type": "text", "label": "Sub-text", "default": "Visit our website"},
+        {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
+      ]
+    },
+    {
+      "id": "stat-big",
+      "name": "Stat",
+      "icon": "chart",
+      "fields": [
+        {"id": "title", "type": "text", "label": "Big number", "default": "100%"},
+        {"id": "body", "type": "text", "label": "Label", "default": "Growth this year"},
+        {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
+      ]
+    },
+    {
+      "id": "timeline-step",
+      "name": "Step",
+      "icon": "list",
+      "fields": [
+        {"id": "step", "type": "text", "label": "Step number", "default": "1"},
+        {"id": "title", "type": "text", "label": "Title", "default": "Step Title"},
+        {"id": "body", "type": "text", "label": "Description", "default": "Step description"},
+        {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
+      ]
+    },
+    {
+      "id": "quote",
+      "name": "Quote",
+      "icon": "quote",
+      "fields": [
+        {"id": "title", "type": "text", "label": "Quote", "default": "Inspiring quote here"},
+        {"id": "body", "type": "text", "label": "Author", "default": "— Author Name"},
+        {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
+      ]
+    }
+  ],
+  "slots": []
+}

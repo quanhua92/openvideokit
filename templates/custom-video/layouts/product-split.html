@@ -1,0 +1,27 @@
+<html data-composition-variables='[
+  {"id":"title","type":"string","default":"Product Name"},
+  {"id":"body","type":"string","default":"Description"},
+  {"id":"image","type":"string","default":""}
+]'>
+<template>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080"
+       style="position:absolute;inset:0;background:#0a0a14;display:flex;flex-direction:row;align-items:center;gap:80px;padding:0 120px;">
+    <div style="flex-shrink:0;width:560px;height:560px;border-radius:32px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.5);">
+      <img id="el-img" alt="Product" style="width:100%;height:100%;object-fit:cover;" />
+    </div>
+    <div style="flex:1;">
+      <h1 id="el-title" style="font-size:96px;font-weight:900;color:#fff;letter-spacing:-0.03em;margin:0;"></h1>
+      <p id="el-body" style="font-size:42px;font-weight:600;color:#818cf8;margin-top:24px;"></p>
+    </div>
+  </div>
+  <script>
+    const V = __hyperframes.getVariables();
+    document.getElementById('el-title').textContent = V.title;
+    document.getElementById('el-body').textContent = V.body;
+    document.getElementById('el-img').src = V.image || '';
+    var tl = gsap.timeline({ paused: true });
+    tl.from('#__SLIDE_ID__ > div', { opacity: 0, y: 30, duration: 0.5, stagger: 0.1 });
+    window.__timelines['__SLIDE_ID__'] = tl;
+  </script>
+</template>
+</html>

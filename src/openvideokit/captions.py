@@ -22,35 +22,76 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
-CAPTION_CSS = """
+CAPTION_STYLES: dict[str, str] = {
+    "highlight": """
 .caption-layer {
-  position: absolute;
-  bottom: 180px; left: 0; right: 0;
-  text-align: center;
-  pointer-events: none;
-  z-index: 100;
+  position: absolute; bottom: 80px; left: 0; right: 0;
+  text-align: center; pointer-events: none; z-index: 100;
 }
-.caption-phrase {
-  display: none;
-  opacity: 0;
-}
+.caption-phrase { display: none; opacity: 0; }
 .caption-phrase .word {
-  display: inline-block;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 68px; font-weight: 800;
-  letter-spacing: -0.01em;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 0 0.12em;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+  display: inline-block; font-family: 'Inter', sans-serif;
+  font-size: 48px; font-weight: 800; letter-spacing: -0.01em;
+  color: rgba(255,255,255,0.4); margin: 0 0.1em;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.8);
   transition: color 0.2s ease;
 }
-.caption-phrase .word--emphasis {
-  color: #f59e0b;
+.caption-phrase .word--emphasis { color: #c084fc; }
+.caption-phrase .word--active { color: #ffea00; }
+""",
+    "neon": """
+.caption-layer {
+  position: absolute; bottom: 80px; left: 0; right: 0;
+  text-align: center; pointer-events: none; z-index: 100;
 }
+.caption-phrase { display: none; opacity: 0; }
+.caption-phrase .word {
+  display: inline-block; font-family: 'Inter', sans-serif;
+  font-size: 48px; font-weight: 800; letter-spacing: 0.02em;
+  color: rgba(255,255,255,0.25); margin: 0 0.15em;
+  text-shadow: 0 0 10px rgba(0,0,0,0.9);
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+.caption-phrase .word--emphasis { color: #22d3ee; }
 .caption-phrase .word--active {
-  color: #ffea00;
+  color: #22d3ee;
+  text-shadow: 0 0 20px rgba(34,211,238,0.8), 0 0 40px rgba(34,211,238,0.4);
 }
-"""
+""",
+    "editorial": """
+.caption-layer {
+  position: absolute; bottom: 80px; left: 0; right: 0;
+  text-align: center; pointer-events: none; z-index: 100;
+}
+.caption-phrase { display: none; opacity: 0; }
+.caption-phrase .word {
+  display: inline-block; font-family: 'Inter', sans-serif;
+  font-size: 52px; font-weight: 400; letter-spacing: -0.01em;
+  color: rgba(255,255,255,0.35); margin: 0 0.08em;
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+.caption-phrase .word--emphasis { color: #f59e0b; font-style: italic; }
+.caption-phrase .word--active { color: #ffffff; font-weight: 800; }
+""",
+    "eco-green": """
+.caption-layer {
+  position: absolute; bottom: 80px; left: 0; right: 0;
+  text-align: center; pointer-events: none; z-index: 100;
+}
+.caption-phrase { display: none; opacity: 0; }
+.caption-phrase .word {
+  display: inline-block; font-family: 'Inter', sans-serif;
+  font-size: 48px; font-weight: 800; letter-spacing: -0.01em;
+  color: rgba(255,255,255,0.4); margin: 0 0.1em;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+  transition: color 0.2s ease;
+}
+.caption-phrase .word--emphasis { color: #4ade80; }
+.caption-phrase .word--active { color: #ffea00; }
+""",
+}
+
+CAPTION_CSS = CAPTION_STYLES["highlight"]
 
 
 def split_words(text: str) -> list[str]:
@@ -275,23 +316,10 @@ def build_scene_transitions_js(
         idx = s["index"]
         sel = f"'#{slide_prefix}-{idx}'"
         start = s["start"]
-        end = s["end"]
 
-        lines.append(f"{indent}// Slide {idx + 1}: {start:.1f}s → {end:.1f}s")
+        lines.append(f"{indent}// Slide {idx + 1}: starts at {start:.1f}s")
         lines.append(
-            f"{indent}tl.set({sel}, {{ display: 'flex' }}, {start:.3f});"
-        )
-        lines.append(
-            f"{indent}tl.fromTo({sel}, "
-            f"{{ opacity: 0, y: 30 }}, "
-            f"{{ opacity: 1, y: 0, duration: 0.4, ease: 'power3.out' }}, {start:.3f});"
-        )
-        lines.append(
-            f"{indent}tl.to({sel}, "
-            f"{{ opacity: 0, y: -20, duration: 0.3, ease: 'power2.in' }}, {end - 0.3:.3f});"
-        )
-        lines.append(
-            f"{indent}tl.set({sel}, {{ display: 'none' }}, {end:.3f});"
+            f"{indent}tl.set({sel}, {{ zIndex: 200 }}, {start:.3f});"
         )
 
     return "\n".join(lines)
