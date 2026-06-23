@@ -414,6 +414,7 @@ def render_player_page(src: str, title: str, session_id: str) -> str:
       _ext.play().catch(() => {{}});
     }});
     _player.addEventListener('pause', () => {{ _ext.pause(); }});
+    _player.addEventListener('ended', () => {{ _ext.pause(); _ext.currentTime = 0; }});
     _player.addEventListener('timeupdate', (e) => {{
       const t = (e.detail && e.detail.currentTime) || _player.currentTime || 0;
       if (Math.abs(_ext.currentTime - t) > 0.3) _ext.currentTime = t;
