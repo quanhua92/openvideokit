@@ -15,6 +15,7 @@ Routes:
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import uuid
 
@@ -28,6 +29,7 @@ from fastapi.responses import (
 
 from . import rendering, templating
 from .config import (
+    LARGE_MEDIA_EXTS,
     SESSIONS_DIR,
     TEMPLATES_DIR,
     ensure_data_dirs,
@@ -97,7 +99,28 @@ async def create_preview(template_id: str, request: Request) -> RedirectResponse
 
     session_id = uuid.uuid4().hex[:12]
     session_dir = SESSIONS_DIR / session_id
-    shutil.copytree(template_dir, session_dir)
+
+    # Copy template → session, but hardlink large media files (.mp3/.mp4/.wav)
+    # instead of copying them. Hardlinks work cross-platform (NTFS, APFS, ext4),
+    # need no special permissions, and share the same inode → zero duplication.
+    def _ignore_media(_dir: str, names: list[str]) -> list[str]:
+        return [n for n in names if os.path.splitext(n)[1].lower() in LARGE_MEDIA_EXTS]
+
+    shutil.copytree(template_dir, session_dir, ignore=_ignore_media)
+
+    # Hardlink large media from template dir (template = shared source)
+    for media_file in template_dir.rglob("*"):
+        if not media_file.is_file():
+            continue
+        if media_file.suffix.lower() not in LARGE_MEDIA_EXTS:
+            continue
+        rel = media_file.relative_to(template_dir)
+        dest = session_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.link(media_file, dest)
+        except OSError:
+            shutil.copy2(media_file, dest)
 
     form = await request.form()
     form_values: dict[str, str] = {}

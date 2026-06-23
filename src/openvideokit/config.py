@@ -25,6 +25,8 @@ JOBS_DIR = Path(os.environ.get("OVK_JOBS_DIR", BASE_DIR / "jobs")).resolve()
 PORT = int(os.environ.get("OVK_PORT", "8765"))
 RENDER_WORKERS = os.environ.get("OVK_RENDER_WORKERS", "3")
 
+LARGE_MEDIA_EXTS = {".mp3", ".mp4", ".wav", ".mov", ".m4a"}
+
 # In-memory job tracker. Swap for Redis/DB in multi-process deployments.
 JOBS: dict[str, dict[str, Any]] = {}
 
