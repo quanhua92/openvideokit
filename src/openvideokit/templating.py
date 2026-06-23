@@ -210,11 +210,15 @@ def _stamp_slides(
                 dest.write_bytes(uploads[upload_key])
                 slide[fid] = f"assets/slide_{idx}_{fid}{ext}"
 
-        # Copy layout → compositions/slide-N.html with unique IDs
+        # Copy layout → compositions/slide-N.html with values stamped directly
         layout_file = layouts_dir / f"{layout}.html"
         if layout_file.is_file():
             comp_html = layout_file.read_text(encoding="utf-8")
             comp_html = comp_html.replace("__SLIDE_ID__", slide_id)
+            for field in layout_def.get("fields", []):
+                placeholder = f"__{field['id'].upper()}__"
+                val = str(slide.get(field["id"], field.get("default", "")))
+                comp_html = comp_html.replace(placeholder, html_escape(val))
             (comps_dir / f"slide-{idx}.html").write_text(comp_html, encoding="utf-8")
 
         if slide.get("voice", "").strip():
@@ -234,10 +238,8 @@ def _stamp_slides(
 
     # Generate host divs (always visible, z-index managed by root timeline)
     host_divs: list[str] = []
-    for idx, slide in enumerate(slides):
+    for idx, _slide in enumerate(slides):
         slide_id = f"slide-{idx}"
-        var_fields = {k: v for k, v in slide.items() if k not in ("layout", "voice")}
-        var_json = _json.dumps(var_fields, ensure_ascii=False)
 
         if timings_data and idx < len(timings_data["sentences"]):
             s = timings_data["sentences"][idx]
@@ -251,8 +253,7 @@ def _stamp_slides(
             f'      <div data-composition-id="{slide_id}"\n'
             f'           data-composition-src="compositions/slide-{idx}.html"\n'
             f'           data-start="{start:.1f}" data-duration="{dur:.1f}"\n'
-            f'           class="clip" style="z-index:{z};"\n'
-            f'           data-variable-values=\'{var_json}\'></div>'
+            f'           class="clip" style="position:absolute;inset:0;z-index:{z};"></div>'
         )
 
     host_html = "\n".join(host_divs)
@@ -295,6 +296,15 @@ def _stamp_slides(
             content = content.replace("// SCENE_TRANSITIONS", scene_js)
         if "// CAPTION_TIMELINE" in content and caption_js:
             content = content.replace("// CAPTION_TIMELINE", caption_js)
+
+        # Remove voiceover audio tag if no voiceover was generated
+        if not timings_data:
+            content = re.sub(
+                r'<audio[^>]*src="assets/voiceover\.mp3"[^>]*></audio>',
+                "",
+                content,
+            )
+
         index_path.write_text(content, encoding="utf-8")
 
 
@@ -617,6 +627,8 @@ def render_slide_editor_page(meta: dict, template_id: str) -> str:
 
     layouts = meta.get("layouts", [])
     layouts_json = _json.dumps(layouts, ensure_ascii=False)
+    default_slides = meta.get("default_slides", [])
+    default_slides_json = _json.dumps(default_slides, ensure_ascii=False)
     name = meta.get("name", template_id)
     description = meta.get("description", "")
 
@@ -678,7 +690,17 @@ def render_slide_editor_page(meta: dict, template_id: str) -> str:
     LAYOUTS.forEach(l => layoutMap[l.id] = l);
     let slides = [];
 
+    function syncFromDOM() {{
+      document.querySelectorAll('.slide-card').forEach((card, idx) => {{
+        if (!slides[idx]) return;
+        card.querySelectorAll('textarea[data-field]').forEach(ta => {{
+          slides[idx][ta.getAttribute('data-field')] = ta.value;
+        }});
+      }});
+    }}
+
     function addSlide(layoutId) {{
+      syncFromDOM();
       const layout = layoutMap[layoutId];
       if (!layout) return;
       const slide = {{ layout: layoutId }};
@@ -687,14 +709,14 @@ def render_slide_editor_page(meta: dict, template_id: str) -> str:
       render();
     }}
 
-    function removeSlide(idx) {{ slides.splice(idx, 1); render(); }}
+    function removeSlide(idx) {{ syncFromDOM(); slides.splice(idx, 1); render(); }}
     function moveSlide(idx, dir) {{
+      syncFromDOM();
       const ni = idx + dir;
       if (ni < 0 || ni >= slides.length) return;
       [slides[idx], slides[ni]] = [slides[ni], slides[idx]];
       render();
     }}
-    function updateField(idx, fieldId, value) {{ slides[idx][fieldId] = value; }}
 
     function render() {{
       const container = document.getElementById('slides-container');
@@ -715,7 +737,7 @@ def render_slide_editor_page(meta: dict, template_id: str) -> str:
           const tts = f.type === 'voiceover' ? '<p class="text-xs text-amber-700 mt-1">🔊 TTS · vi-VN-HoaiMyNeural</p>' : '';
           return `<div class="field ${{cls}}">
             <label>${{f.label}}</label>
-            <textarea rows="2" onchange="updateField(${{idx}}, '${{f.id}}', this.value)">${{val}}</textarea>
+            <textarea rows="2" data-field="${{f.id}}">${{val}}</textarea>
             ${{tts}}
           </div>`;
         }}).join('');
@@ -742,8 +764,44 @@ def render_slide_editor_page(meta: dict, template_id: str) -> str:
       document.getElementById('slide-count').textContent = `${{slides.length}} slide${{slides.length !== 1 ? 's' : ''}}`;
     }}
 
-    addSlide('feature-center');
-    addSlide('cta-big');
+    // Intercept form submit — collect ALL field values from the DOM directly
+    document.getElementById('slide-form').addEventListener('submit', function(e) {{
+      e.preventDefault();
+      const payload = [];
+      const cards = document.querySelectorAll('.slide-card');
+      cards.forEach((card, idx) => {{
+        const layoutId = slides[idx]?.layout || 'feature-center';
+        const out = {{ layout: layoutId }};
+        layoutMap[layoutId].fields.forEach(f => {{
+          if (f.type === 'image') return;
+          const ta = card.querySelector('textarea[data-field="' + f.id + '"]');
+          out[f.id] = ta ? ta.value : '';
+        }});
+        payload.push(out);
+      }});
+      document.getElementById('slides_json').value = JSON.stringify(payload);
+      this.submit();
+    }});
+
+    // Pre-fill slides from template's default_slides
+    const defaultSlides = {default_slides_json};
+    if (defaultSlides.length > 0) {{
+      defaultSlides.forEach(s => {{
+        const layout = layoutMap[s.layout];
+        if (layout) {{
+          const slide = {{ layout: s.layout }};
+          layout.fields.forEach(f => {{
+            slide[f.id] = s[f.id] !== undefined ? s[f.id] : (f.default || '');
+          }});
+          slides.push(slide);
+        }}
+      }});
+    }} else {{
+      // Fallback: add 2 slides from first 2 layouts
+      const firstTwo = LAYOUTS.slice(0, 2);
+      firstTwo.forEach(l => addSlide(l.id));
+    }}
+    render();
   </script>
 </body></html>"""
 

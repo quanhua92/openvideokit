@@ -1,0 +1,51 @@
+<template>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="badge">__STEP__</div>
+    <div class="glow"></div>
+    <div class="content">
+      <h1>__TITLE__</h1>
+      <p>__BODY__</p>
+      <div class="accent"></div>
+    </div>
+    <style>
+      [data-composition-id="__SLIDE_ID__"] {
+        background: radial-gradient(ellipse at 50% 40%, #141428 0%, #0a0a14 60%, #050508 100%);
+      }
+      [data-composition-id="__SLIDE_ID__"] .glow {
+        position: absolute; top: -200px; right: -200px;
+        width: 700px; height: 700px;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.06) 0%, transparent 70%);
+        pointer-events: none;
+      }
+      [data-composition-id="__SLIDE_ID__"] .badge {
+        position: absolute; top: 60px; right: 80px;
+        font-size: 28px; font-weight: 700; color: rgba(168, 85, 247, 0.4);
+        font-variant-numeric: tabular-nums;
+      }
+      [data-composition-id="__SLIDE_ID__"] .content {
+        text-align: center; max-width: 1400px; margin: 0 auto;
+        padding: 0 80px;
+        padding-top: 32vh;
+      }
+      [data-composition-id="__SLIDE_ID__"] h1 {
+        font-size: 130px; font-weight: 900; color: #ffffff;
+        letter-spacing: -0.03em; line-height: 1; margin: 0;
+        text-shadow: 0 0 80px rgba(168, 85, 247, 0.25);
+      }
+      [data-composition-id="__SLIDE_ID__"] p {
+        font-size: 56px; font-weight: 600; color: #c084fc;
+        margin-top: 36px; letter-spacing: -0.01em;
+      }
+      [data-composition-id="__SLIDE_ID__"] .accent {
+        width: 120px; height: 6px; border-radius: 3px;
+        background: linear-gradient(90deg, #8b5cf6, #ec4899);
+        margin: 48px auto 0;
+      }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .content > *', { opacity: 0, y: 40, duration: 0.4, stagger: 0.1 });
+      window.__timelines['__SLIDE_ID__'] = tl;
+    </script>
+  </div>
+</template>

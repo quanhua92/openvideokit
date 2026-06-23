@@ -4,29 +4,28 @@
   "description": "6-slide educational animation. Each slide has a title, description, and narrated audio with word-by-word text highlighting.",
   "priority": 100,
   "duration": 40.0,
-  "slots": [
-    {"group": "Slide 1 — Hook", "id": "s1_title", "type": "text", "label": "Title", "default": "Học thông minh", "max_length": 40, "applies_to": "index.html"},
-    {"group": "Slide 1 — Hook", "id": "s1_body", "type": "text", "label": "Body text", "default": "Không phải học nhiều, mà học đúng", "max_length": 80, "applies_to": "index.html"},
-    {"group": "Slide 1 — Hook", "id": "s1_voice", "type": "voiceover", "label": "Voiceover script", "default": "Bạn có biết rằng học thông minh quan trọng hơn học nhiều?", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
-
-    {"group": "Slide 2 — Mẹo 1", "id": "s2_title", "type": "text", "label": "Title", "default": "Active Recall", "max_length": 40, "applies_to": "index.html"},
-    {"group": "Slide 2 — Mẹo 1", "id": "s2_body", "type": "text", "label": "Body text", "default": "Tự kiểm tra thay vì đọc lại", "max_length": 80, "applies_to": "index.html"},
-    {"group": "Slide 2 — Mẹo 1", "id": "s2_voice", "type": "voiceover", "label": "Voiceover script", "default": "Phương pháp Active Recall giúp bạn nhớ lâu hơn gấp ba lần so với đọc lại thông thường.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
-
-    {"group": "Slide 3 — Mẹo 2", "id": "s3_title", "type": "text", "label": "Title", "default": "Spaced Repetition", "max_length": 40, "applies_to": "index.html"},
-    {"group": "Slide 3 — Mẹo 2", "id": "s3_body", "type": "text", "label": "Body text", "default": "Ôn lại theo khoảng thời gian", "max_length": 80, "applies_to": "index.html"},
-    {"group": "Slide 3 — Mẹo 2", "id": "s3_voice", "type": "voiceover", "label": "Voiceover script", "default": "Spaced Repetition là việc ôn lại kiến thức theo các khoảng thời gian tăng dần.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
-
-    {"group": "Slide 4 — Mẹo 3", "id": "s4_title", "type": "text", "label": "Title", "default": "Pomodoro", "max_length": 40, "applies_to": "index.html"},
-    {"group": "Slide 4 — Mẹo 3", "id": "s4_body", "type": "text", "label": "Body text", "default": "25 phút tập trung, 5 phút nghỉ", "max_length": 80, "applies_to": "index.html"},
-    {"group": "Slide 4 — Mẹo 3", "id": "s4_voice", "type": "voiceover", "label": "Voiceover script", "default": "Kỹ thuật Pomodoro giúp bạn duy trì sự tập trung trong suốt phiên học dài.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
-
-    {"group": "Slide 5 — Mẹo 4", "id": "s5_title", "type": "text", "label": "Title", "default": "Feynman Technique", "max_length": 40, "applies_to": "index.html"},
-    {"group": "Slide 5 — Mẹo 4", "id": "s5_body", "type": "text", "label": "Body text", "default": "Giảng lại cho người khác", "max_length": 80, "applies_to": "index.html"},
-    {"group": "Slide 5 — Mẹo 4", "id": "s5_voice", "type": "voiceover", "label": "Voiceover script", "default": "Kỹ thuật Feynman: nếu bạn không thể giải thích đơn giản, nghĩa là bạn chưa hiểu rõ.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"},
-
-    {"group": "Slide 6 — Kết luận", "id": "s6_title", "type": "text", "label": "Title", "default": "Bắt đầu ngay hôm nay", "max_length": 40, "applies_to": "index.html"},
-    {"group": "Slide 6 — Kết luận", "id": "s6_body", "type": "text", "label": "Body text", "default": "Học thông minh, không phải học nhiều", "max_length": 80, "applies_to": "index.html"},
-    {"group": "Slide 6 — Kết luận", "id": "s6_voice", "type": "voiceover", "label": "Voiceover script", "default": "Áp dụng ngay bốn phương pháp này để học hiệu quả hơn và tiết kiệm thời gian.", "voice": "vi-VN-HoaiMyNeural", "applies_to": "index.html"}
-  ]
+  "caption_style": "highlight",
+  "mode": "slide-editor",
+  "layouts": [
+    {
+      "id": "study-feature",
+      "name": "Feature",
+      "icon": "star",
+      "fields": [
+        {"id": "step", "type": "text", "label": "Step badge", "default": "01"},
+        {"id": "title", "type": "text", "label": "Title", "default": "Học thông minh"},
+        {"id": "body", "type": "text", "label": "Body text", "default": "Không phải học nhiều, mà học đúng"},
+        {"id": "voice", "type": "voiceover", "label": "Voiceover", "default": ""}
+      ]
+    }
+  ],
+  "default_slides": [
+    {"layout": "study-feature", "step": "01", "title": "Học thông minh", "body": "Không phải học nhiều, mà học đúng", "voice": "Bạn có biết rằng học thông minh quan trọng hơn học nhiều?"},
+    {"layout": "study-feature", "step": "02", "title": "Active Recall", "body": "Tự kiểm tra thay vì đọc lại", "voice": "Phương pháp Active Recall giúp bạn nhớ lâu hơn gấp ba lần so với đọc lại thông thường."},
+    {"layout": "study-feature", "step": "03", "title": "Spaced Repetition", "body": "Ôn lại theo khoảng thời gian", "voice": "Spaced Repetition là việc ôn lại kiến thức theo các khoảng thời gian tăng dần."},
+    {"layout": "study-feature", "step": "04", "title": "Pomodoro", "body": "25 phút tập trung, 5 phút nghỉ", "voice": "Kỹ thuật Pomodoro giúp bạn duy trì sự tập trung trong suốt phiên học dài."},
+    {"layout": "study-feature", "step": "05", "title": "Feynman Technique", "body": "Giảng lại cho người khác", "voice": "Kỹ thuật Feynman: nếu bạn không thể giải thích đơn giản, nghĩa là bạn chưa hiểu rõ."},
+    {"layout": "study-feature", "step": "06", "title": "Bắt đầu ngay hôm nay", "body": "Học thông minh, không phải học nhiều", "voice": "Áp dụng ngay bốn phương pháp này để học hiệu quả hơn và tiết kiệm thời gian."}
+  ],
+  "slots": []
 }

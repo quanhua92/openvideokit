@@ -7,46 +7,49 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=block" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; width: 1920px; height: 1080px; background: #080808; overflow: hidden; font-family: 'Inter', sans-serif; }
-    #kinetic { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #080808; }
-    .beat { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; padding: 0 120px; }
-    .beat-text { font-size: 128px; font-weight: 900; color: #fff; letter-spacing: -0.03em; text-align: center; line-height: 1.1; will-change: transform, opacity; }
-    .beat:nth-child(2) .beat-text { color: #ff5a3c; }
-    .beat:nth-child(4) .beat-text { color: #2dd4bf; }
-    .progress-track { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: rgba(255,255,255,0.05); }
-    .progress-fill { height: 100%; width: 0; background: #ff5a3c; }
+    * { margin: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; background: #080808; overflow: hidden; font-family: 'Inter', sans-serif; }
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+
+    .progress-track {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 4px; background: rgba(255,255,255,0.05); z-index: 9999;
+    }
+    .progress-fill { height: 100%; width: 0%; background: #ff5a3c; }
   </style>
 </head>
 <body>
-  <div id="kinetic" data-composition-id="kinetic-typography" data-start="0" data-width="1920" data-height="1080" data-duration="12">
+  <div id="stage"
+       data-composition-id="kinetic-typography"
+       data-start="0"
+       data-width="1920"
+       data-height="1080"
+       data-duration="12">
 
-    <div class="beat" id="beat-1"><div class="beat-text">{{ beat1_text }}</div></div>
-    <div class="beat" id="beat-2"><div class="beat-text">{{ beat2_text }}</div></div>
-    <div class="beat" id="beat-3"><div class="beat-text">{{ beat3_text }}</div></div>
-    <div class="beat" id="beat-4"><div class="beat-text">{{ beat4_text }}</div></div>
+    <!-- SLIDES_HERE -->
+    <!-- End slides -->
 
-    <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
 
-    <audio id="music-bed" src="assets/music-bed.mp3" data-start="0" data-duration="12" data-volume="0.15" data-track-index="0" loop preload="auto"></audio>
+    <audio id="music-bed" src="assets/music-bed.mp3"
+      data-start="0" data-duration="12" data-volume="0.15"
+      data-track-index="0" loop preload="auto"></audio>
 
     <script>
       window.__timelines = window.__timelines || {};
       (function () {
         var tl = gsap.timeline({ paused: true });
-        var DUR = 12;
-        var BEAT = 3;
+        var DUR = 12.0;
 
-        for (var i = 1; i <= 4; i++) {
-          var id = '#beat-' + i;
-          var t0 = (i - 1) * BEAT;
-          tl.fromTo(id, { opacity: 0, scale: 0.92, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: 'power3.out' }, t0);
-          if (i < 4) {
-            tl.to(id, { opacity: 0, scale: 1.05, y: -10, duration: 0.35, ease: 'power2.in' }, t0 + BEAT - 0.35);
-          }
-        }
+        // SCENE_TRANSITIONS
+        // End scene transitions
 
-        tl.fromTo('#progress', { width: '0%' }, { width: '100%', duration: DUR, ease: 'none' }, 0);
+        tl.fromTo('#progress-fill',
+          { width: '0%' },
+          { width: '100%', duration: DUR, ease: 'none' },
+          0
+        );
+
         tl.to({}, { duration: DUR }, 0);
         window.__timelines['kinetic-typography'] = tl;
       })();

@@ -3,13 +3,26 @@
   "name": "Agent Chat Demo",
   "description": "AI agent chat window: user asks → agent types → thinking → done. Customize prompts and branding.",
   "duration": 15.0,
-  "slots": [
-    {"id": "product_name", "type": "text", "label": "Product name", "default": "Claude Code", "max_length": 30, "applies_to": "index.html"},
-    {"id": "model_name", "type": "text", "label": "Model name", "default": "Opus 4.8", "max_length": 30, "applies_to": "index.html"},
-    {"id": "user_prompt", "type": "text", "label": "User prompt", "default": "Can you make a launch video for my app?", "max_length": 120, "applies_to": "index.html"},
-    {"id": "agent_reply", "type": "text", "label": "Agent reply", "default": "On it! Writing HTML, adding animations, rendering MP4.", "max_length": 120, "applies_to": "index.html"},
-    {"id": "thinking_text", "type": "text", "label": "Thinking text", "default": "Making your video…", "max_length": 60, "applies_to": "index.html"},
-    {"id": "result_text", "type": "text", "label": "Result text", "default": "Done! Your video is ready.", "max_length": 80, "applies_to": "index.html"},
-    {"id": "logo", "type": "image", "label": "Logo (SVG)", "path": "assets/logo", "default": "assets/logo.svg", "src_var": "logo_src", "applies_to": "index.html"}
-  ]
+  "priority": 0,
+  "mode": "slide-editor",
+  "layouts": [
+    {
+      "id": "chat-window",
+      "name": "Chat Window",
+      "icon": "chat",
+      "fields": [
+        {"id": "product_name", "type": "text", "label": "Product name", "default": "Claude Code"},
+        {"id": "model_name", "type": "text", "label": "Model name", "default": "Opus 4.8"},
+        {"id": "user_prompt", "type": "text", "label": "User prompt", "default": "Can you make a launch video for my app?"},
+        {"id": "agent_reply", "type": "text", "label": "Agent reply", "default": "On it! Writing HTML, adding animations, rendering MP4."},
+        {"id": "thinking_text", "type": "text", "label": "Thinking text", "default": "Making your video…"},
+        {"id": "result_text", "type": "text", "label": "Result text", "default": "Done! Your video is ready."},
+        {"id": "logo", "type": "image", "label": "Logo", "default": "assets/logo.svg"}
+      ]
+    }
+  ],
+  "default_slides": [
+    {"layout": "chat-window", "product_name": "Claude Code", "model_name": "Opus 4.8", "user_prompt": "Can you make a launch video for my app?", "agent_reply": "On it! Writing HTML, adding animations, rendering MP4.", "thinking_text": "Making your video…", "result_text": "Done! Your video is ready.", "logo": "assets/logo.svg"}
+  ],
+  "slots": []
 }

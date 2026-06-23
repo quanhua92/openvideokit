@@ -7,93 +7,67 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=block" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; width: 1920px; height: 1080px; background: #080808; overflow: hidden; font-family: 'Inter', sans-serif; }
-    #reel { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #080808; }
+    * { margin: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; background: #080808; overflow: hidden; font-family: 'Inter', sans-serif; }
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
 
-    .title-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; }
-    .title-text { font-size: 88px; font-weight: 900; color: #fff; letter-spacing: -0.03em; text-align: center; }
+    .title-screen {
+      position: absolute; inset: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0;
+    }
+    .title-text {
+      font-size: 88px; font-weight: 900; color: #fff;
+      letter-spacing: -0.03em; text-align: center;
+    }
 
-    .clip { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; }
-    .clip-frame { width: 1440px; height: 810px; border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.5); will-change: transform; }
-    .clip-frame img { width: 100%; height: 100%; object-fit: cover; }
-    .clip-info { position: absolute; bottom: 80px; left: 80px; right: 80px; display: flex; align-items: flex-end; justify-content: space-between; }
-    .clip-cat { font-size: 20px; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px; }
-    .clip-cap { font-size: 56px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
-    .clip-num { font-size: 120px; font-weight: 900; color: rgba(255,255,255,0.08); line-height: 1; }
-
-    .progress-track { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: rgba(255,255,255,0.05); }
-    .progress-fill { height: 100%; width: 0; background: #ff5a3c; }
+    .progress-track {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 4px; background: rgba(255,255,255,0.05); z-index: 9999;
+    }
+    .progress-fill { height: 100%; width: 0%; background: #ff5a3c; }
   </style>
 </head>
 <body>
-  <div id="reel" data-composition-id="capability-reel" data-start="0" data-width="1920" data-height="1080" data-duration="15">
+  <div id="stage"
+       data-composition-id="capability-reel"
+       data-start="0"
+       data-width="1920"
+       data-height="1080"
+       data-duration="15">
+
+    <!-- SLIDES_HERE -->
+    <!-- End slides -->
 
     <div class="title-screen" id="title-screen">
-      <div class="title-text">{{ reel_title }}</div>
+      <div class="title-text">Look what we built</div>
     </div>
 
-    <div class="clip" id="clip-1">
-      <div class="clip-frame"><img src="{{ clip1_src }}" alt="Clip 1"></div>
-      <div class="clip-info">
-        <div>
-          <div class="clip-cat">{{ clip1_category }}</div>
-          <div class="clip-cap">{{ clip1_caption }}</div>
-        </div>
-        <div class="clip-num">01</div>
-      </div>
-    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
 
-    <div class="clip" id="clip-2">
-      <div class="clip-frame"><img src="{{ clip2_src }}" alt="Clip 2"></div>
-      <div class="clip-info">
-        <div>
-          <div class="clip-cat">{{ clip2_category }}</div>
-          <div class="clip-cap">{{ clip2_caption }}</div>
-        </div>
-        <div class="clip-num">02</div>
-      </div>
-    </div>
-
-    <div class="clip" id="clip-3">
-      <div class="clip-frame"><img src="{{ clip3_src }}" alt="Clip 3"></div>
-      <div class="clip-info">
-        <div>
-          <div class="clip-cat">{{ clip3_category }}</div>
-          <div class="clip-cap">{{ clip3_caption }}</div>
-        </div>
-        <div class="clip-num">03</div>
-      </div>
-    </div>
-
-    <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
-
-    <audio id="music-bed" src="assets/music-bed.mp3" data-start="0" data-duration="15" data-volume="0.2" data-track-index="0" loop preload="auto"></audio>
+    <audio id="music-bed" src="assets/music-bed.mp3"
+      data-start="0" data-duration="15" data-volume="0.2"
+      data-track-index="0" loop preload="auto"></audio>
 
     <script>
       window.__timelines = window.__timelines || {};
       (function () {
         var tl = gsap.timeline({ paused: true });
-        var DUR = 15;
-        var TITLE_DUR = 3;
-        var CLIP_DUR = 4; // 3s each after title (3+4*3=15)
+        var DUR = 15.0;
 
-        // Title (0-3s)
+        // SCENE_TRANSITIONS
+        // End scene transitions
+
+        // Title overlay: fade in, hold, fade out (first 3s)
         tl.to('#title-screen', { opacity: 1, duration: 0.5, ease: 'power2.out' }, 0);
-        tl.to('#title-screen', { opacity: 0, scale: 1.05, duration: 0.4, ease: 'power2.in' }, TITLE_DUR - 0.4);
+        tl.to('#title-screen', { opacity: 0, scale: 1.05, duration: 0.4, ease: 'power2.in' }, 2.6);
 
-        // Clips (3s, 7s, 11s — 4s each)
-        for (var i = 1; i <= 3; i++) {
-          var id = '#clip-' + i;
-          var t0 = TITLE_DUR + (i - 1) * CLIP_DUR;
-          tl.fromTo(id, { opacity: 0, scale: 1.05 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'power3.out' }, t0);
-          tl.to(id + ' .clip-frame', { scale: 1.03, duration: CLIP_DUR, ease: 'none' }, t0);
-          if (i < 3) {
-            tl.to(id, { opacity: 0, duration: 0.3, ease: 'power2.in' }, t0 + CLIP_DUR - 0.3);
-          }
-        }
+        tl.fromTo('#progress-fill',
+          { width: '0%' },
+          { width: '100%', duration: DUR, ease: 'none' },
+          0
+        );
 
-        tl.fromTo('#progress', { width: '0%' }, { width: '100%', duration: DUR, ease: 'none' }, 0);
         tl.to({}, { duration: DUR }, 0);
         window.__timelines['capability-reel'] = tl;
       })();

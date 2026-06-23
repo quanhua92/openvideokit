@@ -1,0 +1,74 @@
+<template>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="step-card">
+      <span class="step-pill">Step __STEP__</span>
+      <div class="step-headline">__HEADLINE__</div>
+    </div>
+    <div class="terminal">
+      <div class="term-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">bash</span>
+      </div>
+      <div class="term-body">
+        <div class="term-line"><span class="term-prompt">$</span> <span class="term-cmd">__COMMAND__</span></div>
+        <div class="term-out">__OUTPUT__</div>
+      </div>
+    </div>
+    <style>
+      [data-composition-id="__SLIDE_ID__"] { background: #0d1117; }
+      [data-composition-id="__SLIDE_ID__"] .step-card {
+        position: absolute; top: 200px; left: 80px; right: 80px;
+      }
+      [data-composition-id="__SLIDE_ID__"] .step-pill {
+        display: inline-block; font-size: 18px; font-weight: 600; color: #2dd4bf;
+        background: rgba(45,212,191,0.1); padding: 6px 16px;
+        border-radius: 8px; margin-bottom: 16px;
+      }
+      [data-composition-id="__SLIDE_ID__"] .step-headline {
+        font-size: 72px; font-weight: 800; color: #e6edf3; line-height: 1.1;
+      }
+      [data-composition-id="__SLIDE_ID__"] .terminal {
+        position: absolute; bottom: 80px; left: 50%;
+        transform: translateX(-50%);
+        width: 1400px; height: 420px;
+        background: #161b22; border-radius: 16px; border: 1px solid #30363d; overflow: hidden;
+      }
+      [data-composition-id="__SLIDE_ID__"] .term-bar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 12px 16px; background: #21262d; border-bottom: 1px solid #30363d;
+      }
+      [data-composition-id="__SLIDE_ID__"] .term-bar .dot { width: 12px; height: 12px; border-radius: 50%; }
+      [data-composition-id="__SLIDE_ID__"] .term-bar .dot.r { background: #ff5f57; }
+      [data-composition-id="__SLIDE_ID__"] .term-bar .dot.y { background: #febc2e; }
+      [data-composition-id="__SLIDE_ID__"] .term-bar .dot.g { background: #28c840; }
+      [data-composition-id="__SLIDE_ID__"] .term-bar .title {
+        font-size: 14px; color: #7d8590; margin-left: 8px;
+        font-family: 'JetBrains Mono', monospace;
+      }
+      [data-composition-id="__SLIDE_ID__"] .term-body {
+        padding: 24px; font-family: 'JetBrains Mono', monospace;
+        font-size: 28px; line-height: 1.8;
+      }
+      [data-composition-id="__SLIDE_ID__"] .term-line { color: #e6edf3; }
+      [data-composition-id="__SLIDE_ID__"] .term-prompt { color: #2dd4bf; }
+      [data-composition-id="__SLIDE_ID__"] .term-cmd { color: #e6edf3; }
+      [data-composition-id="__SLIDE_ID__"] .term-out {
+        color: #3fb950; font-size: 24px; margin-top: 8px;
+      }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .step-pill',
+        { opacity: 0, y: 20, duration: 0.3, ease: 'power2.out' });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .step-headline',
+        { opacity: 0, y: 20, duration: 0.4, ease: 'power2.out' }, 0.1);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .terminal',
+        { opacity: 0, y: 30, duration: 0.4, ease: 'power2.out' }, 0.4);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .term-cmd',
+        { opacity: 0, duration: 0.3, ease: 'power2.out' }, 0.9);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .term-out',
+        { opacity: 0, duration: 0.3, ease: 'power2.out' }, 1.6);
+      window.__timelines['__SLIDE_ID__'] = tl;
+    </script>
+  </div>
+</template>

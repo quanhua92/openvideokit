@@ -1,0 +1,43 @@
+<template>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="content">
+      <img src="__LOGO__" alt="Logo" class="logo-img" />
+      <div class="brand-name">__BRAND_NAME__</div>
+      <div class="tagline">__TAGLINE__</div>
+      <div class="url-text">__URL__</div>
+    </div>
+    <style>
+      [data-composition-id="__SLIDE_ID__"] { background: #080808; }
+      [data-composition-id="__SLIDE_ID__"] .content {
+        text-align: center;
+        padding-top: 34vh;
+      }
+      [data-composition-id="__SLIDE_ID__"] .logo-img {
+        width: 160px; height: 160px; margin: 0 auto 20px;
+        display: block; border-radius: 28px;
+      }
+      [data-composition-id="__SLIDE_ID__"] .brand-name {
+        font-size: 88px; font-weight: 900; color: #fff; letter-spacing: -0.03em;
+      }
+      [data-composition-id="__SLIDE_ID__"] .tagline {
+        font-size: 32px; font-weight: 500; color: rgba(255,255,255,0.5); margin-top: 20px;
+      }
+      [data-composition-id="__SLIDE_ID__"] .url-text {
+        font-size: 22px; font-weight: 600; color: #ff5a3c; margin-top: 12px;
+        font-family: 'JetBrains Mono', monospace;
+      }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .logo-img',
+        { opacity: 0, scale: 0.5, duration: 0.6, ease: 'back.out(1.4)' }, 0);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .brand-name',
+        { opacity: 0, y: 30, duration: 0.5, ease: 'power2.out' }, 0.3);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .tagline',
+        { opacity: 0, duration: 0.4, ease: 'power2.out' }, 0.7);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .url-text',
+        { opacity: 0, duration: 0.4, ease: 'power2.out' }, 1.0);
+      window.__timelines['__SLIDE_ID__'] = tl;
+    </script>
+  </div>
+</template>

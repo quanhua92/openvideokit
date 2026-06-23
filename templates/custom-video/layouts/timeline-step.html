@@ -1,21 +1,31 @@
-<html data-composition-variables='[{"id":"step","type":"string","default":"1"},{"id":"title","type":"string","default":"Step Title"},{"id":"body","type":"string","default":"Description"}]'>
 <template>
-  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080"
-       style="position:absolute;inset:0;background:#0a0a14;display:flex;flex-direction:row;align-items:center;gap:60px;padding:0 140px;">
-    <div id="el-step" style="font-size:280px;font-weight:900;color:rgba(129,140,248,0.25);line-height:0.85;flex-shrink:0;"></div>
-    <div style="flex:1;">
-      <h1 id="el-title" style="font-size:88px;font-weight:800;color:#fff;margin:0;"></h1>
-      <p id="el-body" style="font-size:44px;font-weight:500;color:rgba(255,255,255,0.6);margin-top:20px;"></p>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="content">
+      <div class="step-num">__STEP__</div>
+      <div class="text">
+        <h1>__TITLE__</h1>
+        <p>__BODY__</p>
+      </div>
     </div>
+    <style>
+      [data-composition-id="__SLIDE_ID__"] { background: #0a0a14; }
+      [data-composition-id="__SLIDE_ID__"] .content {
+        display: flex; align-items: center; gap: 60px;
+        padding: 0 140px;
+        padding-top: 30vh;
+      }
+      [data-composition-id="__SLIDE_ID__"] .step-num {
+        font-size: 280px; font-weight: 900; color: rgba(129,140,248,0.25);
+        line-height: 0.85; flex-shrink: 0;
+      }
+      [data-composition-id="__SLIDE_ID__"] .text { flex: 1; }
+      [data-composition-id="__SLIDE_ID__"] h1 { font-size: 88px; font-weight: 800; color: #fff; margin: 0; }
+      [data-composition-id="__SLIDE_ID__"] p { font-size: 44px; font-weight: 500; color: rgba(255,255,255,0.6); margin-top: 20px; }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .content > div', { opacity: 0, x: 60, duration: 0.5, stagger: 0.12, ease: 'power3.out' });
+      window.__timelines['__SLIDE_ID__'] = tl;
+    </script>
   </div>
-  <script>
-    const V = __hyperframes.getVariables();
-    document.getElementById('el-step').textContent = V.step;
-    document.getElementById('el-title').textContent = V.title;
-    document.getElementById('el-body').textContent = V.body;
-    var tl = gsap.timeline({ paused: true });
-    tl.from('#__SLIDE_ID__ > div', { opacity: 0, x: 60, duration: 0.5, stagger: 0.12, ease: 'power3.out' });
-    window.__timelines['__SLIDE_ID__'] = tl;
-  </script>
 </template>
-</html>

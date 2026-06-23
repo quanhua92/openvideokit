@@ -3,10 +3,23 @@
   "name": "Logo Reveal / End Card",
   "description": "Brand logo slides in with wordmark, tagline, and URL. Universal closer.",
   "duration": 5.0,
-  "slots": [
-    {"id": "brand_name", "type": "text", "label": "Brand name", "default": "Acme", "max_length": 30, "applies_to": "index.html"},
-    {"id": "tagline", "type": "text", "label": "Tagline", "default": "Build anything", "max_length": 60, "applies_to": "index.html"},
-    {"id": "url", "type": "text", "label": "URL", "default": "acme.com", "max_length": 60, "applies_to": "index.html"},
-    {"id": "logo", "type": "image", "label": "Logo (SVG)", "path": "assets/logo", "default": "assets/logo.svg", "src_var": "logo_src", "applies_to": "index.html"}
-  ]
+  "priority": 0,
+  "mode": "slide-editor",
+  "layouts": [
+    {
+      "id": "logo-card",
+      "name": "Logo Card",
+      "icon": "image",
+      "fields": [
+        {"id": "brand_name", "type": "text", "label": "Brand name", "default": "Acme"},
+        {"id": "tagline", "type": "text", "label": "Tagline", "default": "Build anything"},
+        {"id": "url", "type": "text", "label": "URL", "default": "acme.com"},
+        {"id": "logo", "type": "image", "label": "Logo", "default": "assets/logo.svg"}
+      ]
+    }
+  ],
+  "default_slides": [
+    {"layout": "logo-card", "brand_name": "Acme", "tagline": "Build anything", "url": "acme.com", "logo": "assets/logo.svg"}
+  ],
+  "slots": []
 }

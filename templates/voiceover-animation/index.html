@@ -3,85 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, height=1080" />
-  <title>Voiceover Animation</title>
+  <title>Study Smart — Vietnamese Narration</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=block" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; width: 1920px; height: 1080px;
-      background: #0a0a14; overflow: hidden;
-      font-family: 'Inter', system-ui, sans-serif;
-    }
-    #stage {
-      position: relative; width: 1920px; height: 1080px; overflow: hidden;
-      background: radial-gradient(ellipse at 50% 40%, #141428 0%, #0a0a14 60%, #050508 100%);
-    }
+    * { margin: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; background: #0a0a14; overflow: hidden; font-family: 'Inter', sans-serif; }
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
 
-    .slide {
-      position: absolute; inset: 0;
-      display: none; opacity: 0;
-      flex-direction: column; align-items: center; justify-content: center;
-      will-change: opacity, transform;
-    }
-    .slide-content { text-align: center; max-width: 1400px; padding: 0 80px; }
-    .slide-title {
-      font-size: 130px; font-weight: 900; color: #ffffff;
-      letter-spacing: -0.03em; line-height: 1;
-      text-shadow: 0 0 80px rgba(168, 85, 247, 0.25);
-    }
-    .slide-body {
-      font-size: 56px; font-weight: 600; color: #c084fc;
-      margin-top: 36px; letter-spacing: -0.01em;
-    }
-    .slide-accent {
-      width: 120px; height: 6px; border-radius: 3px;
-      background: linear-gradient(90deg, #8b5cf6, #ec4899);
-      margin: 48px auto 0;
-    }
-    .slide-badge {
-      position: absolute; top: 60px; right: 80px;
-      font-size: 28px; font-weight: 700; color: rgba(168, 85, 247, 0.4);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .caption-layer {
-      position: absolute; bottom: 120px; left: 0; right: 0;
-      text-align: center; pointer-events: none; z-index: 100;
-    }
-    .caption-phrase { display: none; opacity: 0; }
-    .caption-phrase .word {
-      display: inline-block;
-      font-size: 56px; font-weight: 800;
-      letter-spacing: -0.01em;
-      color: rgba(255, 255, 255, 0.4);
-      margin: 0 0.1em;
-      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-      transition: color 0.2s ease;
-    }
-    .caption-phrase .word--emphasis { color: #c084fc; }
-    .caption-phrase .word--active {
-      color: #ffea00;
-    }
+    /* Caption layer — only CSS in root, everything else lives in sub-comps */
+    /* CAPTION_CSS */
 
     .progress-track {
       position: absolute; bottom: 50px; left: 80px; right: 80px;
-      height: 4px; background: rgba(255, 255, 255, 0.06);
-      border-radius: 2px; overflow: hidden; z-index: 50;
+      height: 4px; background: rgba(255,255,255,0.06);
+      border-radius: 2px; overflow: hidden; z-index: 9999;
     }
     .progress-fill {
       height: 100%; width: 0%;
       background: linear-gradient(90deg, #8b5cf6, #ec4899);
       border-radius: 2px;
-    }
-
-    .glow {
-      position: absolute; top: -200px; right: -200px;
-      width: 700px; height: 700px;
-      background: radial-gradient(circle, rgba(168, 85, 247, 0.06) 0%, transparent 70%);
-      pointer-events: none;
     }
   </style>
 </head>
@@ -93,63 +36,13 @@
        data-height="1080"
        data-duration="40">
 
-    <div class="glow"></div>
-
-    <div class="slide" id="slide-0">
-      <div class="slide-badge">01</div>
-      <div class="slide-content">
-        <div class="slide-title">{{ s1_title }}</div>
-        <div class="slide-body">{{ s1_body }}</div>
-        <div class="slide-accent"></div>
-      </div>
-    </div>
-    <div class="slide" id="slide-1">
-      <div class="slide-badge">02</div>
-      <div class="slide-content">
-        <div class="slide-title">{{ s2_title }}</div>
-        <div class="slide-body">{{ s2_body }}</div>
-        <div class="slide-accent"></div>
-      </div>
-    </div>
-    <div class="slide" id="slide-2">
-      <div class="slide-badge">03</div>
-      <div class="slide-content">
-        <div class="slide-title">{{ s3_title }}</div>
-        <div class="slide-body">{{ s3_body }}</div>
-        <div class="slide-accent"></div>
-      </div>
-    </div>
-    <div class="slide" id="slide-3">
-      <div class="slide-badge">04</div>
-      <div class="slide-content">
-        <div class="slide-title">{{ s4_title }}</div>
-        <div class="slide-body">{{ s4_body }}</div>
-        <div class="slide-accent"></div>
-      </div>
-    </div>
-    <div class="slide" id="slide-4">
-      <div class="slide-badge">05</div>
-      <div class="slide-content">
-        <div class="slide-title">{{ s5_title }}</div>
-        <div class="slide-body">{{ s5_body }}</div>
-        <div class="slide-accent"></div>
-      </div>
-    </div>
-    <div class="slide" id="slide-5">
-      <div class="slide-badge">06</div>
-      <div class="slide-content">
-        <div class="slide-title">{{ s6_title }}</div>
-        <div class="slide-body">{{ s6_body }}</div>
-        <div class="slide-accent"></div>
-      </div>
-    </div>
+    <!-- SLIDES_HERE -->
+    <!-- End slides -->
 
     <!-- CAPTION_LAYER -->
     <!-- End caption layer -->
 
-    <div class="progress-track">
-      <div class="progress-fill" id="progress-fill"></div>
-    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
 
     <audio id="music-bed" src="assets/music-bed.mp3"
       data-start="0" data-duration="40" data-volume="0.08"

@@ -1,0 +1,64 @@
+<template>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="window">
+      <div class="titlebar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <div class="info">
+          <img src="__LOGO__" alt="Logo">
+          <span class="name">__PRODUCT_NAME__</span>
+          <span class="model">__MODEL_NAME__</span>
+        </div>
+      </div>
+      <div class="feed">
+        <div class="msg user">__USER_PROMPT__</div>
+        <div class="msg agent">__AGENT_REPLY__</div>
+        <div class="thinking"><span class="spinner"></span>__THINKING_TEXT__</div>
+        <div class="result">✓ __RESULT_TEXT__</div>
+      </div>
+      <div class="composer"><div class="input"></div></div>
+    </div>
+    <style>
+      [data-composition-id="__SLIDE_ID__"] {
+        background: #1a1a2e;
+        display: flex; align-items: center; justify-content: center;
+      }
+      [data-composition-id="__SLIDE_ID__"] .window {
+        width: 1100px; background: #16213e; border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.06); overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+      }
+      [data-composition-id="__SLIDE_ID__"] .titlebar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 14px 18px; background: #0f3460;
+      }
+      [data-composition-id="__SLIDE_ID__"] .titlebar .dot { width: 12px; height: 12px; border-radius: 50%; }
+      [data-composition-id="__SLIDE_ID__"] .titlebar .dot.r { background: #ff5f57; }
+      [data-composition-id="__SLIDE_ID__"] .titlebar .dot.y { background: #febc2e; }
+      [data-composition-id="__SLIDE_ID__"] .titlebar .dot.g { background: #28c840; }
+      [data-composition-id="__SLIDE_ID__"] .titlebar .info { display: flex; align-items: center; gap: 10px; margin-left: 12px; }
+      [data-composition-id="__SLIDE_ID__"] .titlebar img { width: 28px; height: 28px; border-radius: 6px; }
+      [data-composition-id="__SLIDE_ID__"] .titlebar .name { font-size: 15px; color: rgba(255,255,255,0.7); font-weight: 600; }
+      [data-composition-id="__SLIDE_ID__"] .titlebar .model { font-size: 12px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 6px; }
+      [data-composition-id="__SLIDE_ID__"] .feed { padding: 32px; min-height: 500px; display: flex; flex-direction: column; gap: 16px; }
+      [data-composition-id="__SLIDE_ID__"] .msg { font-size: 24px; line-height: 1.5; max-width: 85%; padding: 14px 20px; border-radius: 16px; }
+      [data-composition-id="__SLIDE_ID__"] .msg.user { background: #e94560; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+      [data-composition-id="__SLIDE_ID__"] .msg.agent { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); align-self: flex-start; border-bottom-left-radius: 4px; }
+      [data-composition-id="__SLIDE_ID__"] .thinking { font-size: 20px; color: rgba(255,255,255,0.4); padding: 8px 20px; }
+      [data-composition-id="__SLIDE_ID__"] .thinking .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #e94560; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      [data-composition-id="__SLIDE_ID__"] .result { font-size: 26px; color: #2dd4bf; font-weight: 600; padding: 14px 20px; border-radius: 16px; background: rgba(45,212,191,0.08); align-self: flex-start; border: 1px solid rgba(45,212,191,0.2); }
+      [data-composition-id="__SLIDE_ID__"] .composer { padding: 16px 20px; background: #0f3460; display: flex; align-items: center; gap: 12px; }
+      [data-composition-id="__SLIDE_ID__"] .composer .input { flex: 1; height: 40px; background: rgba(255,255,255,0.04); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .window', { opacity: 0, scale: 0.95, duration: 0.5, ease: 'power2.out' }, 0);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .msg.user', { opacity: 0, y: 15, duration: 0.4, ease: 'power2.out' }, 0.5);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .msg.agent', { opacity: 0, y: 15, duration: 0.4, ease: 'power2.out' }, 3.0);
+      tl.fromTo('[data-composition-id="__SLIDE_ID__"] .thinking', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' }, 6.0);
+      tl.to('[data-composition-id="__SLIDE_ID__"] .thinking', { opacity: 0, duration: 0.3, ease: 'power2.in' }, 12.0);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .result', { opacity: 0, y: 15, duration: 0.5, ease: 'back.out(1.2)' }, 12.5);
+      window.__timelines['__SLIDE_ID__'] = tl;
+    </script>
+  </div>
+</template>

@@ -3,127 +3,30 @@
   "name": "Instant Noodles Recipe",
   "description": "Step-by-step instant noodle cooking guide. Every step is customizable — swap text, brand, and product image.",
   "duration": 18.0,
-  "slots": [
+  "priority": 0,
+  "mode": "slide-editor",
+  "layouts": [
     {
-      "id": "brand_name",
-      "type": "text",
-      "label": "Brand / product name",
-      "default": "Shin Ramyun",
-      "max_length": 30,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "tagline",
-      "type": "text",
-      "label": "Tagline under the brand",
-      "default": "Ready in 3 minutes",
-      "max_length": 60,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "product_image",
-      "type": "image",
-      "label": "Product image (SVG, PNG, or JPG)",
-      "path": "assets/product",
-      "default": "assets/product.svg",
-      "src_var": "product_image_src",
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step1_text",
-      "type": "text",
-      "label": "Step 1 — instruction",
-      "default": "Boil 500ml of water",
-      "max_length": 80,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step1_sub",
-      "type": "text",
-      "label": "Step 1 — sub-text",
-      "default": "~2 minutes on high heat",
-      "max_length": 60,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step2_text",
-      "type": "text",
-      "label": "Step 2 — instruction",
-      "default": "Open the noodle packet",
-      "max_length": 80,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step2_sub",
-      "type": "text",
-      "label": "Step 2 — sub-text",
-      "default": "Reserve the seasoning sachet",
-      "max_length": 60,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step3_text",
-      "type": "text",
-      "label": "Step 3 — instruction",
-      "default": "Add noodles to boiling water",
-      "max_length": 80,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step3_sub",
-      "type": "text",
-      "label": "Step 3 — sub-text",
-      "default": "Stir gently to separate",
-      "max_length": 60,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step4_text",
-      "type": "text",
-      "label": "Step 4 — instruction",
-      "default": "Add the seasoning sachet",
-      "max_length": 80,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step4_sub",
-      "type": "text",
-      "label": "Step 4 — sub-text",
-      "default": "Stir well to dissolve",
-      "max_length": 60,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step5_text",
-      "type": "text",
-      "label": "Step 5 — instruction",
-      "default": "Cook for 3 minutes",
-      "max_length": 80,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step5_sub",
-      "type": "text",
-      "label": "Step 5 — sub-text",
-      "default": "Stir occasionally",
-      "max_length": 60,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step6_text",
-      "type": "text",
-      "label": "Step 6 — instruction",
-      "default": "Serve and enjoy!",
-      "max_length": 80,
-      "applies_to": "index.html"
-    },
-    {
-      "id": "step6_sub",
-      "type": "text",
-      "label": "Step 6 — sub-text",
-      "default": "Top with egg, onions, or chili",
-      "max_length": 60,
-      "applies_to": "index.html"
+      "id": "noodle-step",
+      "name": "Step",
+      "icon": "list",
+      "fields": [
+        {"id": "step", "type": "text", "label": "Step number", "default": "1"},
+        {"id": "product_image", "type": "image", "label": "Product image", "default": "assets/product.svg"},
+        {"id": "brand_name", "type": "text", "label": "Brand / product name", "default": "Shin Ramyun"},
+        {"id": "tagline", "type": "text", "label": "Tagline under the brand", "default": "Ready in 3 minutes"},
+        {"id": "step_text", "type": "text", "label": "Step instruction", "default": "Boil 500ml of water"},
+        {"id": "step_sub", "type": "text", "label": "Step sub-text", "default": "~2 minutes on high heat"}
+      ]
     }
-  ]
+  ],
+  "default_slides": [
+    {"layout": "noodle-step", "step": "1", "product_image": "assets/product.svg", "brand_name": "Shin Ramyun", "tagline": "Ready in 3 minutes", "step_text": "Boil 500ml of water", "step_sub": "~2 minutes on high heat"},
+    {"layout": "noodle-step", "step": "2", "product_image": "assets/product.svg", "brand_name": "Shin Ramyun", "tagline": "Ready in 3 minutes", "step_text": "Open the noodle packet", "step_sub": "Reserve the seasoning sachet"},
+    {"layout": "noodle-step", "step": "3", "product_image": "assets/product.svg", "brand_name": "Shin Ramyun", "tagline": "Ready in 3 minutes", "step_text": "Add noodles to boiling water", "step_sub": "Stir gently to separate"},
+    {"layout": "noodle-step", "step": "4", "product_image": "assets/product.svg", "brand_name": "Shin Ramyun", "tagline": "Ready in 3 minutes", "step_text": "Add the seasoning sachet", "step_sub": "Stir well to dissolve"},
+    {"layout": "noodle-step", "step": "5", "product_image": "assets/product.svg", "brand_name": "Shin Ramyun", "tagline": "Ready in 3 minutes", "step_text": "Cook for 3 minutes", "step_sub": "Stir occasionally"},
+    {"layout": "noodle-step", "step": "6", "product_image": "assets/product.svg", "brand_name": "Shin Ramyun", "tagline": "Ready in 3 minutes", "step_text": "Serve and enjoy!", "step_sub": "Top with egg, onions, or chili"}
+  ],
+  "slots": []
 }

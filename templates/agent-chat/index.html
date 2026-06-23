@@ -7,80 +7,34 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=block" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; width: 1920px; height: 1080px; background: #1a1a2e; overflow: hidden; font-family: 'Inter', sans-serif; }
-    #chat { position: relative; width: 1920px; height: 1080px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-
-    .window { width: 1100px; background: #16213e; border-radius: 20px; border: 1px solid rgba(255,255,255,0.06); overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.4); }
-    .titlebar { display: flex; align-items: center; gap: 8px; padding: 14px 18px; background: #0f3460; }
-    .titlebar .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .titlebar .dot.r { background: #ff5f57; }
-    .titlebar .dot.y { background: #febc2e; }
-    .titlebar .dot.g { background: #28c840; }
-    .titlebar .info { display: flex; align-items: center; gap: 10px; margin-left: 12px; }
-    .titlebar img { width: 28px; height: 28px; border-radius: 6px; }
-    .titlebar .name { font-size: 15px; color: rgba(255,255,255,0.7); font-weight: 600; }
-    .titlebar .model { font-size: 12px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 6px; }
-
-    .feed { padding: 32px; min-height: 500px; display: flex; flex-direction: column; gap: 16px; }
-    .msg { font-size: 24px; line-height: 1.5; max-width: 85%; padding: 14px 20px; border-radius: 16px; opacity: 0; }
-    .msg.user { background: #e94560; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
-    .msg.agent { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); align-self: flex-start; border-bottom-left-radius: 4px; }
-    .thinking { font-size: 20px; color: rgba(255,255,255,0.4); padding: 8px 20px; opacity: 0; }
-    .thinking .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #e94560; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .result { font-size: 26px; color: #2dd4bf; font-weight: 600; padding: 14px 20px; border-radius: 16px; background: rgba(45,212,191,0.08); align-self: flex-start; opacity: 0; border: 1px solid rgba(45,212,191,0.2); }
-
-    .composer { padding: 16px 20px; background: #0f3460; display: flex; align-items: center; gap: 12px; }
-    .composer .input { flex: 1; height: 40px; background: rgba(255,255,255,0.04); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
+    * { margin: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; background: #1a1a2e; overflow: hidden; font-family: 'Inter', sans-serif; }
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
   </style>
 </head>
 <body>
-  <div id="chat" data-composition-id="agent-chat" data-start="0" data-width="1920" data-height="1080" data-duration="15">
+  <div id="stage"
+       data-composition-id="agent-chat"
+       data-start="0"
+       data-width="1920"
+       data-height="1080"
+       data-duration="15">
 
-    <div class="window">
-      <div class="titlebar">
-        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-        <div class="info">
-          <img src="{{ logo_src }}" alt="Logo">
-          <span class="name">{{ product_name }}</span>
-          <span class="model">{{ model_name }}</span>
-        </div>
-      </div>
+    <!-- SLIDES_HERE -->
+    <!-- End slides -->
 
-      <div class="feed">
-        <div class="msg user" id="msg-user">{{ user_prompt }}</div>
-        <div class="msg agent" id="msg-agent">{{ agent_reply }}</div>
-        <div class="thinking" id="thinking"><span class="spinner"></span>{{ thinking_text }}</div>
-        <div class="result" id="result">✓ {{ result_text }}</div>
-      </div>
-
-      <div class="composer">
-        <div class="input"></div>
-      </div>
-    </div>
-
-    <audio id="music-bed" src="assets/music-bed.mp3" data-start="0" data-duration="15" data-volume="0.12" data-track-index="0" loop preload="auto"></audio>
+    <audio id="music-bed" src="assets/music-bed.mp3"
+      data-start="0" data-duration="15" data-volume="0.12"
+      data-track-index="0" loop preload="auto"></audio>
 
     <script>
       window.__timelines = window.__timelines || {};
       (function () {
         var tl = gsap.timeline({ paused: true });
-        var DUR = 15;
+        var DUR = 15.0;
 
-        gsap.set(['#msg-user', '#msg-agent', '#thinking', '#result'], { opacity: 0 });
-
-        tl.to('#msg-user', { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 0.5)
-          .from('#msg-user', { y: 15, duration: 0.4, ease: 'power2.out' }, 0.5);
-
-        tl.to('#msg-agent', { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 3.0)
-          .from('#msg-agent', { y: 15, duration: 0.4, ease: 'power2.out' }, 3.0);
-
-        tl.to('#thinking', { opacity: 1, duration: 0.3, ease: 'power2.out' }, 6.0);
-        tl.to('#thinking', { opacity: 0, duration: 0.3, ease: 'power2.in' }, 12.0);
-
-        tl.to('#result', { opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.2)' }, 12.5)
-          .from('#result', { y: 15, duration: 0.5, ease: 'back.out(1.2)' }, 12.5);
+        // SCENE_TRANSITIONS
+        // End scene transitions
 
         tl.to({}, { duration: DUR }, 0);
         window.__timelines['agent-chat'] = tl;

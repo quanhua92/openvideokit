@@ -1,19 +1,28 @@
-<html data-composition-variables='[{"id":"title","type":"string","default":"Quote"},{"id":"body","type":"string","default":"— Author"}]'>
 <template>
-  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080"
-       style="position:absolute;inset:0;background:#0a0a14;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
-    <div style="max-width:1400px;padding:0 120px;">
-      <p id="el-title" style="font-size:84px;font-weight:700;color:#fff;line-height:1.3;font-style:italic;margin:0;"></p>
-      <p id="el-body" style="font-size:40px;font-weight:600;color:#818cf8;margin-top:40px;"></p>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="content">
+      <p class="quote">&ldquo;__TITLE__&rdquo;</p>
+      <p class="author">__BODY__</p>
     </div>
+    <style>
+      [data-composition-id="__SLIDE_ID__"] { background: #0a0a14; }
+      [data-composition-id="__SLIDE_ID__"] .content {
+        text-align: center;
+        padding: 0 120px;
+        padding-top: 38vh;
+      }
+      [data-composition-id="__SLIDE_ID__"] .quote {
+        font-size: 84px; font-weight: 700; color: #fff;
+        line-height: 1.3; font-style: italic; margin: 0;
+      }
+      [data-composition-id="__SLIDE_ID__"] .author {
+        font-size: 40px; font-weight: 600; color: #818cf8; margin-top: 40px;
+      }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .content > p', { opacity: 0, y: 30, duration: 0.5, stagger: 0.15 });
+      window.__timelines['__SLIDE_ID__'] = tl;
+    </script>
   </div>
-  <script>
-    const V = __hyperframes.getVariables();
-    document.getElementById('el-title').textContent = '\u201C' + V.title + '\u201D';
-    document.getElementById('el-body').textContent = V.body;
-    var tl = gsap.timeline({ paused: true });
-    tl.from('#__SLIDE_ID__ p', { opacity: 0, y: 30, duration: 0.5, stagger: 0.15 });
-    window.__timelines['__SLIDE_ID__'] = tl;
-  </script>
 </template>
-</html>

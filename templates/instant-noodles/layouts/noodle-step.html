@@ -1,0 +1,78 @@
+<template>
+  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="glow"></div>
+    <div class="left-col">
+      <div class="product-frame"><img src="__PRODUCT_IMAGE__" alt="Product" /></div>
+      <div class="brand-block">
+        <div class="brand-name">__BRAND_NAME__</div>
+        <div class="tagline">__TAGLINE__</div>
+      </div>
+    </div>
+    <div class="right-col">
+      <div class="step-num">__STEP__</div>
+      <div class="step-body">
+        <div class="step-text">__STEP_TEXT__</div>
+        <div class="step-sub">__STEP_SUB__</div>
+      </div>
+    </div>
+    <style>
+      [data-composition-id="__SLIDE_ID__"] {
+        background: radial-gradient(ellipse at 30% 40%, #2a1a0e 0%, #1a120a 60%, #0e0806 100%);
+      }
+      [data-composition-id="__SLIDE_ID__"] .glow {
+        position: absolute; bottom: -200px; right: -200px;
+        width: 600px; height: 600px;
+        background: radial-gradient(circle, rgba(255,107,53,0.08) 0%, transparent 70%);
+        pointer-events: none;
+      }
+      [data-composition-id="__SLIDE_ID__"] .left-col {
+        position: absolute; top: 120px; left: 100px;
+        width: 560px;
+        display: flex; flex-direction: column; gap: 32px;
+      }
+      [data-composition-id="__SLIDE_ID__"] .product-frame {
+        width: 560px; height: 560px;
+        border-radius: 32px; overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,140,60,0.1);
+      }
+      [data-composition-id="__SLIDE_ID__"] .product-frame img {
+        width: 100%; height: 100%; object-fit: cover;
+      }
+      [data-composition-id="__SLIDE_ID__"] .brand-block { padding-left: 8px; }
+      [data-composition-id="__SLIDE_ID__"] .brand-name {
+        font-size: 52px; font-weight: 900; color: #f5e6d3;
+        line-height: 1.1; letter-spacing: -0.02em;
+      }
+      [data-composition-id="__SLIDE_ID__"] .tagline {
+        font-size: 28px; font-weight: 500; color: #ff8c3c; margin-top: 8px;
+      }
+      [data-composition-id="__SLIDE_ID__"] .right-col {
+        position: absolute; top: 120px; right: 100px;
+        width: 1060px; height: 840px;
+        display: flex; align-items: center; gap: 48px;
+      }
+      [data-composition-id="__SLIDE_ID__"] .step-num {
+        font-size: 240px; font-weight: 900; color: #ff6b35;
+        line-height: 0.85; letter-spacing: -0.05em;
+        opacity: 0.85; flex-shrink: 0;
+        text-shadow: 0 0 60px rgba(255,107,53,0.2);
+      }
+      [data-composition-id="__SLIDE_ID__"] .step-body { flex: 1; }
+      [data-composition-id="__SLIDE_ID__"] .step-text {
+        font-size: 72px; font-weight: 700; color: #f5e6d3;
+        line-height: 1.25; letter-spacing: -0.01em;
+      }
+      [data-composition-id="__SLIDE_ID__"] .step-sub {
+        font-size: 32px; font-weight: 600; color: #ff8c3c;
+        margin-top: 16px; opacity: 0.8;
+      }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .left-col', { opacity: 0, x: -50, duration: 0.5, ease: 'power3.out' });
+      tl.from('[data-composition-id="__SLIDE_ID__"] .step-num', { opacity: 0, scale: 0.5, duration: 0.6, ease: 'back.out(1.4)' }, 0.1);
+      tl.from('[data-composition-id="__SLIDE_ID__"] .step-body > *', { opacity: 0, x: 80, duration: 0.5, stagger: 0.12, ease: 'power3.out' }, 0.2);
+      window.__timelines['__SLIDE_ID__'] = tl;
+    </script>
+  </div>
+</template>

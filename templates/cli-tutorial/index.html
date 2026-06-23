@@ -7,122 +7,67 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=block" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; width: 1920px; height: 1080px; background: #0d1117; overflow: hidden; font-family: 'Inter', sans-serif; }
-    #cli { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0d1117; }
+    * { margin: 0; box-sizing: border-box; }
+    html, body { width: 1920px; height: 1080px; background: #0d1117; overflow: hidden; font-family: 'Inter', sans-serif; }
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
 
-    .header { position: absolute; top: 60px; left: 80px; right: 80px; display: flex; align-items: center; gap: 24px; }
+    .header {
+      position: absolute; top: 60px; left: 80px; right: 80px;
+      display: flex; align-items: center; gap: 24px; z-index: 50;
+    }
     .header img { width: 64px; height: 64px; border-radius: 14px; }
     .header-text h1 { font-size: 40px; font-weight: 800; color: #e6edf3; margin: 0; }
     .header-text p { font-size: 22px; color: #7d8590; margin: 4px 0 0; }
 
-    .step-card { position: absolute; top: 200px; left: 80px; right: 80px; opacity: 0; }
-    .step-pill { display: inline-block; font-size: 18px; font-weight: 600; color: #2dd4bf; background: rgba(45,212,191,0.1); padding: 6px 16px; border-radius: 8px; margin-bottom: 16px; }
-    .step-headline { font-size: 72px; font-weight: 800; color: #e6edf3; line-height: 1.1; }
-
-    .terminal { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); width: 1400px; height: 420px; background: #161b22; border-radius: 16px; border: 1px solid #30363d; overflow: hidden; opacity: 0; }
-    .term-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #21262d; border-bottom: 1px solid #30363d; }
-    .term-bar .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .term-bar .dot.r { background: #ff5f57; }
-    .term-bar .dot.y { background: #febc2e; }
-    .term-bar .dot.g { background: #28c840; }
-    .term-bar .title { font-size: 14px; color: #7d8590; margin-left: 8px; font-family: 'JetBrains Mono', monospace; }
-    .term-body { padding: 24px; font-family: 'JetBrains Mono', monospace; font-size: 28px; line-height: 1.8; }
-    .term-prompt { color: #2dd4bf; }
-    .term-cmd { color: #e6edf3; }
-    .term-out { color: #7d8590; font-size: 24px; }
-    .term-out.success { color: #3fb950; }
-
-    .progress-track { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: #21262d; }
-    .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, #2dd4bf, #14b8a6); }
+    .progress-track {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 4px; background: #21262d; z-index: 9999;
+    }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #2dd4bf, #14b8a6); }
   </style>
 </head>
 <body>
-  <div id="cli" data-composition-id="cli-tutorial" data-start="0" data-width="1920" data-height="1080" data-duration="15">
+  <div id="stage"
+       data-composition-id="cli-tutorial"
+       data-start="0"
+       data-width="1920"
+       data-height="1080"
+       data-duration="15">
+
+    <!-- SLIDES_HERE -->
+    <!-- End slides -->
 
     <div class="header">
-      <img src="{{ logo_src }}" alt="Logo">
+      <img src="assets/logo.svg" alt="Logo">
       <div class="header-text">
-        <h1>{{ product_name }}</h1>
-        <p>{{ tagline }}</p>
+        <h1>MyDevTool</h1>
+        <p>Ship faster with one command</p>
       </div>
     </div>
 
-    <div class="step-card" id="card-1">
-      <span class="step-pill">Step 1</span>
-      <div class="step-headline">{{ step1_headline }}</div>
-    </div>
-    <div class="terminal" id="term-1">
-      <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">bash</span></div>
-      <div class="term-body">
-        <div><span class="term-prompt">$</span> <span class="term-cmd" id="cmd-1"></span></div>
-        <div class="term-out success" id="out-1" style="opacity:0"></div>
-      </div>
-    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
 
-    <div class="step-card" id="card-2">
-      <span class="step-pill">Step 2</span>
-      <div class="step-headline">{{ step2_headline }}</div>
-    </div>
-    <div class="terminal" id="term-2">
-      <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">bash</span></div>
-      <div class="term-body">
-        <div><span class="term-prompt">$</span> <span class="term-cmd" id="cmd-2"></span></div>
-        <div class="term-out success" id="out-2" style="opacity:0"></div>
-      </div>
-    </div>
-
-    <div class="step-card" id="card-3">
-      <span class="step-pill">Step 3</span>
-      <div class="step-headline">{{ step3_headline }}</div>
-    </div>
-    <div class="terminal" id="term-3">
-      <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">bash</span></div>
-      <div class="term-body">
-        <div><span class="term-prompt">$</span> <span class="term-cmd" id="cmd-3"></span></div>
-        <div class="term-out success" id="out-3" style="opacity:0"></div>
-      </div>
-    </div>
-
-    <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
-
-    <audio id="music-bed" src="assets/music-bed.mp3" data-start="0" data-duration="15" data-volume="0.15" data-track-index="0" loop preload="auto"></audio>
+    <audio id="music-bed" src="assets/music-bed.mp3"
+      data-start="0" data-duration="15" data-volume="0.15"
+      data-track-index="0" loop preload="auto"></audio>
 
     <script>
       window.__timelines = window.__timelines || {};
       (function () {
         var tl = gsap.timeline({ paused: true });
-        var DUR = 15;
-        var STEP = 5;
+        var DUR = 15.0;
 
-        var commands = [
-          document.getElementById('cmd-1').textContent || '{{ step1_command }}',
-          document.getElementById('cmd-2').textContent || '{{ step2_command }}',
-          document.getElementById('cmd-3').textContent || '{{ step3_command }}'
-        ];
-        var outputs = ['{{ step1_output }}', '{{ step2_output }}', '{{ step3_output }}'];
+        // SCENE_TRANSITIONS
+        // End scene transitions
 
-        for (var i = 0; i < 3; i++) {
-          var t0 = i * STEP;
-          var cardId = '#card-' + (i + 1);
-          var termId = '#term-' + (i + 1);
-          var cmdId = '#cmd-' + (i + 1);
-          var outId = '#out-' + (i + 1);
+        tl.from('.header', { opacity: 0, y: -20, duration: 0.5, ease: 'power2.out' }, 0);
 
-          tl.set(cardId, { opacity: 0, y: 30 }, t0);
-          tl.to(cardId, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, t0);
-          tl.to(termId, { opacity: 1, duration: 0.3, ease: 'power2.out' }, t0 + 0.5);
+        tl.fromTo('#progress-fill',
+          { width: '0%' },
+          { width: '100%', duration: DUR, ease: 'none' },
+          0
+        );
 
-          tl.fromTo(cmdId, { text: { value: '' } }, { text: { value: commands[i] }, duration: 1.0, ease: 'none' }, t0 + 0.8);
-          tl.to(outId, { opacity: 1, duration: 0.3, ease: 'power2.out', onStart: function() { this.targets()[0].textContent = outputs[i]; } }, t0 + 2.2);
-
-          if (i < 2) {
-            tl.to(cardId, { opacity: 0, y: -20, duration: 0.3, ease: 'power2.in' }, t0 + STEP - 0.3);
-            tl.to(termId, { opacity: 0, duration: 0.2, ease: 'power2.in' }, t0 + STEP - 0.2);
-          }
-        }
-
-        tl.fromTo('#progress', { width: '0%' }, { width: '100%', duration: DUR, ease: 'none' }, 0);
         tl.to({}, { duration: DUR }, 0);
         window.__timelines['cli-tutorial'] = tl;
       })();

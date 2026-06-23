@@ -26,9 +26,12 @@ CAPTION_STYLES: dict[str, str] = {
     "highlight": """
 .caption-layer {
   position: absolute; bottom: 80px; left: 0; right: 0;
-  text-align: center; pointer-events: none; z-index: 100;
+  text-align: center; pointer-events: none; z-index: 300;
 }
-.caption-phrase { display: none; opacity: 0; }
+.caption-phrase {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  opacity: 0; transition: opacity 0.3s ease;
+}
 .caption-phrase .word {
   display: inline-block; font-family: 'Inter', sans-serif;
   font-size: 48px; font-weight: 800; letter-spacing: -0.01em;
@@ -42,9 +45,12 @@ CAPTION_STYLES: dict[str, str] = {
     "neon": """
 .caption-layer {
   position: absolute; bottom: 80px; left: 0; right: 0;
-  text-align: center; pointer-events: none; z-index: 100;
+  text-align: center; pointer-events: none; z-index: 300;
 }
-.caption-phrase { display: none; opacity: 0; }
+.caption-phrase {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  opacity: 0; transition: opacity 0.3s ease;
+}
 .caption-phrase .word {
   display: inline-block; font-family: 'Inter', sans-serif;
   font-size: 48px; font-weight: 800; letter-spacing: 0.02em;
@@ -61,9 +67,12 @@ CAPTION_STYLES: dict[str, str] = {
     "editorial": """
 .caption-layer {
   position: absolute; bottom: 80px; left: 0; right: 0;
-  text-align: center; pointer-events: none; z-index: 100;
+  text-align: center; pointer-events: none; z-index: 300;
 }
-.caption-phrase { display: none; opacity: 0; }
+.caption-phrase {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  opacity: 0; transition: opacity 0.3s ease;
+}
 .caption-phrase .word {
   display: inline-block; font-family: 'Inter', sans-serif;
   font-size: 52px; font-weight: 400; letter-spacing: -0.01em;
@@ -76,9 +85,12 @@ CAPTION_STYLES: dict[str, str] = {
     "eco-green": """
 .caption-layer {
   position: absolute; bottom: 80px; left: 0; right: 0;
-  text-align: center; pointer-events: none; z-index: 100;
+  text-align: center; pointer-events: none; z-index: 300;
 }
-.caption-phrase { display: none; opacity: 0; }
+.caption-phrase {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  opacity: 0; transition: opacity 0.3s ease;
+}
 .caption-phrase .word {
   display: inline-block; font-family: 'Inter', sans-serif;
   font-size: 48px; font-weight: 800; letter-spacing: -0.01em;
@@ -237,7 +249,8 @@ def build_caption_timeline_js(
         end = s["end"]
 
         lines.append(
-            f"{indent}{timeline_var}.set({phrase_sel}, {{ display: 'block', opacity: 1 }}, {start:.3f});"
+            f"{indent}{timeline_var}.to({phrase_sel}, "
+            f"{{ opacity: 1, duration: 0.3 }}, {start:.3f});"
         )
 
         for wt in word_timings:
@@ -253,10 +266,7 @@ def build_caption_timeline_js(
 
         lines.append(
             f"{indent}{timeline_var}.to({phrase_sel}, "
-            f"{{ opacity: 0, duration: 0.15 }}, {end - 0.15:.3f});"
-        )
-        lines.append(
-            f"{indent}{timeline_var}.set({phrase_sel}, {{ display: 'none' }}, {end:.3f});"
+            f"{{ opacity: 0, duration: 0.2 }}, {end - 0.2:.3f});"
         )
 
     return "\n".join(lines)
