@@ -1,16 +1,18 @@
 /**
  * AssetDropzone — drag-and-drop image upload with SHA-256 dedup.
  *
- * On drop: hash blob → storeAsset (IndexedDB) → dispatch setAsset via
- * EditBus so the slide's assets map updates.
+ * Validates MIME type and file size before hashing. Uses a <label>
+ * wrapper so click naturally opens the file picker (no JS click needed).
  */
 import { Upload } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { useEditBus } from "@/shared/edit/EditBusProvider";
 import { setAsset } from "@/shared/edit/ops";
 import { storeAsset } from "../lib/assetStore";
+
+const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export function AssetDropzone({
 	slideId,
@@ -24,12 +26,21 @@ export function AssetDropzone({
 	const { dispatch } = useEditBus();
 	const [dragging, setDragging] = useState(false);
 	const [hashing, setHashing] = useState(false);
-	const inputRef = useRef<HTMLInputElement>(null);
 
 	const handleFiles = useCallback(
 		async (files: FileList | File[]) => {
 			const file = Array.from(files)[0];
 			if (!file) return;
+
+			if (!file.type.startsWith("image/")) {
+				toast.error("Only image files are supported");
+				return;
+			}
+			if (file.size > MAX_SIZE) {
+				toast.error("File too large (max 10 MB)");
+				return;
+			}
+
 			setHashing(true);
 			try {
 				const ref = await storeAsset(file);
@@ -37,7 +48,7 @@ export function AssetDropzone({
 					dispatch(setAsset(slideId, fieldId, ref));
 				}
 				onStored?.(ref);
-				toast.success(`Stored ${ref.slice(0, 20)}…`);
+				toast.success("Image stored");
 			} catch {
 				toast.error("Failed to store asset");
 			} finally {
@@ -49,7 +60,7 @@ export function AssetDropzone({
 
 	return (
 		<label
-			className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+			className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
 				dragging
 					? "border-primary bg-primary/5"
 					: "border-border hover:border-primary/40"
@@ -66,7 +77,6 @@ export function AssetDropzone({
 			}}
 		>
 			<input
-				ref={inputRef}
 				type="file"
 				accept="image/*"
 				className="hidden"
@@ -74,9 +84,9 @@ export function AssetDropzone({
 					if (e.target.files) void handleFiles(e.target.files);
 				}}
 			/>
-			<Upload className="size-6 text-muted-foreground" />
-			<span className="text-xs text-muted-foreground">
-				{hashing ? "Hashing…" : "Drop image or click to upload"}
+			<Upload className="size-5 text-muted-foreground" />
+			<span className="text-[11px] text-muted-foreground">
+				{hashing ? "Hashing…" : "Drop or click (max 10 MB)"}
 			</span>
 		</label>
 	);

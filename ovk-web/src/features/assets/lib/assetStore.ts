@@ -2,15 +2,16 @@
  * Asset store — SHA-256 content-addressed blobs backed by IndexedDB.
  *
  * Uses `js-sha256` (pure JS) so it works in non-secure contexts
- * (e.g. http://192.168.x.x on LAN). `crypto.subtle` requires HTTPS or
- * localhost and would throw on LAN.
- *
- * Dedup is free: same bytes → same hash → same ref → existing entry.
+ * (e.g. http://192.168.x.x on LAN).
  */
 import { del, get, keys, set } from "idb-keyval";
 import { sha256 } from "js-sha256";
 
 const PREFIX = "ovk:asset:";
+
+function isAssetKey(key: unknown): boolean {
+	return String(key).startsWith(PREFIX);
+}
 
 export interface Asset {
 	ref: string;
@@ -18,6 +19,15 @@ export interface Asset {
 	mime: string;
 	size: number;
 	createdAt: number;
+}
+
+function isAsset(v: unknown): v is Asset {
+	return (
+		typeof v === "object" &&
+		v !== null &&
+		typeof (v as Asset).ref === "string" &&
+		(v as Asset).blob instanceof Blob
+	);
 }
 
 /** Hash a blob → `sha256:<hex>`. Pure JS, no crypto.subtle needed. */
@@ -49,17 +59,12 @@ export async function getAsset(ref: string): Promise<Asset | undefined> {
 	return get(PREFIX + ref);
 }
 
-/** List all assets, newest first. */
+/** List all assets, newest first. Parallel reads for performance. */
 export async function listAssets(): Promise<Asset[]> {
 	const allKeys = await keys();
-	const assets: Asset[] = [];
-	for (const key of allKeys) {
-		if (String(key).startsWith(PREFIX)) {
-			const a = await get(key);
-			if (a) assets.push(a as Asset);
-		}
-	}
-	return assets.sort((a, b) => b.createdAt - a.createdAt);
+	const assetKeys = allKeys.filter(isAssetKey);
+	const values = await Promise.all(assetKeys.map((k) => get(k)));
+	return values.filter(isAsset).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /** Delete an asset by ref. */
@@ -70,5 +75,5 @@ export async function removeAsset(ref: string): Promise<void> {
 /** Count stored assets (for quota awareness). */
 export async function countAssets(): Promise<number> {
 	const allKeys = await keys();
-	return allKeys.filter((k) => String(k).startsWith(PREFIX)).length;
+	return allKeys.filter(isAssetKey).length;
 }

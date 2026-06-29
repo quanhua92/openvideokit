@@ -120,14 +120,17 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
 		case "setAsset": {
 			const slide = project.slides[op.slideId];
 			if (!slide) return project;
+			const assets = { ...slide.assets };
+			if (op.ref === "") {
+				delete assets[op.fieldId];
+			} else {
+				assets[op.fieldId] = op.ref;
+			}
 			return {
 				...project,
 				slides: {
 					...project.slides,
-					[op.slideId]: {
-						...slide,
-						assets: { ...slide.assets, [op.fieldId]: op.ref },
-					},
+					[op.slideId]: { ...slide, assets },
 				},
 			};
 		}

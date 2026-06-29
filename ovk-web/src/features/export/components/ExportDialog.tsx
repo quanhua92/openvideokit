@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 import { type ExportStep, useExportJob } from "../hooks/useExportJob";
 
-const STEP_LABELS: Record<string, string> = {
+const STEP_LABELS: Partial<Record<ExportStep, string>> = {
 	assemble: "Assemble workspace",
 	stamp: "Stamp __FIELD__ placeholders",
 	voiceover: "Generate voiceover (TTS)",
@@ -136,7 +136,13 @@ function StepList({
 	currentStep: ExportStep;
 	completed: ExportStep[];
 }) {
-	const visibleSteps = ["assemble", "stamp", "voiceover", "captions", "render"];
+	const visibleSteps: ExportStep[] = [
+		"assemble",
+		"stamp",
+		"voiceover",
+		"captions",
+		"render",
+	];
 
 	return (
 		<ul className="space-y-1">

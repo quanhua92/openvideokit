@@ -89,11 +89,13 @@ export function StudioMobile({ data }: { data: StudioData }) {
 				{active === "html" && !activeSlide.slideId && (
 					<EmptySlot panel={getPanel("html")} />
 				)}
-				{active === "assets" && (
+				{active === "assets" && activeSlide.slideId ? (
 					<div className="h-full">
-						<AssetLibrary slideId={activeSlide.slideId ?? "slide-0"} />
+						<AssetLibrary slideId={activeSlide.slideId} />
 					</div>
-				)}
+				) : active === "assets" ? (
+					<EmptySlot panel={getPanel("assets")} />
+				) : null}
 				{active === "captions" && activeSlide.slide && (
 					<div className="h-full overflow-y-auto">
 						<div className="space-y-4 p-4">

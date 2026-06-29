@@ -13,18 +13,29 @@ export function useAssetUrl(ref: string | undefined | null): string | null {
 	const [url, setUrl] = useState<string | null>(null);
 
 	useEffect(() => {
-		// Reset IMMEDIATELY so the old slide's image doesn't bleed through.
 		setUrl(null);
 		if (!ref) return;
 
 		let active = true;
 		let createdUrl: string | null = null;
 
-		void getAsset(ref).then((asset) => {
-			if (!active || !asset) return;
-			createdUrl = URL.createObjectURL(asset.blob);
-			setUrl(createdUrl);
-		});
+		void getAsset(ref)
+			.then((asset) => {
+				if (!active || !asset) return;
+				createdUrl = URL.createObjectURL(asset.blob);
+				// Double-check active after async — component may have unmounted
+				// during the IndexedDB read. Revoke immediately if so.
+				if (!active) {
+					URL.revokeObjectURL(createdUrl);
+					createdUrl = null;
+					return;
+				}
+				setUrl(createdUrl);
+			})
+			.catch(() => {
+				// IndexedDB read failed (quota, corrupted data, etc.)
+				if (active) setUrl(null);
+			});
 
 		return () => {
 			active = false;

@@ -42,19 +42,29 @@ export function aHash(frame: number[][]): number[][] {
 
 /**
  * Hamming distance between two bit grids of the same shape.
- * Counts positions where the bits differ (popcount of XOR).
+ * Throws if shapes mismatch — prevents silent false cache HITs.
  */
 export function hamming(h1: number[][], h2: number[][]): number {
+	if (
+		h1.length !== h2.length ||
+		h1.some((row, i) => row.length !== (h2[i]?.length ?? 0))
+	) {
+		throw new Error("hamming: grids must have the same shape");
+	}
 	let dist = 0;
 	for (let r = 0; r < h1.length; r++) {
 		for (let c = 0; c < h1[r].length; c++) {
-			if ((h1[r]?.[c] ?? 0) !== (h2[r]?.[c] ?? 0)) dist++;
+			if (h1[r][c] !== h2[r][c]) dist++;
 		}
 	}
 	return dist;
 }
 
-/** Cache threshold: distance ≤ CACHE_THRESHOLD means visual HIT. */
+/**
+ * Cache threshold: distance ≤ CACHE_THRESHOLD means visual HIT.
+ * Tuned for 8×8 (64-bit) hashes; ~8% bit tolerance balances cache
+ * effectiveness against false positives.
+ */
 export const CACHE_THRESHOLD = 5;
 
 /** Decide HIT or MISS based on Hamming distance. */

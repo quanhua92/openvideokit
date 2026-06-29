@@ -2,11 +2,9 @@
  * useExportJob — simulates the 6-step export pipeline.
  *
  * Steps: assemble → stamp → voiceover → captions → render → done.
- * Each step fires after a mock delay; render streams frame-by-frame
- * progress. When the real backend lands, swap the setTimeout chain for
- * an SSE/EventSource subscription — the state shape is identical.
+ * Includes re-entrancy guard, unmount cleanup, and error handling.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ExportStep =
 	| "idle"
@@ -20,7 +18,7 @@ export type ExportStep =
 
 export interface ExportState {
 	step: ExportStep;
-	renderProgress: number; // 0–100 during render step
+	renderProgress: number;
 	stepsCompleted: ExportStep[];
 	error?: string;
 }
@@ -39,7 +37,7 @@ const STEP_DELAYS: Record<string, number> = {
 	stamp: 100,
 	voiceover: 400,
 	captions: 150,
-	render: 50, // per frame batch
+	render: 50,
 };
 
 function delay(ms: number): Promise<void> {
@@ -53,49 +51,70 @@ export function useExportJob() {
 		stepsCompleted: [],
 	});
 	const cancelledRef = useRef(false);
+	const runningRef = useRef(false);
+
+	// Cleanup on unmount: cancel any in-flight export.
+	useEffect(() => {
+		return () => {
+			cancelledRef.current = true;
+		};
+	}, []);
 
 	const start = useCallback(async () => {
+		// Re-entrancy guard: bail if already running.
+		if (runningRef.current) return;
+		runningRef.current = true;
 		cancelledRef.current = false;
 		const completed: ExportStep[] = [];
 
-		for (const step of STEP_ORDER) {
-			if (cancelledRef.current) return;
+		try {
+			for (const step of STEP_ORDER) {
+				if (cancelledRef.current) return;
 
-			setState({ step, renderProgress: 0, stepsCompleted: [...completed] });
+				setState({ step, renderProgress: 0, stepsCompleted: [...completed] });
 
-			if (step === "render") {
-				// Stream frame-by-frame progress.
-				for (let i = 0; i <= 100; i += 10) {
-					if (cancelledRef.current) return;
-					await delay(STEP_DELAYS.render);
+				if (step === "render") {
+					for (let i = 0; i <= 100; i += 10) {
+						if (cancelledRef.current) return;
+						await delay(STEP_DELAYS.render);
+						setState({
+							step,
+							renderProgress: i,
+							stepsCompleted: [...completed],
+						});
+					}
+				} else if (step === "done") {
 					setState({
-						step,
-						renderProgress: i,
-						stepsCompleted: [...completed],
+						step: "done",
+						renderProgress: 100,
+						stepsCompleted: [...completed, step],
 					});
+				} else {
+					await delay(STEP_DELAYS[step] ?? 200);
 				}
-			} else if (step === "done") {
-				// Final state.
-				setState({
-					step: "done",
-					renderProgress: 100,
-					stepsCompleted: [...completed, step],
-				});
-			} else {
-				await delay(STEP_DELAYS[step] ?? 200);
-			}
 
-			completed.push(step);
+				completed.push(step);
+			}
+		} catch (err) {
+			setState((s) => ({
+				...s,
+				step: "error",
+				error: err instanceof Error ? err.message : String(err),
+			}));
+		} finally {
+			runningRef.current = false;
 		}
 	}, []);
 
 	const reset = useCallback(() => {
 		cancelledRef.current = true;
+		runningRef.current = false;
 		setState({ step: "idle", renderProgress: 0, stepsCompleted: [] });
 	}, []);
 
 	const cancel = useCallback(() => {
 		cancelledRef.current = true;
+		runningRef.current = false;
 		setState((s) => ({ ...s, step: "error", error: "Cancelled by user" }));
 	}, []);
 

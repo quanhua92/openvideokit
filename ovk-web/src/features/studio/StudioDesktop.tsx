@@ -170,7 +170,7 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 			<AssetsDialog
 				open={assetsOpen}
 				onOpenChange={setAssetsOpen}
-				slideId={active.slideId ?? "slide-0"}
+				slideId={active.slideId}
 			/>
 			{/* Total duration surfaced for parity with mobile; unused at runtime. */}
 			<input type="hidden" value={totalDuration} readOnly />
@@ -213,7 +213,7 @@ function AssetsDialog({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	slideId: string;
+	slideId: string | null;
 }) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -227,7 +227,13 @@ function AssetsDialog({
 					</DialogTitle>
 				</DialogHeader>
 				<div className="h-[60vh]">
-					<AssetLibrary slideId={slideId} />
+					{slideId ? (
+						<AssetLibrary slideId={slideId} />
+					) : (
+						<p className="flex h-full items-center justify-center text-xs text-muted-foreground">
+							No active slide.
+						</p>
+					)}
 				</div>
 			</DialogContent>
 		</Dialog>

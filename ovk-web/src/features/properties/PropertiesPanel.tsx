@@ -77,11 +77,20 @@ export function PropertiesPanel({
 				</Section>
 
 				<Section icon={ImageIcon} title="Assets">
-					<AssetFieldPreview
-						slideId={slideId}
-						fieldId="img"
-						currentRef={slide.assets.img}
-					/>
+					{Object.entries(slide.assets).length > 0 ? (
+						<div className="space-y-3">
+							{Object.entries(slide.assets).map(([id, ref]) => (
+								<AssetFieldPreview
+									key={id}
+									slideId={slideId}
+									fieldId={id}
+									currentRef={ref}
+								/>
+							))}
+						</div>
+					) : (
+						<AssetFieldPreview slideId={slideId} fieldId="img" />
+					)}
 				</Section>
 
 				<Section icon={Mic} title="Voiceover">
