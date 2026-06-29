@@ -1,0 +1,46 @@
+/**
+ * EditBus — the single mutation path for the project document.
+ *
+ * P0 exports the TYPES only (no runtime). P3 builds the runtime:
+ *   - dispatch(op) → applyOp(project, op) → queryClient.setQueryData + emit EditEvent
+ *   - subscribe(fn) → fn receives every EditEvent (consumed by undo/redo, AI chat pings)
+ *
+ * Key invariant: every mutation (human keyboard edit OR AI Accept) dispatches
+ * an EditOp through this bus. There is no other write path.
+ */
+
+/** Who initiated the edit. AI edits carry their provider id. */
+export type EditActor = "human" | `ai:${string}`;
+
+/** Discriminated union of every slide/root mutation. P3/P4/P5/P7 extend this. */
+export type EditOp =
+	| { kind: "setField"; slideId: string; fieldId: string; value: string }
+	| { kind: "reorderSlides"; order: string[] }
+	| { kind: "addSlide"; afterId?: string; layoutId: string }
+	| { kind: "removeSlide"; slideId: string }
+	| { kind: "setTransition"; slideId: string; transition: unknown | null }
+	| { kind: "setAsset"; slideId: string; fieldId: string; ref: string }
+	| { kind: "setVoiceover"; slideId: string; text: string; voice?: string }
+	| { kind: "setDuration"; slideId: string; duration: number }
+	| { kind: "setCaptionStyle"; style: string }
+	| { kind: "setSlideHtml"; slideId: string; html: string };
+
+/** An op + metadata about who/when. Emitted on every dispatch. */
+export interface EditEvent {
+	id: string;
+	at: number;
+	actor: EditActor;
+	op: EditOp;
+}
+
+/** Subscriber callback. */
+export type EditBusSubscriber = (event: EditEvent) => void;
+
+/**
+ * EditBus runtime contract — implemented in P3.
+ * Exported here so other modules can reference the shape before P3 ships.
+ */
+export interface EditBus {
+	dispatch(op: EditOp, actor?: EditActor): void;
+	subscribe(fn: EditBusSubscriber): () => void;
+}
