@@ -6,7 +6,8 @@
  * Overflow menu contains:
  *   - Recent projects (link to overview)
  *   - Export (disabled pending later phase)
- *   - Theme submenu (Light / Dark / System)
+ *   - Theme submenu (Light / Dark / System) — quick access
+ *   - Settings link (full preferences page)
  */
 
 import { Link, Outlet } from "@tanstack/react-router";
@@ -89,6 +90,9 @@ function OverflowMenu() {
 						))}
 					</DropdownMenuSubContent>
 				</DropdownMenuSub>
+				<DropdownMenuItem asChild>
+					<Link to="/settings">Settings</Link>
+				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
