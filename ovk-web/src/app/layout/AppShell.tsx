@@ -1,12 +1,16 @@
 /**
  * AppShell — top-level layout wrapping every routed page.
  *
- * P0 ships a minimal shell: logo, project switcher (static), Export button
- * placeholder. P1 fills the rail/stage/etc. via the Studio component.
+ * Header: logo + single overflow menu. Same on every breakpoint.
+ *
+ * Overflow menu contains:
+ *   - Recent projects (link to overview)
+ *   - Export (disabled pending later phase)
+ *   - Theme submenu (Light / Dark / System)
  */
 
 import { Link, Outlet } from "@tanstack/react-router";
-import { ChevronDown, Clapperboard } from "lucide-react";
+import { Clapperboard, MoreHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,12 +19,23 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FIXTURE_PROJECT_ID } from "@/shared/api/msw/fixtures";
+import type { Theme } from "@/shared/lib/theme";
+import { useTheme } from "@/shared/lib/useTheme";
 
 const PROJECT_TO = "/projects/$projectId" as const;
 const PROJECT_PARAMS = { projectId: FIXTURE_PROJECT_ID };
+
+const THEME_OPTIONS: ReadonlyArray<{ value: Theme; label: string }> = [
+	{ value: "light", label: "Light" },
+	{ value: "dark", label: "Dark" },
+	{ value: "system", label: "System" },
+];
 
 export function AppShell({ children }: { children?: ReactNode }) {
 	return (
@@ -30,31 +45,51 @@ export function AppShell({ children }: { children?: ReactNode }) {
 					<Clapperboard className="size-5" />
 					<span className="text-sm font-semibold">OpenVideoKit</span>
 				</div>
-				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="sm">
-								Eco Bottle Campaign
-								<ChevronDown className="size-3" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuLabel>Recent projects</DropdownMenuLabel>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<Link to={PROJECT_TO} params={PROJECT_PARAMS}>
-									Eco Bottle Campaign
-								</Link>
-							</DropdownMenuItem>
-							<DropdownMenuItem disabled>More soon…</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-					<Button size="sm" disabled>
-						Export
-					</Button>
-				</div>
+				<OverflowMenu />
 			</header>
 			<main className="flex-1 overflow-hidden">{children ?? <Outlet />}</main>
 		</div>
+	);
+}
+
+function OverflowMenu() {
+	const { theme, setTheme } = useTheme();
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="icon" aria-label="Menu">
+					<MoreHorizontal className="size-5" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-48">
+				<DropdownMenuLabel>Recent projects</DropdownMenuLabel>
+				<DropdownMenuItem asChild>
+					<Link to={PROJECT_TO} params={PROJECT_PARAMS}>
+						Eco Bottle Campaign
+					</Link>
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled>More soon…</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem disabled>Export</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuSub>
+					<DropdownMenuSubTrigger>
+						<span className="capitalize">{theme}</span>
+					</DropdownMenuSubTrigger>
+					<DropdownMenuSubContent>
+						{THEME_OPTIONS.map(({ value, label }) => (
+							<DropdownMenuItem
+								key={value}
+								onClick={() => setTheme(value)}
+								className={theme === value ? "font-medium" : ""}
+							>
+								{label}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuSubContent>
+				</DropdownMenuSub>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

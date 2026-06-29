@@ -5,6 +5,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ovk-web</title>
+    <script>
+      // Apply theme before first paint to avoid FOUC.
+      // Mirrors shared/lib/theme.ts; kept inline so it runs pre-CSS.
+      (() => {
+        let stored = "system";
+        let prefersDark = false;
+        try {
+          stored = localStorage.getItem("ovk:theme") || "system";
+          prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches;
+        } catch (_e) {
+          /* localStorage may be blocked — fall through to system default */
+        }
+        const resolved =
+          stored === "system" ? (prefersDark ? "dark" : "light") : stored;
+        if (resolved === "dark")
+          document.documentElement.classList.add("dark");
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
