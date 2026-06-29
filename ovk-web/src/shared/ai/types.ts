@@ -16,6 +16,7 @@ export interface AIMessage {
 	id: string;
 	role: "user" | "assistant" | "system";
 	content: string;
+	/** Unix epoch milliseconds — consistent with `EditEvent.at` in EditBus.ts. */
 	at?: number;
 	/** Present on assistant messages that carry an edit proposal. */
 	proposal?: EditProposal;
@@ -51,7 +52,13 @@ export interface AIContext {
 	};
 }
 
-/** Target a proposal points at. */
+/**
+ * Target a proposal points at.
+ *
+ * The `{ kind: "root" }` variant is reserved for future use — current Tier-1
+ * and Tier-2 proposals only target slides. Root-level edits (canvas, theme,
+ * audio) will land as a new Tier variant in a later phase.
+ */
 export type EditTarget = { kind: "root" } | { kind: "slide"; slideId: string };
 
 /** RFC 6902 JSON Patch op (subset). Tier-1 AI proposals produce these. */

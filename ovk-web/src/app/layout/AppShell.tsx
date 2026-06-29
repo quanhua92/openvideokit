@@ -17,9 +17,10 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FIXTURE_PROJECT_ID } from "@/shared/api/msw/fixtures";
 
 const PROJECT_TO = "/projects/$projectId" as const;
-const PROJECT_PARAMS = { projectId: "proj-1" };
+const PROJECT_PARAMS = { projectId: FIXTURE_PROJECT_ID };
 
 export function AppShell({ children }: { children?: ReactNode }) {
 	return (

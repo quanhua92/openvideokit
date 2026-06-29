@@ -50,8 +50,10 @@ function ProjectDashboard() {
 		(sum, id) => sum + (slides[id]?.duration ?? 0),
 		0,
 	);
+	const assetCount = new Set(
+		root.slides.flatMap((id) => Object.values(slides[id]?.assets ?? {})),
+	).size;
 
-	const editorTo = "/projects/$projectId/editor" as const;
 	const editorParams = { projectId };
 
 	return (
@@ -67,7 +69,7 @@ function ProjectDashboard() {
 						</p>
 					</div>
 					<Button asChild>
-						<Link to={editorTo} params={editorParams}>
+						<Link to={EDITOR_TO} params={editorParams}>
 							<Sparkles className="size-4" />
 							Open editor
 						</Link>
@@ -88,9 +90,7 @@ function ProjectDashboard() {
 					<StatCard
 						icon={<Images className="size-4" />}
 						label="Assets"
-						value={Object.keys(slides)
-							.flatMap((id) => Object.keys(slides[id].assets))
-							.length.toString()}
+						value={assetCount.toString()}
 					/>
 					<StatCard
 						icon={<Clapperboard className="size-4" />}
@@ -101,14 +101,14 @@ function ProjectDashboard() {
 
 				<section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					<ActionCard
-						to={editorTo}
+						to={EDITOR_TO}
 						params={editorParams}
 						icon={<Sparkles className="size-5" />}
 						title="Editor"
 						desc="Timeline, stage, properties, captions — the full studio."
 					/>
 					<ActionCard
-						to={editorTo}
+						to={EDITOR_TO}
 						params={editorParams}
 						icon={<Images className="size-5" />}
 						title="Assets"
@@ -116,7 +116,7 @@ function ProjectDashboard() {
 						disabled
 					/>
 					<ActionCard
-						to={editorTo}
+						to={EDITOR_TO}
 						params={editorParams}
 						icon={<Clapperboard className="size-5" />}
 						title="Export"
@@ -124,7 +124,7 @@ function ProjectDashboard() {
 						disabled
 					/>
 					<ActionCard
-						to={editorTo}
+						to={EDITOR_TO}
 						params={editorParams}
 						icon={<Settings className="size-5" />}
 						title="Settings"
@@ -195,7 +195,7 @@ function ActionCard({
 	desc,
 	disabled,
 }: {
-	to: typeof editorToRef;
+	to: typeof EDITOR_TO;
 	params: { projectId: string };
 	icon: React.ReactNode;
 	title: string;
@@ -231,4 +231,4 @@ function ActionCard({
 	);
 }
 
-const editorToRef = "/projects/$projectId/editor" as const;
+const EDITOR_TO = "/projects/$projectId/editor" as const;

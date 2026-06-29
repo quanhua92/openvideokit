@@ -9,7 +9,8 @@ import type { SlideIndex } from "../schemas/slideIndex";
 
 /** Deterministic 64-char hex string for SHA refs in fixtures (NOT a real SHA-256). */
 function fakeSha(seed: string): string {
-	// FNV-1a-ish hash → 64 hex chars by chaining 4 16-bit hashes with salted seeds.
+	// FNV-1a-ish hash → 64 hex chars by chaining 8 salted 32-bit hashes.
+	// 8 × 8 hex chars per pass = 64 hex chars total.
 	function fnv16(s: string): string {
 		let h = 0x811c9dc5;
 		for (let i = 0; i < s.length; i++) {

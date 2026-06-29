@@ -15,12 +15,17 @@ export const worker = setupWorker(...handlers);
 
 /**
  * Enable MSW in dev (or when VITE_USE_MSW is set). Returns once the worker
- * is ready. In production, this is a no-op.
+ * is ready. In production, this is a no-op. Failures are logged but do NOT
+ * block the app from rendering — broken mocks shouldn't kill the studio.
  */
 export async function enableMocking(): Promise<void> {
 	if (!import.meta.env.DEV && !import.meta.env.VITE_USE_MSW) return;
-	await worker.start({
-		onUnhandledRequest: "bypass",
-		quiet: false,
-	});
+	try {
+		await worker.start({
+			onUnhandledRequest: "bypass",
+			quiet: false,
+		});
+	} catch (error) {
+		console.error("[MSW] failed to start mock worker:", error);
+	}
 }

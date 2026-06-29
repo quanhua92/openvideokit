@@ -23,6 +23,9 @@ function parseProjectBundle(raw: unknown): ProjectBundle {
 		throw new Error("project bundle is not an object");
 	}
 	const { root, slides } = raw as Record<string, unknown>;
+	if (slides === null || slides === undefined) {
+		throw new Error("project bundle missing 'slides' field");
+	}
 	return {
 		root: RootIndexSchema.parse(root),
 		slides: Object.fromEntries(
@@ -33,22 +36,35 @@ function parseProjectBundle(raw: unknown): ProjectBundle {
 	};
 }
 
+/** Parse JSON with a friendly error if the body isn't JSON (e.g. HTML error page). */
+async function parseJson(res: Response, label: string): Promise<unknown> {
+	try {
+		return await res.json();
+	} catch {
+		throw new Error(`${label}: ${res.status} — invalid JSON response`);
+	}
+}
+
 export const client = {
 	async getProject(projectId: string): Promise<ProjectBundle> {
-		const res = await fetch(`${API_BASE}/projects/${projectId}`);
+		const res = await fetch(
+			`${API_BASE}/projects/${encodeURIComponent(projectId)}`,
+		);
 		if (!res.ok) {
 			throw new Error(`getProject ${projectId}: ${res.status}`);
 		}
-		return parseProjectBundle(await res.json());
+		return parseProjectBundle(await parseJson(res, `getProject ${projectId}`));
 	},
 
 	async getSlide(projectId: string, slideId: string): Promise<SlideIndex> {
 		const res = await fetch(
-			`${API_BASE}/projects/${projectId}/slides/${slideId}`,
+			`${API_BASE}/projects/${encodeURIComponent(projectId)}/slides/${encodeURIComponent(slideId)}`,
 		);
 		if (!res.ok) {
 			throw new Error(`getSlide ${projectId}/${slideId}: ${res.status}`);
 		}
-		return SlideIndexSchema.parse(await res.json());
+		return SlideIndexSchema.parse(
+			await parseJson(res, `getSlide ${projectId}/${slideId}`),
+		);
 	},
 };

@@ -34,7 +34,9 @@ export function stampSafe(html: string, id: string, value: string): string {
 
 /** Extract all `__FIELD__` placeholders from a string, deduped, in order. */
 export function extractPlaceholders(src: string): string[] {
-	const re = /__[A-Z0-9_]+__/g;
+	// Must contain at least one alphanumeric between the outer `__` delimiters
+	// so that pure-underscore runs (`___`, `____`, …) aren't matched.
+	const re = /__[A-Z0-9_]*[A-Z0-9][A-Z0-9_]*__/g;
 	const seen = new Set<string>();
 	const out: string[] = [];
 	for (const m of src.matchAll(re)) {

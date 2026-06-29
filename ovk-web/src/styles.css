@@ -48,8 +48,9 @@
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
 
-	/* OVK custom tokens — reserved用途 */
-	--color-caption-active: var(--caption-active); /* karaoke highlight only */
+	/* OVK custom tokens — caption highlight color.
+	   See scripts/check-caption-token.sh for usage enforcement. */
+	--color-caption-active: var(--caption-active);
 
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
@@ -94,8 +95,11 @@
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
 
-	/* OVK — caption highlight (per AGENTS.md CRITICAL RULES) */
-	/* Reserved for features/captions/** only. CI grep enforces. */
+	/* OVK — caption highlight color (per AGENTS.md CRITICAL RULES).
+	   The literal oklch value is reserved: only `src/styles.css` (this
+	   definition) and `src/features/captions/**` may contain it. All other
+	   call sites use `var(--caption-active)`. Enforced by
+	   `scripts/check-caption-token.sh` in CI. */
 	--caption-active: oklch(0.92 0.18 95);
 }
 
@@ -154,7 +158,6 @@
 		background-color: var(--background);
 		color: var(--foreground);
 		font-family:
-			Geist,
 			-apple-system,
 			BlinkMacSystemFont,
 			"Segoe UI",

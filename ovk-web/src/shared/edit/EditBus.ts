@@ -18,7 +18,11 @@ export type EditOp =
 	| { kind: "reorderSlides"; order: string[] }
 	| { kind: "addSlide"; afterId?: string; layoutId: string }
 	| { kind: "removeSlide"; slideId: string }
-	| { kind: "setTransition"; slideId: string; transition: unknown | null }
+	| {
+			kind: "setTransition";
+			slideId: string;
+			transition: Record<string, unknown> | null;
+	  }
 	| { kind: "setAsset"; slideId: string; fieldId: string; ref: string }
 	| { kind: "setVoiceover"; slideId: string; text: string; voice?: string }
 	| { kind: "setDuration"; slideId: string; duration: number }

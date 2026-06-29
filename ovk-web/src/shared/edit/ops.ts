@@ -38,7 +38,7 @@ export function removeSlide(
 
 export function setTransition(
 	slideId: string,
-	transition: unknown | null,
+	transition: Record<string, unknown> | null,
 ): Extract<EditOp, { kind: "setTransition" }> {
 	return { kind: "setTransition", slideId, transition };
 }
