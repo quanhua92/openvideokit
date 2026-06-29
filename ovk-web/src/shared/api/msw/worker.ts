@@ -1,11 +1,9 @@
 /**
- * MSW browser worker — initialized in dev only.
+ * MSW browser worker — intercepts API calls with mock responses.
  *
- * Mount via `src/main.tsx` (or a dedicated bootstrap module) before React:
- *   await enableMocking()
- *   ReactDOM.createRoot(...).render(...)
- *
- * P7 removes this and points the client at the real FastAPI server.
+ * Always enabled — no real backend exists yet. When the FastAPI backend
+ * lands, set VITE_USE_MSW=false to disable mocking and let requests
+ * reach the real server.
  */
 import { setupWorker } from "msw/browser";
 
@@ -14,16 +12,18 @@ import { handlers } from "./handlers";
 export const worker = setupWorker(...handlers);
 
 /**
- * Enable MSW in dev (or when VITE_USE_MSW is set). Returns once the worker
- * is ready. In production, this is a no-op. Failures are logged but do NOT
- * block the app from rendering — broken mocks shouldn't kill the studio.
+ * Enable MSW. In dev, logs to console; in production, runs quietly.
+ * Failures are logged but do NOT block the app from rendering.
  */
 export async function enableMocking(): Promise<void> {
-	if (!import.meta.env.DEV && !import.meta.env.VITE_USE_MSW) return;
+	// Allow explicit opt-out via VITE_USE_MSW=false for when the real
+	// backend is wired.
+	if (import.meta.env.VITE_USE_MSW === "false") return;
+
 	try {
 		await worker.start({
 			onUnhandledRequest: "bypass",
-			quiet: false,
+			quiet: !import.meta.env.DEV,
 		});
 	} catch (error) {
 		console.error("[MSW] failed to start mock worker:", error);
