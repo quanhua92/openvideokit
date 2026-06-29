@@ -19,6 +19,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AIDock } from "@/features/ai/AIDock";
+import { CaptionControls } from "@/features/captions/components/CaptionControls";
+import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
 import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
 import { StageCanvas } from "@/features/stage/StageCanvas";
 import { TimelinePanel } from "@/features/timeline/TimelinePanel";
@@ -50,6 +52,8 @@ export function StudioMobile({ data }: { data: StudioData }) {
 					<StageCanvas
 						slide={activeSlide.slide}
 						localTime={activeSlide.localTime}
+						activeStart={activeSlide.start}
+						captionStyle={project.root.theme.caption_style}
 					/>
 					<Button
 						variant="secondary"
@@ -75,7 +79,22 @@ export function StudioMobile({ data }: { data: StudioData }) {
 				{active === "timeline" && <TimelinePanel project={project} />}
 				{active === "html" && <EmptySlot panel={getPanel("html")} />}
 				{active === "assets" && <EmptySlot panel={getPanel("assets")} />}
-				{active === "captions" && <EmptySlot panel={getPanel("captions")} />}
+				{active === "captions" && activeSlide.slide && (
+					<div className="h-full overflow-y-auto">
+						<div className="space-y-4 p-4">
+							<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								Captions
+							</h2>
+							{activeSlide.slideId && (
+								<CaptionTextEditor
+									slide={activeSlide.slide}
+									slideId={activeSlide.slideId}
+								/>
+							)}
+							<CaptionControls />
+						</div>
+					</div>
+				)}
 				{active === "ai" && <AIDock slideId={activeSlide.slideId} />}
 			</div>
 

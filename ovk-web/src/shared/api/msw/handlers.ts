@@ -5,6 +5,7 @@
 import { HttpResponse, http } from "msw";
 
 import { FIXTURE_PROJECT_ID, fixtureBundle, fixtureSlides } from "./fixtures";
+import { ttsHandler } from "./handlers.tts";
 
 export const API_BASE = "/api";
 
@@ -46,4 +47,7 @@ export const handlers = [
 		}
 		return HttpResponse.json(slide);
 	}),
+
+	// Mock TTS pipeline — POST /api/tts returns per-slide measured durations.
+	ttsHandler,
 ];

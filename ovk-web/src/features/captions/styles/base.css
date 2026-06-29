@@ -1,0 +1,42 @@
+/**
+ * Caption base CSS — driven entirely by CSS custom properties set on the
+ * CaptionLayer root from the user's settings (preset + overrides).
+ *
+ * Banned on .word--active per AGENTS.md: transform, scale(), font-size,
+ * text-shadow. All visuals here use color, background, box-shadow,
+ * filter: drop-shadow, font-weight, letter-spacing, padding — all legal.
+ */
+
+.caption-phrase .word {
+	display: inline-block;
+	font-size: calc(clamp(10px, 3.5cqw, 28px) * var(--caption-scale, 1));
+	font-weight: var(--caption-weight, 900);
+	color: var(--caption-dim, rgba(255, 255, 255, 0.5));
+	margin: 0 0.05em;
+	padding: 0.06em 0.18em;
+	border-radius: 0.18em;
+	letter-spacing: var(--caption-letter-spacing, -0.02em);
+	transition:
+		color 0.15s ease,
+		background-color 0.15s ease,
+		box-shadow 0.15s ease,
+		filter 0.2s ease,
+		font-weight 0.15s ease,
+		letter-spacing 0.2s ease;
+}
+
+/* Text-shadow on BASE word (legibility) — toggled by user. */
+.caption-phrase[data-caption-shadow="1"] .word {
+	text-shadow:
+		0 2px 4px rgba(0, 0, 0, 0.7),
+		0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Active word — ONLY color / background / box-shadow / filter / weight
+ * changes. NEVER transform, scale, font-size, or text-shadow. */
+.caption-phrase .word--active {
+	color: var(--caption-active, #ffea00);
+	background-color: var(--caption-pill-bg, transparent);
+	box-shadow: var(--caption-active-shadow, none);
+	filter: var(--caption-active-glow, none);
+}

@@ -1,15 +1,17 @@
 /**
- * StageCanvas — letterboxed preview of the active slide.
+ * StageCanvas — letterboxed preview of the active slide + caption overlay.
  *
- * P2 implementation: a 1920×1080 div is scaled via `transform: scale()` to
- * fit the parent container (measured with ResizeObserver). The slide's
- * title/body fields are rendered as a basic title card.
- *
- * P2+ (when HF lands): swap <SlideView> for an iframe running the HF player
- * and drive `tl.time(localTime)` via rAF from the playhead.
+ * CRITICAL: CaptionLayer lives OUTSIDE the `transform: scale()` div so
+ * caption text renders at real viewport resolution (not shrunken). A
+ * gradient scrim behind the captions ensures legibility against any slide
+ * background.
  */
 import { useEffect, useRef, useState } from "react";
+
+import { CaptionLayer } from "@/features/captions/components/CaptionLayer";
+import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
+
 import { scaleToFit } from "./lib/scale";
 
 const SOURCE = { width: 1920, height: 1080 };
@@ -17,9 +19,13 @@ const SOURCE = { width: 1920, height: 1080 };
 export function StageCanvas({
 	slide,
 	localTime,
+	activeStart,
+	captionStyle,
 }: {
 	slide: SlideIndex | null;
 	localTime: number;
+	activeStart: number;
+	captionStyle: CaptionStyle;
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [scale, setScale] = useState(0.2);
@@ -43,7 +49,9 @@ export function StageCanvas({
 		<div
 			ref={containerRef}
 			className="relative flex h-full w-full items-center justify-center overflow-hidden bg-neutral-950"
+			style={{ containerType: "inline-size" }}
 		>
+			{/* Scaled slide canvas — 1920x1080 content */}
 			<div
 				className="absolute"
 				style={{
@@ -61,27 +69,38 @@ export function StageCanvas({
 					</div>
 				)}
 			</div>
+
+			{/* Caption overlay — OUTSIDE the scale, at viewport resolution */}
+			{slide && (
+				<>
+					<div
+						className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3"
+						style={{
+							background:
+								"linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
+						}}
+					/>
+					<CaptionLayer
+						slide={slide}
+						captionStyle={captionStyle}
+						activeStart={activeStart}
+					/>
+				</>
+			)}
 		</div>
 	);
 }
 
-/**
- * Static rendering of a slide's fields. P2 uses a basic title-card layout
- * derived from the slide's `title` and `body` fields. Real HF rendering
- * (with the slide's index.html + GSAP) lands later.
- */
 function SlideView({ slide }: { slide: SlideIndex }) {
 	const title = slide.fields.title ?? "";
 	const body = slide.fields.body ?? "";
-	const bg = "#0a0a14";
-	const accent = "#4ade80";
 
 	return (
 		<div
 			style={{
 				position: "absolute",
 				inset: 0,
-				background: bg,
+				background: "#0a0a14",
 				color: "white",
 				display: "flex",
 				flexDirection: "column",
@@ -92,7 +111,7 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 				fontFamily: "system-ui, sans-serif",
 			}}
 		>
-			{title ? (
+			{title && (
 				<h1
 					style={{
 						fontSize: 120,
@@ -104,8 +123,8 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 				>
 					{title}
 				</h1>
-			) : null}
-			{body ? (
+			)}
+			{body && (
 				<p
 					style={{
 						marginTop: 32,
@@ -117,19 +136,7 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 				>
 					{body}
 				</p>
-			) : null}
-			<div
-				style={{
-					position: "absolute",
-					bottom: 80,
-					fontSize: 24,
-					color: accent,
-					letterSpacing: "0.15em",
-					textTransform: "uppercase",
-				}}
-			>
-				OpenVideoKit
-			</div>
+			)}
 		</div>
 	);
 }

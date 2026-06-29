@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/tooltip";
 
 import { AIDock } from "@/features/ai/AIDock";
+import { CaptionControls } from "@/features/captions/components/CaptionControls";
+import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
 import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
 import { StageCanvas } from "@/features/stage/StageCanvas";
 import { TimelinePanel } from "@/features/timeline/TimelinePanel";
@@ -94,7 +96,12 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 				<ResizablePanel defaultSize={62}>
 					<ResizablePanelGroup direction="vertical" autoSaveId="ovk-vertical">
 						<ResizablePanel defaultSize={70} minSize={30}>
-							<StageCanvas slide={active.slide} localTime={active.localTime} />
+							<StageCanvas
+								slide={active.slide}
+								localTime={active.localTime}
+								activeStart={active.start}
+								captionStyle={project.root.theme.caption_style}
+							/>
 						</ResizablePanel>
 						<ResizableHandle />
 						<ResizablePanel defaultSize={3} minSize={3} maxSize={5}>
@@ -123,16 +130,25 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 								</TabsTrigger>
 							))}
 						</TabsList>
-						<TabsContent value="ai" className="m-0 flex-1 overflow-hidden">
+						<TabsContent
+							value="ai"
+							className="m-0 min-h-0 flex-1 overflow-hidden"
+						>
 							<AIDock slideId={active.slideId} />
 						</TabsContent>
-						<TabsContent value="props" className="m-0 flex-1 overflow-hidden">
+						<TabsContent
+							value="props"
+							className="m-0 min-h-0 flex-1 overflow-hidden"
+						>
 							<PropertiesPanel slide={active.slide} slideId={active.slideId} />
 						</TabsContent>
-						<TabsContent value="captions" className="m-0 flex-1">
-							<EmptySlot panel={getPanel("captions")} />
+						<TabsContent
+							value="captions"
+							className="m-0 min-h-0 flex-1 overflow-hidden"
+						>
+							<CaptionsPanel slide={active.slide} slideId={active.slideId} />
 						</TabsContent>
-						<TabsContent value="html" className="m-0 flex-1">
+						<TabsContent value="html" className="m-0 min-h-0 flex-1">
 							<EmptySlot panel={getPanel("html")} />
 						</TabsContent>
 					</Tabs>
@@ -195,5 +211,36 @@ function AssetsDialog({
 				<EmptySlot panel={getPanel("assets")} />
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+function CaptionsPanel({
+	slide,
+	slideId,
+}: {
+	slide: import("@/shared/api/schemas/slideIndex").SlideIndex | null;
+	slideId: string | null;
+}) {
+	if (!slide || !slideId) {
+		return (
+			<div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+				No active slide.
+			</div>
+		);
+	}
+	return (
+		<div className="flex h-full flex-col">
+			<header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2">
+				<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+					Captions
+				</h2>
+			</header>
+			<div className="flex-1 min-h-0 overflow-y-auto">
+				<div className="space-y-4 p-4">
+					<CaptionTextEditor slide={slide} slideId={slideId} />
+					<CaptionControls />
+				</div>
+			</div>
+		</div>
 	);
 }

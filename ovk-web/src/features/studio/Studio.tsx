@@ -8,9 +8,9 @@
  * Both layouts receive the same props so panel components are slot-agnostic
  * — only the topology differs.
  */
-
 import { Skeleton } from "@/components/ui/skeleton";
 import { cumulativeStarts } from "@/features/timeline/lib/cumulativeStarts";
+import { useVoiceover } from "@/features/voiceover/hooks/useVoiceover";
 import type { ProjectBundle } from "@/shared/api/client";
 import type { ActiveSlide } from "@/shared/api/queries/useActiveSlide";
 import { useActiveSlide } from "@/shared/api/queries/useActiveSlide";
@@ -19,6 +19,12 @@ import { useUndoRedo } from "@/shared/edit/useUndoRedo";
 import { useStudioLayout } from "@/shared/lib/useStudioLayout";
 import { usePlayhead } from "@/shared/store/playhead";
 import { usePlaybackClock } from "@/shared/store/usePlaybackClock";
+
+// Caption base CSS — one file driven by CSS custom properties from the
+// caption settings store. CI lint enforces no banned patterns on
+// .word--active.
+import "@/features/captions/styles/base.css";
+
 import { StudioDesktop } from "./StudioDesktop";
 import { StudioMobile } from "./StudioMobile";
 
@@ -28,6 +34,21 @@ export interface StudioData {
 	totalDuration: number;
 }
 
+const EMPTY_PROJECT: ProjectBundle = {
+	root: {
+		version: 1,
+		canvas: { width: 1920, height: 1080, fps: 30 },
+		theme: { caption_style: "highlight", colors: {}, fonts: {} },
+		audio: {
+			music: { asset: "", volume: 0, loop: false },
+			voiceover: { asset: "", auto_generated: false },
+		},
+		transition_default: { type: "", duration: 0 },
+		slides: [],
+	},
+	slides: {},
+};
+
 export function Studio({ projectId }: { projectId: string }) {
 	usePlaybackClock();
 	useUndoRedo(projectId);
@@ -35,22 +56,10 @@ export function Studio({ projectId }: { projectId: string }) {
 	const query = useProject(projectId);
 	const { data, isLoading, error } = query;
 
-	const active = useActiveSlide(
-		data ?? {
-			root: {
-				version: 1 as const,
-				canvas: { width: 1920, height: 1080, fps: 30 as const },
-				theme: { caption_style: "highlight", colors: {}, fonts: {} },
-				audio: {
-					music: { asset: "", volume: 0, loop: false },
-					voiceover: { asset: "", auto_generated: false },
-				},
-				transition_default: { type: "", duration: 0 },
-				slides: [],
-			},
-			slides: {},
-		},
-	);
+	// Re-measure slide durations whenever voiceover text changes (debounced).
+	useVoiceover(data ?? EMPTY_PROJECT);
+
+	const active = useActiveSlide(data ?? EMPTY_PROJECT);
 
 	// Keep the playhead duration in sync with the project's total so the
 	// TransportBar scrubber is bounded correctly.

@@ -1,22 +1,10 @@
 /**
  * PropertiesPanel — editable view of the active slide's index.json.
  *
- * Editing model: every field is a controlled input bound to local state.
- * On change we dispatch `setField` through the EditBus (debounced 200ms for
- * text so the studio doesn't re-render per keystroke; immediate for voice
- * and transition since those are discrete selects).
- *
- * When a real HF renderer + GSAP timelines land, switch to ref-write live
- * binding (useLiveBind) so the slide's animation state survives each edit.
+ * Text fields use local state + 200ms debounced dispatch to avoid
+ * re-rendering the studio per keystroke.
  */
-import {
-	CircleAlert,
-	Image as ImageIcon,
-	Mic,
-	Trash2,
-	Type,
-	Wand2,
-} from "lucide-react";
+import { Image as ImageIcon, Mic, Trash2, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -100,25 +88,6 @@ export function PropertiesPanel({
 				<Section icon={Mic} title="Voiceover">
 					<VoiceoverInput slideId={slideId} slide={slide} />
 				</Section>
-
-				<Section icon={Wand2} title="Transition">
-					{slide.transition ? (
-						<p className="text-xs text-foreground/90">
-							{slide.transition.type} · {slide.transition.duration}s
-						</p>
-					) : (
-						<p className="text-xs text-muted-foreground">
-							Inherits root default.
-						</p>
-					)}
-				</Section>
-
-				<div className="flex items-center gap-2 rounded-md border border-dashed border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
-					<CircleAlert className="size-3 shrink-0" />
-					<span>
-						Duration is measured — P4 wires the voiceover → TTS pipeline.
-					</span>
-				</div>
 			</div>
 		</div>
 	);
@@ -156,12 +125,10 @@ function FieldInput({
 	const { dispatch } = useEditBus();
 	const [value, setValue] = useState(initialValue);
 
-	// Sync external → local when the slide (or field) changes.
 	useEffect(() => {
 		setValue(initialValue);
 	}, [initialValue]);
 
-	// Debounced dispatch — 200ms after the last keystroke.
 	useEffect(() => {
 		if (value === initialValue) return;
 		const t = setTimeout(() => {
