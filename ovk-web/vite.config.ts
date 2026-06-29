@@ -1,5 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
-import { devtools } from "@tanstack/devtools-vite";
+// import { devtools } from "@tanstack/devtools-vite";
 
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
@@ -9,7 +9,7 @@ import { defineConfig } from "vite";
 const config = defineConfig({
 	resolve: { tsconfigPaths: true },
 	plugins: [
-		devtools(),
+		// devtools(),  // auto-injects the floating TanStack devtools button — re-enable when needed
 		tailwindcss(),
 		tanstackRouter({ target: "react", autoCodeSplitting: true }),
 		viteReact(),

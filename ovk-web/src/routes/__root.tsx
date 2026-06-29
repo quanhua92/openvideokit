@@ -1,11 +1,10 @@
-import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRoute } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
 import { AppShell } from "@/app/layout/AppShell";
 import { QueryProvider } from "@/app/providers/QueryProvider";
 import { RendererProvider } from "@/app/providers/RendererProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "../styles.css";
 
@@ -17,17 +16,10 @@ function RootComponent() {
 	return (
 		<QueryProvider>
 			<RendererProvider>
-				<AppShell />
-				<Toaster />
-				<TanStackDevtools
-					config={{ position: "bottom-right" }}
-					plugins={[
-						{
-							name: "TanStack Router",
-							render: <TanStackRouterDevtoolsPanel />,
-						},
-					]}
-				/>
+				<TooltipProvider delayDuration={200}>
+					<AppShell />
+					<Toaster />
+				</TooltipProvider>
 			</RendererProvider>
 		</QueryProvider>
 	);
