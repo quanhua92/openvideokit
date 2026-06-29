@@ -84,8 +84,8 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
 		}
 
 		case "setSlideHtml": {
-			// P5 will own HTML storage; for now the op was a no-op, so is its inverse.
-			return null;
+			const prev = before.slideHtml?.[op.slideId] ?? "";
+			return { kind: "setSlideHtml", slideId: op.slideId, html: prev };
 		}
 	}
 }

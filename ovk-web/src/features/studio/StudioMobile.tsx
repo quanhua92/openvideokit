@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { AIDock } from "@/features/ai/AIDock";
 import { CaptionControls } from "@/features/captions/components/CaptionControls";
 import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
+import { HtmlEditor } from "@/features/html-editor/HtmlEditor";
 import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
 import { StageCanvas } from "@/features/stage/StageCanvas";
 import { TimelinePanel } from "@/features/timeline/TimelinePanel";
@@ -77,7 +78,16 @@ export function StudioMobile({ data }: { data: StudioData }) {
 					/>
 				)}
 				{active === "timeline" && <TimelinePanel project={project} />}
-				{active === "html" && <EmptySlot panel={getPanel("html")} />}
+				{active === "html" && activeSlide.slideId && (
+					<HtmlEditor
+						key={activeSlide.slideId}
+						slideId={activeSlide.slideId}
+						prior={project.slideHtml[activeSlide.slideId] ?? ""}
+					/>
+				)}
+				{active === "html" && !activeSlide.slideId && (
+					<EmptySlot panel={getPanel("html")} />
+				)}
 				{active === "assets" && <EmptySlot panel={getPanel("assets")} />}
 				{active === "captions" && activeSlide.slide && (
 					<div className="h-full overflow-y-auto">

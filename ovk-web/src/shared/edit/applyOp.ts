@@ -176,10 +176,13 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
 		}
 
 		case "setSlideHtml": {
-			// P5: slide HTML lives in a side map (not in the ProjectBundle).
-			// No-op here so dispatch can be called; P5 stores the HTML where
-			// the HtmlEditor can read it.
-			return project;
+			return {
+				...project,
+				slideHtml: {
+					...project.slideHtml,
+					[op.slideId]: op.html,
+				},
+			};
 		}
 	}
 }

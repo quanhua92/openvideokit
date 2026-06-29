@@ -37,6 +37,7 @@ import {
 import { AIDock } from "@/features/ai/AIDock";
 import { CaptionControls } from "@/features/captions/components/CaptionControls";
 import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
+import { HtmlEditor } from "@/features/html-editor/HtmlEditor";
 import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
 import { StageCanvas } from "@/features/stage/StageCanvas";
 import { TimelinePanel } from "@/features/timeline/TimelinePanel";
@@ -148,8 +149,19 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 						>
 							<CaptionsPanel slide={active.slide} slideId={active.slideId} />
 						</TabsContent>
-						<TabsContent value="html" className="m-0 min-h-0 flex-1">
-							<EmptySlot panel={getPanel("html")} />
+						<TabsContent
+							value="html"
+							className="m-0 min-h-0 flex-1 overflow-hidden"
+						>
+							{active.slideId ? (
+								<HtmlEditor
+									key={active.slideId}
+									slideId={active.slideId}
+									prior={project.slideHtml[active.slideId] ?? ""}
+								/>
+							) : (
+								<EmptySlot panel={getPanel("html")} />
+							)}
 						</TabsContent>
 					</Tabs>
 				</ResizablePanel>

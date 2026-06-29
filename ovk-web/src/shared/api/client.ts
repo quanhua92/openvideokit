@@ -15,14 +15,15 @@ const API_BASE = "/api";
 export interface ProjectBundle {
 	root: RootIndex;
 	slides: Record<string, SlideIndex>;
+	slideHtml: Record<string, string>;
 }
 
-/** Inner parse: the /projects/:id response is { root, slides }. */
+/** Inner parse: the /projects/:id response is { root, slides, slideHtml }. */
 function parseProjectBundle(raw: unknown): ProjectBundle {
 	if (typeof raw !== "object" || raw === null) {
 		throw new Error("project bundle is not an object");
 	}
-	const { root, slides } = raw as Record<string, unknown>;
+	const { root, slides, slideHtml } = raw as Record<string, unknown>;
 	if (slides === null || slides === undefined) {
 		throw new Error("project bundle missing 'slides' field");
 	}
@@ -33,6 +34,7 @@ function parseProjectBundle(raw: unknown): ProjectBundle {
 				([id, slide]) => [id, SlideIndexSchema.parse(slide)] as const,
 			),
 		),
+		slideHtml: (slideHtml as Record<string, string> | undefined) ?? {},
 	};
 }
 
