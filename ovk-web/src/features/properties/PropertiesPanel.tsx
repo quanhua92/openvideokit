@@ -4,16 +4,22 @@
  * Text fields use local state + 200ms debounced dispatch to avoid
  * re-rendering the studio per keystroke.
  */
-import { Image as ImageIcon, Mic, Trash2, Type } from "lucide-react";
+import { Image as ImageIcon, Mic, Trash2, Type, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AssetDropzone } from "@/features/assets/components/AssetDropzone";
+import { useAssetUrl } from "@/features/assets/hooks/useAssetUrl";
 import { cn } from "@/lib/utils";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
-import { removeSlide, setField, setVoiceover } from "@/shared/edit/ops";
+import {
+	removeSlide,
+	setAsset,
+	setField,
+	setVoiceover,
+} from "@/shared/edit/ops";
 
 export function PropertiesPanel({
 	slide,
@@ -56,7 +62,7 @@ export function PropertiesPanel({
 					</Button>
 				</div>
 			</header>
-			<div className="flex-1 space-y-4 overflow-auto p-4">
+			<div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
 				<Section icon={Type} title="Fields">
 					<div className="space-y-2">
 						{Object.entries(slide.fields).map(([id, value]) => (
@@ -71,24 +77,72 @@ export function PropertiesPanel({
 				</Section>
 
 				<Section icon={ImageIcon} title="Assets">
-					{Object.keys(slide.assets).length === 0 ? (
-						<p className="text-xs text-muted-foreground">No assets.</p>
-					) : (
-						<ul className="space-y-1 font-mono text-[11px] text-muted-foreground">
-							{Object.entries(slide.assets).map(([id, ref]) => (
-								<li key={id} className="truncate">
-									<span className="text-foreground">{id}</span>:{" "}
-									{ref.slice(0, 20)}…
-								</li>
-							))}
-						</ul>
-					)}
+					<AssetFieldPreview
+						slideId={slideId}
+						fieldId="img"
+						currentRef={slide.assets.img}
+					/>
 				</Section>
 
 				<Section icon={Mic} title="Voiceover">
 					<VoiceoverInput slideId={slideId} slide={slide} />
 				</Section>
 			</div>
+		</div>
+	);
+}
+
+/**
+ * Shows the current image for an asset field with thumbnail preview,
+ * a remove button, and a dropzone to replace it.
+ */
+function AssetFieldPreview({
+	slideId,
+	fieldId,
+	currentRef,
+}: {
+	slideId: string;
+	fieldId: string;
+	currentRef?: string;
+}) {
+	const { dispatch } = useEditBus();
+	const imgUrl = useAssetUrl(currentRef);
+
+	if (!currentRef || !imgUrl) {
+		return (
+			<div className="space-y-1.5">
+				<p className="text-xs text-muted-foreground">No image set.</p>
+				<AssetDropzone slideId={slideId} fieldId={fieldId} />
+			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-2">
+			<div className="relative overflow-hidden rounded-md border border-border">
+				<img
+					src={imgUrl}
+					alt={currentRef}
+					className="aspect-video w-full object-cover"
+				/>
+				<button
+					type="button"
+					onClick={() => {
+						dispatch(setAsset(slideId, fieldId, ""));
+						toast.success("Image removed");
+					}}
+					className="absolute right-1 top-1 rounded bg-destructive/90 p-1 text-white transition hover:bg-destructive"
+					aria-label="Remove image"
+				>
+					<X className="size-3" />
+				</button>
+				<div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
+					<p className="truncate font-mono text-[8px] text-white/70">
+						{fieldId}: {currentRef.slice(7, 19)}…
+					</p>
+				</div>
+			</div>
+			<AssetDropzone slideId={slideId} fieldId={fieldId} />
 		</div>
 	);
 }

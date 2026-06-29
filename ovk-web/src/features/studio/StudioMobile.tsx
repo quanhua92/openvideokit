@@ -19,6 +19,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AIDock } from "@/features/ai/AIDock";
+import { AssetLibrary } from "@/features/assets/components/AssetLibrary";
 import { CaptionControls } from "@/features/captions/components/CaptionControls";
 import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
 import { HtmlEditor } from "@/features/html-editor/HtmlEditor";
@@ -88,7 +89,11 @@ export function StudioMobile({ data }: { data: StudioData }) {
 				{active === "html" && !activeSlide.slideId && (
 					<EmptySlot panel={getPanel("html")} />
 				)}
-				{active === "assets" && <EmptySlot panel={getPanel("assets")} />}
+				{active === "assets" && (
+					<div className="h-full">
+						<AssetLibrary slideId={activeSlide.slideId ?? "slide-0"} />
+					</div>
+				)}
 				{active === "captions" && activeSlide.slide && (
 					<div className="h-full overflow-y-auto">
 						<div className="space-y-4 p-4">

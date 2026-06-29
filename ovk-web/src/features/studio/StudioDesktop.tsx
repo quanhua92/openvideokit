@@ -33,8 +33,8 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-
 import { AIDock } from "@/features/ai/AIDock";
+import { AssetLibrary } from "@/features/assets/components/AssetLibrary";
 import { CaptionControls } from "@/features/captions/components/CaptionControls";
 import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
 import { HtmlEditor } from "@/features/html-editor/HtmlEditor";
@@ -167,7 +167,11 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 				</ResizablePanel>
 			</ResizablePanelGroup>
 
-			<AssetsDialog open={assetsOpen} onOpenChange={setAssetsOpen} />
+			<AssetsDialog
+				open={assetsOpen}
+				onOpenChange={setAssetsOpen}
+				slideId={active.slideId ?? "slide-0"}
+			/>
 			{/* Total duration surfaced for parity with mobile; unused at runtime. */}
 			<input type="hidden" value={totalDuration} readOnly />
 		</div>
@@ -205,9 +209,11 @@ function RailButton({
 function AssetsDialog({
 	open,
 	onOpenChange,
+	slideId,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	slideId: string;
 }) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,7 +226,9 @@ function AssetsDialog({
 						</span>
 					</DialogTitle>
 				</DialogHeader>
-				<EmptySlot panel={getPanel("assets")} />
+				<div className="h-[60vh]">
+					<AssetLibrary slideId={slideId} />
+				</div>
 			</DialogContent>
 		</Dialog>
 	);

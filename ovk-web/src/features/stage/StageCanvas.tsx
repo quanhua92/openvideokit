@@ -5,9 +5,12 @@
  * caption text renders at real viewport resolution (not shrunken). A
  * gradient scrim behind the captions ensures legibility against any slide
  * background.
+ *
+ * Slide images: loaded from IndexedDB by SHA-256 ref via useAssetUrl,
+ * displayed as a cover background behind the title/body text.
  */
 import { useEffect, useRef, useState } from "react";
-
+import { useAssetUrl } from "@/features/assets/hooks/useAssetUrl";
 import { CaptionLayer } from "@/features/captions/components/CaptionLayer";
 import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
@@ -94,13 +97,16 @@ export function StageCanvas({
 function SlideView({ slide }: { slide: SlideIndex }) {
 	const title = slide.fields.title ?? "";
 	const body = slide.fields.body ?? "";
+	const imgUrl = useAssetUrl(slide.assets.img);
 
 	return (
 		<div
 			style={{
 				position: "absolute",
 				inset: 0,
-				background: "#0a0a14",
+				background: imgUrl
+					? `url(${imgUrl}) center / cover no-repeat`
+					: "#0a0a14",
 				color: "white",
 				display: "flex",
 				flexDirection: "column",
@@ -111,32 +117,45 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 				fontFamily: "system-ui, sans-serif",
 			}}
 		>
-			{title && (
-				<h1
+			{/* Dark gradient overlay so text stays readable over images */}
+			{imgUrl && (
+				<div
 					style={{
-						fontSize: 120,
-						fontWeight: 800,
-						margin: 0,
-						lineHeight: 1.1,
-						letterSpacing: "-0.02em",
+						position: "absolute",
+						inset: 0,
+						background:
+							"linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.8) 100%)",
 					}}
-				>
-					{title}
-				</h1>
+				/>
 			)}
-			{body && (
-				<p
-					style={{
-						marginTop: 32,
-						fontSize: 40,
-						color: "rgba(255,255,255,0.7)",
-						lineHeight: 1.4,
-						maxWidth: "70%",
-					}}
-				>
-					{body}
-				</p>
-			)}
+			<div style={{ position: "relative", zIndex: 1 }}>
+				{title && (
+					<h1
+						style={{
+							fontSize: 120,
+							fontWeight: 800,
+							margin: 0,
+							lineHeight: 1.1,
+							letterSpacing: "-0.02em",
+						}}
+					>
+						{title}
+					</h1>
+				)}
+				{body && (
+					<p
+						style={{
+							marginTop: 32,
+							fontSize: 40,
+							color: "rgba(255,255,255,0.8)",
+							lineHeight: 1.4,
+							maxWidth: "70%",
+						}}
+					>
+						{body}
+					</p>
+				)}
+			</div>
 		</div>
 	);
 }

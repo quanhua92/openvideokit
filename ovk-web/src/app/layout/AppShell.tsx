@@ -5,14 +5,14 @@
  *
  * Overflow menu contains:
  *   - Recent projects (link to overview)
- *   - Export (disabled pending later phase)
+ *   - Export (opens ExportDialog)
  *   - Theme submenu (Light / Dark / System) — quick access
  *   - Settings link (full preferences page)
  */
 
 import { Link, Outlet } from "@tanstack/react-router";
 import { Clapperboard, MoreHorizontal } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -25,6 +25,7 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ExportDialog } from "@/features/export/components/ExportDialog";
 import { FIXTURE_PROJECT_ID } from "@/shared/api/msw/fixtures";
 import type { Theme } from "@/shared/lib/theme";
 import { useTheme } from "@/shared/lib/useTheme";
@@ -39,6 +40,8 @@ const THEME_OPTIONS: ReadonlyArray<{ value: Theme; label: string }> = [
 ];
 
 export function AppShell({ children }: { children?: ReactNode }) {
+	const [exportOpen, setExportOpen] = useState(false);
+
 	return (
 		<div className="flex h-svh flex-col bg-background text-foreground">
 			<header className="flex h-12 items-center justify-between border-b border-border px-4">
@@ -46,14 +49,15 @@ export function AppShell({ children }: { children?: ReactNode }) {
 					<Clapperboard className="size-5" />
 					<span className="text-sm font-semibold">OpenVideoKit</span>
 				</div>
-				<OverflowMenu />
+				<OverflowMenu onExport={() => setExportOpen(true)} />
 			</header>
 			<main className="flex-1 overflow-hidden">{children ?? <Outlet />}</main>
+			<ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
 		</div>
 	);
 }
 
-function OverflowMenu() {
+function OverflowMenu({ onExport }: { onExport: () => void }) {
 	const { theme, setTheme } = useTheme();
 
 	return (
@@ -72,7 +76,9 @@ function OverflowMenu() {
 				</DropdownMenuItem>
 				<DropdownMenuItem disabled>More soon…</DropdownMenuItem>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem disabled>Export</DropdownMenuItem>
+				<DropdownMenuItem onClick={onExport} className="cursor-pointer">
+					Export
+				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuSub>
 					<DropdownMenuSubTrigger>
