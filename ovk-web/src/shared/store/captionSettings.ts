@@ -27,6 +27,8 @@ export interface CaptionCustomSettings {
 	pill: boolean;
 	/** Text-shadow on base word for legibility against busy video. */
 	shadow: boolean;
+	/** Bottom gradient scrim for caption legibility. */
+	scrim: boolean;
 	/** Letter-spacing in em. */
 	letterSpacing: number;
 	/** Font scale multiplier (0.5–1.5). */
@@ -43,6 +45,7 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 		pill: true,
 		shadow: false,
 		letterSpacing: -0.02,
+		scrim: false,
 		fontScale: 1,
 	},
 	neon: {
@@ -51,9 +54,10 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 		dimOpacity: 0.25,
 		fontWeight: 700,
 		glow: 0.8,
-		pill: false,
+		pill: true,
 		shadow: true,
 		letterSpacing: 0.01,
+		scrim: false,
 		fontScale: 1,
 	},
 	editorial: {
@@ -62,9 +66,10 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 		dimOpacity: 0.32,
 		fontWeight: 400,
 		glow: 0,
-		pill: false,
+		pill: true,
 		shadow: true,
 		letterSpacing: -0.01,
+		scrim: false,
 		fontScale: 1,
 	},
 	"eco-green": {
@@ -73,9 +78,10 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 		dimOpacity: 0.3,
 		fontWeight: 800,
 		glow: 0.5,
-		pill: false,
+		pill: true,
 		shadow: true,
 		letterSpacing: -0.01,
+		scrim: false,
 		fontScale: 1,
 	},
 };

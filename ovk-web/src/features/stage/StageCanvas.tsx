@@ -14,6 +14,7 @@ import { useAssetUrl } from "@/features/assets/hooks/useAssetUrl";
 import { CaptionLayer } from "@/features/captions/components/CaptionLayer";
 import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
+import { useCaptionSettings } from "@/shared/store/captionSettings";
 
 import { scaleToFit } from "./lib/scale";
 
@@ -32,6 +33,7 @@ export function StageCanvas({
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [scale, setScale] = useState(0.2);
+	const { custom: captionCustom } = useCaptionSettings();
 
 	useEffect(() => {
 		const el = containerRef.current;
@@ -73,16 +75,19 @@ export function StageCanvas({
 				)}
 			</div>
 
-			{/* Caption overlay — OUTSIDE the scale, at viewport resolution */}
-			{slide && (
+			{/* Caption overlay — OUTSIDE the scale, at viewport resolution.
+				    Scrim only renders when captions exist AND the user has it on. */}
+			{slide && slide.voiceover.text.trim() && (
 				<>
-					<div
-						className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3"
-						style={{
-							background:
-								"linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-						}}
-					/>
+					{captionCustom.scrim && (
+						<div
+							className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4"
+							style={{
+								background:
+									"linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)",
+							}}
+						/>
+					)}
 					<CaptionLayer
 						slide={slide}
 						captionStyle={captionStyle}
@@ -97,6 +102,7 @@ export function StageCanvas({
 function SlideView({ slide }: { slide: SlideIndex }) {
 	const title = slide.fields.title ?? "";
 	const body = slide.fields.body ?? "";
+	const bgColor = slide.fields.bg ?? "#0a0a14";
 	const imgUrl = useAssetUrl(slide.assets.img);
 
 	return (
@@ -106,7 +112,7 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 				inset: 0,
 				background: imgUrl
 					? `url(${imgUrl}) center / cover no-repeat`
-					: "#0a0a14",
+					: bgColor,
 				color: "white",
 				display: "flex",
 				flexDirection: "column",

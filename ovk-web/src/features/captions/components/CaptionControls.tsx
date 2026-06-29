@@ -148,6 +148,11 @@ export function CaptionControls() {
 					checked={custom.shadow}
 					onChange={(v) => patch({ shadow: v })}
 				/>
+				<Toggle
+					label="Scrim"
+					checked={custom.scrim}
+					onChange={(v) => patch({ scrim: v })}
+				/>
 			</div>
 		</div>
 	);

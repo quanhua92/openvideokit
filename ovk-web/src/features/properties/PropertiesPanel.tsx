@@ -4,7 +4,14 @@
  * Text fields use local state + 200ms debounced dispatch to avoid
  * re-rendering the studio per keystroke.
  */
-import { Image as ImageIcon, Mic, Trash2, Type, X } from "lucide-react";
+import {
+	Image as ImageIcon,
+	Mic,
+	Palette,
+	Trash2,
+	Type,
+	X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -65,15 +72,24 @@ export function PropertiesPanel({
 			<div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
 				<Section icon={Type} title="Fields">
 					<div className="space-y-2">
-						{Object.entries(slide.fields).map(([id, value]) => (
-							<FieldInput
-								key={id}
-								slideId={slideId}
-								fieldId={id}
-								initialValue={value}
-							/>
-						))}
+						{Object.entries(slide.fields)
+							.filter(([id]) => id !== "bg")
+							.map(([id, value]) => (
+								<FieldInput
+									key={id}
+									slideId={slideId}
+									fieldId={id}
+									initialValue={value}
+								/>
+							))}
 					</div>
+				</Section>
+
+				<Section icon={Palette} title="Background">
+					<BackgroundPicker
+						slideId={slideId}
+						value={slide.fields.bg ?? "#0a0a14"}
+					/>
 				</Section>
 
 				<Section icon={ImageIcon} title="Assets">
@@ -252,6 +268,67 @@ function VoiceoverInput({
 			<p className="font-mono text-[10px] text-muted-foreground">
 				{slide.voiceover.voice}
 			</p>
+		</div>
+	);
+}
+
+const BG_SWATCHES = [
+	"#0a0a14",
+	"#1a1a2e",
+	"#0f3460",
+	"#533483",
+	"#e94560",
+	"#2d6a4f",
+	"#f39c12",
+	"#06b6d4",
+	"#8b5cf6",
+	"#2c3e50",
+	"#7c2d12",
+	"#0a0a0a",
+];
+
+function BackgroundPicker({
+	slideId,
+	value,
+}: {
+	slideId: string;
+	value: string;
+}) {
+	const { dispatch } = useEditBus();
+
+	return (
+		<div className="space-y-2">
+			<div className="flex items-center gap-2">
+				<input
+					type="color"
+					value={value}
+					onChange={(e) => dispatch(setField(slideId, "bg", e.target.value))}
+					className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
+				/>
+				<input
+					type="text"
+					value={value}
+					onChange={(e) => dispatch(setField(slideId, "bg", e.target.value))}
+					className="h-7 w-20 rounded border border-border bg-background px-2 font-mono text-xs"
+				/>
+			</div>
+			<div className="flex flex-wrap gap-1">
+				{BG_SWATCHES.map((c) => (
+					<button
+						key={c}
+						type="button"
+						onClick={() => dispatch(setField(slideId, "bg", c))}
+						className={cn(
+							"size-5 rounded-full border transition",
+							value.toLowerCase() === c.toLowerCase()
+								? "border-foreground ring-1 ring-foreground"
+								: "border-border",
+						)}
+						style={{ backgroundColor: c }}
+						aria-label={`Background ${c}`}
+					/>
+				))}
+			</div>
 		</div>
 	);
 }
