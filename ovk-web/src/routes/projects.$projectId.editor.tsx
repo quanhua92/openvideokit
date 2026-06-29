@@ -7,5 +7,6 @@ export const Route = createFileRoute("/projects/$projectId/editor")({
 });
 
 function EditorRoute() {
-	return <Studio />;
+	const { projectId } = Route.useParams();
+	return <Studio projectId={projectId} />;
 }

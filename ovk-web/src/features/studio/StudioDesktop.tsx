@@ -1,9 +1,9 @@
 /**
- * StudioDesktop — 4-zone layout for ≥1024px.
+ * StudioDesktop — 4-zone layout for ≥1024px (or forced via Settings).
  *
  *   ┌─────┬───────────────┬────────────┐
  *   │ Rail│   Stage       │ Right Tabs │
- *   │     │               │  Props     │
+ *   │     │  (StageCanvas)│  Props     │
  *   │  ◧  │               │  HTML      │
  *   │  ⌨  │               │  Captions  │
  *   │  💬 │               │  AI        │
@@ -12,9 +12,6 @@
  *   │     ├───────────────┤            │
  *   │     │  Timeline     │            │
  *   └─────┴───────────────┴────────────┘
- *
- * Rail: icon-only nav; clicking a panel icon either switches the right
- * Tabs (props/html/captions/ai) or opens a Dialog (assets).
  */
 import { Images } from "lucide-react";
 import { useState } from "react";
@@ -37,22 +34,27 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { AIDock } from "@/features/ai/AIDock";
+import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
+import { StageCanvas } from "@/features/stage/StageCanvas";
+import { TimelinePanel } from "@/features/timeline/TimelinePanel";
 import { EmptySlot } from "./EmptySlot";
 import { getPanel, PANELS, type PanelDescriptor, type PanelId } from "./panels";
+import type { StudioData } from "./Studio";
 import { TransportBar } from "./TransportBar";
 
 const RIGHT_TAB_PANELS = PANELS.filter((p) =>
 	["props", "html", "captions", "ai"].includes(p.id),
 );
 
-export function StudioDesktop() {
-	const [activeTab, setActiveTab] = useState<PanelId>("props");
+export function StudioDesktop({ data }: { data: StudioData }) {
+	const [activeTab, setActiveTab] = useState<PanelId>("ai");
 	const [assetsOpen, setAssetsOpen] = useState(false);
+	const { project, active, totalDuration } = data;
 
 	return (
 		<div className="flex h-full flex-col">
 			<ResizablePanelGroup direction="horizontal" autoSaveId="ovk-horizontal">
-				{/* Rail */}
 				<ResizablePanel
 					defaultSize={8}
 					minSize={5}
@@ -60,14 +62,14 @@ export function StudioDesktop() {
 					className="flex flex-col items-center gap-1 border-r border-border bg-muted/30 py-2"
 				>
 					<RailButton
+						panel={getPanel("ai")}
+						active={activeTab === "ai"}
+						onClick={() => setActiveTab("ai")}
+					/>
+					<RailButton
 						panel={getPanel("props")}
 						active={activeTab === "props"}
 						onClick={() => setActiveTab("props")}
-					/>
-					<RailButton
-						panel={getPanel("html")}
-						active={activeTab === "html"}
-						onClick={() => setActiveTab("html")}
 					/>
 					<RailButton
 						panel={getPanel("captions")}
@@ -75,9 +77,9 @@ export function StudioDesktop() {
 						onClick={() => setActiveTab("captions")}
 					/>
 					<RailButton
-						panel={getPanel("ai")}
-						active={activeTab === "ai"}
-						onClick={() => setActiveTab("ai")}
+						panel={getPanel("html")}
+						active={activeTab === "html"}
+						onClick={() => setActiveTab("html")}
 					/>
 					<div className="my-1 h-px w-6 bg-border" />
 					<RailButton
@@ -89,11 +91,10 @@ export function StudioDesktop() {
 
 				<ResizableHandle />
 
-				{/* Middle: stage + transport + timeline (vertical) */}
 				<ResizablePanel defaultSize={62}>
 					<ResizablePanelGroup direction="vertical" autoSaveId="ovk-vertical">
 						<ResizablePanel defaultSize={70} minSize={30}>
-							<StagePlaceholder />
+							<StageCanvas slide={active.slide} localTime={active.localTime} />
 						</ResizablePanel>
 						<ResizableHandle />
 						<ResizablePanel defaultSize={3} minSize={3} maxSize={5}>
@@ -101,14 +102,13 @@ export function StudioDesktop() {
 						</ResizablePanel>
 						<ResizableHandle />
 						<ResizablePanel defaultSize={27} minSize={10}>
-							<EmptySlot panel={getPanel("timeline")} />
+							<TimelinePanel project={project} />
 						</ResizablePanel>
 					</ResizablePanelGroup>
 				</ResizablePanel>
 
 				<ResizableHandle />
 
-				{/* Right: Tabs (Props / HTML / Captions / AI) */}
 				<ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
 					<Tabs
 						value={activeTab}
@@ -123,16 +123,25 @@ export function StudioDesktop() {
 								</TabsTrigger>
 							))}
 						</TabsList>
-						{RIGHT_TAB_PANELS.map((p) => (
-							<TabsContent key={p.id} value={p.id} className="m-0 flex-1">
-								<EmptySlot panel={p} />
-							</TabsContent>
-						))}
+						<TabsContent value="ai" className="m-0 flex-1 overflow-hidden">
+							<AIDock slideId={active.slideId} />
+						</TabsContent>
+						<TabsContent value="props" className="m-0 flex-1 overflow-hidden">
+							<PropertiesPanel slide={active.slide} />
+						</TabsContent>
+						<TabsContent value="captions" className="m-0 flex-1">
+							<EmptySlot panel={getPanel("captions")} />
+						</TabsContent>
+						<TabsContent value="html" className="m-0 flex-1">
+							<EmptySlot panel={getPanel("html")} />
+						</TabsContent>
 					</Tabs>
 				</ResizablePanel>
 			</ResizablePanelGroup>
 
 			<AssetsDialog open={assetsOpen} onOpenChange={setAssetsOpen} />
+			{/* Total duration surfaced for parity with mobile; unused at runtime. */}
+			<input type="hidden" value={totalDuration} readOnly />
 		</div>
 	);
 }
@@ -162,19 +171,6 @@ function RailButton({
 			</TooltipTrigger>
 			<TooltipContent side="right">{panel.label}</TooltipContent>
 		</Tooltip>
-	);
-}
-
-function StagePlaceholder() {
-	return (
-		<div className="flex h-full items-center justify-center bg-neutral-100 dark:bg-neutral-900">
-			<div className="text-center">
-				<p className="text-sm font-semibold">Stage</p>
-				<p className="mt-1 text-xs text-muted-foreground">
-					HF renderer wires in P2.
-				</p>
-			</div>
-		</div>
 	);
 }
 

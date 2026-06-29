@@ -29,12 +29,12 @@ export interface PanelDescriptor {
 }
 
 export const PANELS: ReadonlyArray<PanelDescriptor> = [
+	{ id: "ai", label: "AI", icon: Sparkles, landsIn: "P6" },
 	{ id: "props", label: "Props", icon: LayoutPanelLeft, landsIn: "P3" },
 	{ id: "timeline", label: "Timeline", icon: Clapperboard, landsIn: "P3" },
+	{ id: "captions", label: "Captions", icon: MessageSquare, landsIn: "P4" },
 	{ id: "html", label: "HTML", icon: Braces, landsIn: "P5" },
 	{ id: "assets", label: "Assets", icon: Images, landsIn: "P7" },
-	{ id: "captions", label: "Captions", icon: MessageSquare, landsIn: "P4" },
-	{ id: "ai", label: "AI", icon: Sparkles, landsIn: "P6" },
 ];
 
 /** Look up a panel by id. Throws at module load if the PANELS table is missing an entry. */

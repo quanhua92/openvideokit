@@ -1,34 +1,30 @@
 /**
  * RendererProvider — DI seam for the SlideRenderer interface (RFC §9).
  *
- * P0 ships an EMPTY stub. No editor file imports HyperFrames directly;
- * every consumer goes through useSlideRenderer(). P2 swaps in a real HF impl.
+ * P2 wires a MockRenderer that satisfies the contract without pulling in
+ * HyperFrames. P6+ swaps in a real HF impl behind the same interface.
  */
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 
-export interface SlideRenderer {
-	readonly backend: string;
-}
+import { MockRenderer } from "@/shared/renderer/MockRenderer";
 
-/** P0 stub — replaced by HfRenderer in P2. */
-const STUB_RENDERER: SlideRenderer = { backend: "stub-p0" };
+import type { SlideRenderer } from "@/shared/renderer/types";
 
-const SlideRendererContext = createContext<SlideRenderer>(STUB_RENDERER);
+const SlideRendererContext = createContext<SlideRenderer | null>(null);
 
-export function RendererProvider({
-	value,
-	children,
-}: {
-	value?: SlideRenderer;
-	children: ReactNode;
-}) {
+export function RendererProvider({ children }: { children: ReactNode }) {
+	const renderer = useMemo(() => new MockRenderer(), []);
 	return (
-		<SlideRendererContext.Provider value={value ?? STUB_RENDERER}>
+		<SlideRendererContext.Provider value={renderer}>
 			{children}
 		</SlideRendererContext.Provider>
 	);
 }
 
 export function useSlideRenderer(): SlideRenderer {
-	return useContext(SlideRendererContext);
+	const renderer = useContext(SlideRendererContext);
+	if (!renderer) {
+		throw new Error("useSlideRenderer must be used inside <RendererProvider>");
+	}
+	return renderer;
 }
