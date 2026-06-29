@@ -127,7 +127,7 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 							<AIDock slideId={active.slideId} />
 						</TabsContent>
 						<TabsContent value="props" className="m-0 flex-1 overflow-hidden">
-							<PropertiesPanel slide={active.slide} />
+							<PropertiesPanel slide={active.slide} slideId={active.slideId} />
 						</TabsContent>
 						<TabsContent value="captions" className="m-0 flex-1">
 							<EmptySlot panel={getPanel("captions")} />

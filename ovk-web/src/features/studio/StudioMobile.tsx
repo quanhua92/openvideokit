@@ -66,7 +66,12 @@ export function StudioMobile({ data }: { data: StudioData }) {
 			<TransportBar />
 
 			<div className="flex-1 overflow-hidden border-t border-border">
-				{active === "props" && <PropertiesPanel slide={activeSlide.slide} />}
+				{active === "props" && (
+					<PropertiesPanel
+						slide={activeSlide.slide}
+						slideId={activeSlide.slideId}
+					/>
+				)}
 				{active === "timeline" && <TimelinePanel project={project} />}
 				{active === "html" && <EmptySlot panel={getPanel("html")} />}
 				{active === "assets" && <EmptySlot panel={getPanel("assets")} />}

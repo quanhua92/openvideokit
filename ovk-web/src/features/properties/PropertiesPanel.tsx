@@ -1,23 +1,42 @@
 /**
- * PropertiesPanel — read-only view of the active slide's index.json.
+ * PropertiesPanel — editable view of the active slide's index.json.
  *
- * P3 flips the fields editable; P2 just displays them so the data flow is
- * visible end-to-end.
+ * Editing model: every field is a controlled input bound to local state.
+ * On change we dispatch `setField` through the EditBus (debounced 200ms for
+ * text so the studio doesn't re-render per keystroke; immediate for voice
+ * and transition since those are discrete selects).
+ *
+ * When a real HF renderer + GSAP timelines land, switch to ref-write live
+ * binding (useLiveBind) so the slide's animation state survives each edit.
  */
 import {
 	CircleAlert,
 	Image as ImageIcon,
 	Mic,
+	Trash2,
 	Type,
 	Wand2,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
+import { useEditBus } from "@/shared/edit/EditBusProvider";
+import { removeSlide, setField, setVoiceover } from "@/shared/edit/ops";
 
-export function PropertiesPanel({ slide }: { slide: SlideIndex | null }) {
-	if (!slide) {
+export function PropertiesPanel({
+	slide,
+	slideId,
+}: {
+	slide: SlideIndex | null;
+	slideId: string | null;
+}) {
+	const { dispatch } = useEditBus();
+
+	if (!slide || !slideId) {
 		return (
 			<div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted-foreground">
 				No active slide.
@@ -25,29 +44,42 @@ export function PropertiesPanel({ slide }: { slide: SlideIndex | null }) {
 		);
 	}
 
-	const entries = Object.entries(slide.fields);
-
 	return (
 		<div className="flex h-full flex-col overflow-hidden">
 			<header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2">
 				<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 					Properties
 				</h2>
-				<span className="font-mono text-[10px] text-muted-foreground">
-					{slide.id} · {slide.duration.toFixed(1)}s
-				</span>
+				<div className="flex items-center gap-2">
+					<span className="font-mono text-[10px] text-muted-foreground">
+						{slide.id} · {slide.duration.toFixed(1)}s
+					</span>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-6 text-destructive hover:text-destructive"
+						aria-label="Delete slide"
+						onClick={() => {
+							dispatch(removeSlide(slideId));
+							toast.success(`Removed ${slideId}`);
+						}}
+					>
+						<Trash2 className="size-3.5" />
+					</Button>
+				</div>
 			</header>
 			<div className="flex-1 space-y-4 overflow-auto p-4">
 				<Section icon={Type} title="Fields">
-					{entries.length === 0 ? (
-						<p className="text-xs text-muted-foreground">No fields.</p>
-					) : (
-						<div className="space-y-2">
-							{entries.map(([id, value]) => (
-								<FieldRow key={id} id={id} value={value} />
-							))}
-						</div>
-					)}
+					<div className="space-y-2">
+						{Object.entries(slide.fields).map(([id, value]) => (
+							<FieldInput
+								key={id}
+								slideId={slideId}
+								fieldId={id}
+								initialValue={value}
+							/>
+						))}
+					</div>
 				</Section>
 
 				<Section icon={ImageIcon} title="Assets">
@@ -66,10 +98,7 @@ export function PropertiesPanel({ slide }: { slide: SlideIndex | null }) {
 				</Section>
 
 				<Section icon={Mic} title="Voiceover">
-					<p className="text-xs text-foreground/90">{slide.voiceover.text}</p>
-					<p className="mt-1 font-mono text-[10px] text-muted-foreground">
-						{slide.voiceover.voice}
-					</p>
+					<VoiceoverInput slideId={slideId} slide={slide} />
 				</Section>
 
 				<Section icon={Wand2} title="Transition">
@@ -86,7 +115,9 @@ export function PropertiesPanel({ slide }: { slide: SlideIndex | null }) {
 
 				<div className="flex items-center gap-2 rounded-md border border-dashed border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
 					<CircleAlert className="size-3 shrink-0" />
-					<span>Editing lands in P3.</span>
+					<span>
+						Duration is measured — P4 wires the voiceover → TTS pipeline.
+					</span>
 				</div>
 			</div>
 		</div>
@@ -113,22 +144,84 @@ function Section({
 	);
 }
 
-function FieldRow({ id, value }: { id: string; value: string }) {
+function FieldInput({
+	slideId,
+	fieldId,
+	initialValue,
+}: {
+	slideId: string;
+	fieldId: string;
+	initialValue: string;
+}) {
+	const { dispatch } = useEditBus();
+	const [value, setValue] = useState(initialValue);
+
+	// Sync external → local when the slide (or field) changes.
+	useEffect(() => {
+		setValue(initialValue);
+	}, [initialValue]);
+
+	// Debounced dispatch — 200ms after the last keystroke.
+	useEffect(() => {
+		if (value === initialValue) return;
+		const t = setTimeout(() => {
+			dispatch(setField(slideId, fieldId, value));
+		}, 200);
+		return () => clearTimeout(t);
+	}, [value, initialValue, slideId, fieldId, dispatch]);
+
 	const isMultiline = value.length > 60 || value.includes("\n");
 	return (
 		<div className="space-y-1">
 			<div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-				{id}
+				{fieldId}
 			</div>
 			<Textarea
-				readOnly
 				value={value}
+				onChange={(e) => setValue(e.target.value)}
 				rows={isMultiline ? 3 : 1}
 				className={cn(
-					"resize-none bg-muted/40 font-mono text-xs",
+					"resize-none bg-background font-mono text-xs",
 					!isMultiline && "py-1",
 				)}
 			/>
+		</div>
+	);
+}
+
+function VoiceoverInput({
+	slideId,
+	slide,
+}: {
+	slideId: string;
+	slide: SlideIndex;
+}) {
+	const { dispatch } = useEditBus();
+	const [text, setText] = useState(slide.voiceover.text);
+
+	useEffect(() => {
+		setText(slide.voiceover.text);
+	}, [slide.voiceover.text]);
+
+	useEffect(() => {
+		if (text === slide.voiceover.text) return;
+		const t = setTimeout(() => {
+			dispatch(setVoiceover(slideId, text));
+		}, 200);
+		return () => clearTimeout(t);
+	}, [text, slide.voiceover.text, slideId, dispatch]);
+
+	return (
+		<div className="space-y-1">
+			<Textarea
+				value={text}
+				onChange={(e) => setText(e.target.value)}
+				rows={3}
+				className="resize-none bg-background text-xs"
+			/>
+			<p className="font-mono text-[10px] text-muted-foreground">
+				{slide.voiceover.voice}
+			</p>
 		</div>
 	);
 }

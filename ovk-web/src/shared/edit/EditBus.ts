@@ -16,8 +16,14 @@ export type EditActor = "human" | `ai:${string}`;
 export type EditOp =
 	| { kind: "setField"; slideId: string; fieldId: string; value: string }
 	| { kind: "reorderSlides"; order: string[] }
-	| { kind: "addSlide"; afterId?: string; layoutId: string }
+	| {
+			kind: "addSlide";
+			afterId?: string;
+			layoutId: string;
+			newId: string;
+	  }
 	| { kind: "removeSlide"; slideId: string }
+	| { kind: "duplicateSlide"; slideId: string; newId: string }
 	| {
 			kind: "setTransition";
 			slideId: string;

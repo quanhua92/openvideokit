@@ -15,6 +15,7 @@ import type { ProjectBundle } from "@/shared/api/client";
 import type { ActiveSlide } from "@/shared/api/queries/useActiveSlide";
 import { useActiveSlide } from "@/shared/api/queries/useActiveSlide";
 import { useProject } from "@/shared/api/queries/useProject";
+import { useUndoRedo } from "@/shared/edit/useUndoRedo";
 import { useStudioLayout } from "@/shared/lib/useStudioLayout";
 import { usePlayhead } from "@/shared/store/playhead";
 import { usePlaybackClock } from "@/shared/store/usePlaybackClock";
@@ -29,6 +30,7 @@ export interface StudioData {
 
 export function Studio({ projectId }: { projectId: string }) {
 	usePlaybackClock();
+	useUndoRedo(projectId);
 	const { layout } = useStudioLayout();
 	const query = useProject(projectId);
 	const { data, isLoading, error } = query;

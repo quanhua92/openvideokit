@@ -24,16 +24,24 @@ export function reorderSlides(
 }
 
 export function addSlide(
+	newId: string,
 	layoutId: string,
 	afterId?: string,
 ): Extract<EditOp, { kind: "addSlide" }> {
-	return { kind: "addSlide", layoutId, afterId };
+	return { kind: "addSlide", newId, layoutId, afterId };
 }
 
 export function removeSlide(
 	slideId: string,
 ): Extract<EditOp, { kind: "removeSlide" }> {
 	return { kind: "removeSlide", slideId };
+}
+
+export function duplicateSlide(
+	slideId: string,
+	newId: string,
+): Extract<EditOp, { kind: "duplicateSlide" }> {
+	return { kind: "duplicateSlide", slideId, newId };
 }
 
 export function setTransition(
