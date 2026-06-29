@@ -6,12 +6,15 @@ import {
 	LaptopMinimal,
 	Monitor,
 	Moon,
+	Sparkles,
 	Sun,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PROVIDER_LABELS } from "@/features/ai/providers/registry";
 import { cn } from "@/lib/utils";
+import type { ProviderId } from "@/shared/ai/types";
 import type { Theme } from "@/shared/lib/theme";
 import { useStudioLayout } from "@/shared/lib/useStudioLayout";
 import { useTheme } from "@/shared/lib/useTheme";
@@ -61,6 +64,13 @@ function SettingsPage() {
 					</h2>
 					<ThemeCard />
 					<ViewModeCard />
+				</section>
+
+				<section className="space-y-2">
+					<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						AI
+					</h2>
+					<AICard />
 				</section>
 			</div>
 		</div>
@@ -155,6 +165,57 @@ function OptionChip({
 		</button>
 	);
 }
+
+const PROVIDER_IDS: ProviderId[] = ["echo", "openai", "anthropic", "ollama"];
+
+function AICard() {
+	const [providerId, setProviderId] = useStateAIProvider();
+
+	return (
+		<Card>
+			<CardHeader className="px-4 py-3">
+				<CardTitle className="flex items-center gap-1.5 text-sm">
+					<Sparkles className="size-3.5" />
+					AI Provider
+				</CardTitle>
+			</CardHeader>
+			<CardContent className="px-4 pb-4">
+				<OptionRow>
+					{PROVIDER_IDS.map((id) => (
+						<OptionChip
+							key={id}
+							label={PROVIDER_LABELS[id]}
+							icon={Sparkles}
+							selected={providerId === id}
+							onClick={() => setProviderId(id)}
+						/>
+					))}
+				</OptionRow>
+				<p className="mt-2 text-[11px] text-muted-foreground">
+					Echo is a mock provider (offline, keyword-routed). Real providers ship
+					in a later phase — switch here when wired.
+				</p>
+			</CardContent>
+		</Card>
+	);
+}
+
+function useStateAIProvider(): [ProviderId, (id: ProviderId) => void] {
+	const [id, setId] = useStateInternal<ProviderId>(() => {
+		if (typeof localStorage === "undefined") return "echo";
+		return (localStorage.getItem("ovk:ai:provider") as ProviderId) ?? "echo";
+	});
+	const set = (next: ProviderId) => {
+		if (typeof localStorage !== "undefined") {
+			localStorage.setItem("ovk:ai:provider", next);
+		}
+		setId(next);
+	};
+	return [id, set];
+}
+
+// Local useState alias so we don't need to restructure imports.
+import { useState as useStateInternal } from "react";
 
 export function SettingsLink() {
 	return <Link to="/settings">Settings</Link>;

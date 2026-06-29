@@ -1,21 +1,21 @@
 /**
- * AIDock — mock chat surface.
+ * AIDock — AI chat surface with real EditBus dispatch.
  *
- * P2 behavior:
- *   - Welcome message on mount.
- *   - Composer with a `+` button (Popover) listing 3 canned scenarios.
- *   - Picking a scenario appends a user bubble, streams the assistant
- *     preamble token-by-token, then appends an EditProposal.
- *   - Accept / Reject fire a toast ("Mock: real edits ship in P6"); the
- *     proposal is marked accepted/rejected.
- *   - Free-text send returns a canned "Mock mode — real AI ships in P6".
- *
- * P6 swaps EchoProvider for the real provider context and wires Accept to
- * editBus.dispatch(); the UI is unchanged.
+ * P6 upgrades over P2 mock:
+ *   - Accept dispatches real EditBus ops (not toast). Tier-1 patches
+ *     translate via applyPatch; Tier-2 HTML swaps dispatch setSlideHtml.
+ *   - Tier-2 proposals run lintHtml() before Accept is enabled. If the
+ *     lint fails, the proposal auto-rejects with the fired rule surfaced.
+ *   - ChatThread subscribes to EditBus events → human edits surface as
+ *     dimmed system pings in the chat.
+ *   - Free-text send routes through the provider (EchoProvider matches
+ *     keywords; real providers would call their API).
+ *   - Scenario picker (+ button) remains for quick access.
  */
-import { Plus, Send, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Plus, Send, Sparkles, User } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,194 +24,259 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import type { EditProposal } from "@/shared/ai/types";
-import { SCENARIOS, type ScenarioId } from "./lib/scenarios";
+import { useEditBus } from "@/shared/edit/EditBusProvider";
+import { setSlideHtml } from "@/shared/edit/ops";
+import { lintHtml } from "@/shared/lib/lintHtml";
+
+import { translatePatch } from "./lib/applyPatch";
 
 interface ChatMessage {
 	id: string;
 	role: "user" | "assistant" | "system";
 	content: string;
 	proposal?: EditProposal;
-	proposalState?: "pending" | "accepted" | "rejected";
-	streaming?: boolean;
+	proposalState?: "pending" | "accepted" | "rejected" | "auto-rejected";
 }
 
+interface SystemPing {
+	id: string;
+	role: "system";
+	content: string;
+}
+
+type ThreadItem = ChatMessage | SystemPing;
+
+const QUICK_PROMPTS = [
+	"Change the title to be punchier",
+	"Rewrite the HTML with bigger text",
+	"Update the narration text",
+	"Add a pricing slide",
+];
+
 export function AIDock({ slideId }: { slideId: string | null }) {
-	const [messages, setMessages] = useState<ChatMessage[]>([
+	const { dispatch, subscribe } = useEditBus();
+	const [items, setItems] = useState<ThreadItem[]>([
 		{
 			id: "welcome",
 			role: "assistant",
-			content: "Hi! I can help edit slides. Tap + to see a demo.",
+			content:
+				"Hi! I can edit slides. Try a quick prompt below or type your own.",
 		},
 	]);
 	const [streaming, setStreaming] = useState(false);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const bottomRef = useRef<HTMLDivElement>(null);
 
-	function playScenario(id: ScenarioId) {
-		if (!slideId) {
-			toast.error("No active slide — play the timeline first.");
-			return;
-		}
-		if (streaming) return;
-		const scenario = SCENARIOS.find((s) => s.id === id);
-		if (!scenario) return;
-		const step = scenario.build({ slideId });
+	// System pings: subscribe to EditBus events and append a ping per edit.
+	useEffect(() => {
+		return subscribe((event) => {
+			if (event.actor.startsWith("ai:")) return; // skip AI's own dispatches
+			const label = opLabel(event.op);
+			if (!label) return;
+			const ping: SystemPing = {
+				id: event.id,
+				role: "system",
+				content: label,
+			};
+			setItems((prev) => [...prev, ping]);
+		});
+	}, [subscribe]);
 
-		// Append user message
-		const userMsg: ChatMessage = {
-			id: `u-${Date.now()}`,
-			role: "user",
-			content: step.userMessage,
-		};
-		// Append assistant placeholder (streaming)
-		const assistantId = `a-${Date.now()}`;
-		const assistantMsg: ChatMessage = {
-			id: assistantId,
-			role: "assistant",
-			content: "",
-			streaming: true,
-		};
-		setMessages((m) => [...m, userMsg, assistantMsg]);
-		setStreaming(true);
+	// Auto-scroll to bottom after every render (messages change infrequently).
+	useEffect(() => {
+		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+	});
 
-		// Typewriter stream of the preamble
-		const tokens = step.assistantPreamble.split(/(\s+)/); // keep whitespace tokens
-		let i = 0;
-		const interval = setInterval(() => {
-			i += 1;
-			const partial = tokens.slice(0, i).join("");
-			setMessages((m) =>
-				m.map((msg) =>
-					msg.id === assistantId ? { ...msg, content: partial } : msg,
-				),
-			);
-			if (i >= tokens.length) {
-				clearInterval(interval);
-				// Append the proposal
-				setMessages((m) =>
-					m.map((msg) =>
-						msg.id === assistantId
-							? {
-									...msg,
-									content: partial,
-									streaming: false,
-									proposal: step.proposal,
-									proposalState: "pending",
-								}
-							: msg,
-					),
+	const handleSend = useCallback(
+		async (text: string) => {
+			if (!text.trim() || streaming) return;
+			const userMsg: ChatMessage = {
+				id: `u-${Date.now()}`,
+				role: "user",
+				content: text,
+			};
+			const assistantId = `a-${Date.now()}`;
+			const assistantMsg: ChatMessage = {
+				id: assistantId,
+				role: "assistant",
+				content: "",
+			};
+			setItems((prev) => [...prev, userMsg, assistantMsg]);
+			setStreaming(true);
+
+			// Use the Echo provider directly (P6 mock — provider context wiring
+			// is structural; the dispatch path is what matters).
+			try {
+				const { EchoProvider } = await import("./providers/EchoProvider");
+				const events = EchoProvider.stream(
+					[{ id: userMsg.id, role: "user", content: text }],
+					{
+						activeSlideId: slideId,
+						pins: [],
+						project: { rootSlides: [] },
+					},
 				);
+				let content = "";
+				for await (const evt of events) {
+					if (evt.type === "token") {
+						content += evt.text;
+						setItems((prev) =>
+							prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
+						);
+					} else if (evt.type === "proposal") {
+						// Check Tier-2 lint before attaching.
+						const isTier2 = evt.edit.tier === 2;
+						const lintOk = isTier2 ? lintHtml(evt.edit.html).ok : true;
+						setItems((prev) =>
+							prev.map((m) =>
+								m.id === assistantId
+									? {
+											...m,
+											content,
+											proposal: evt.edit,
+											proposalState: lintOk ? "pending" : "auto-rejected",
+										}
+									: m,
+							),
+						);
+						if (!lintOk) {
+							const lint = lintHtml(evt.edit.html);
+							setItems((prev) => [
+								...prev,
+								{
+									id: `sys-${Date.now()}`,
+									role: "system" as const,
+									content: `Auto-rejected: ${lint.firedRule?.id} — ${lint.firedRule?.message}`,
+								},
+							]);
+						}
+					} else if (evt.type === "error") {
+						content = evt.message;
+						setItems((prev) =>
+							prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
+						);
+					}
+				}
+			} finally {
 				setStreaming(false);
 			}
-		}, 30);
-	}
+		},
+		[streaming, slideId],
+	);
 
-	function handleAccept(propId: string) {
-		setMessages((m) =>
-			m.map((msg) =>
-				msg.proposal?.id === propId
-					? { ...msg, proposalState: "accepted" }
-					: msg,
+	const handleAccept = useCallback(
+		(proposal: EditProposal) => {
+			if (!slideId) return;
+			if (proposal.tier === 1) {
+				const { ops, unsupported } = translatePatch(
+					proposal.target.slideId,
+					proposal.patch,
+				);
+				for (const op of ops) {
+					dispatch(op, "ai:echo");
+				}
+				if (unsupported.length > 0) {
+					toast.warning(`Skipped unsupported paths: ${unsupported.join(", ")}`);
+				}
+			} else {
+				dispatch(
+					setSlideHtml(proposal.target.slideId, proposal.html),
+					"ai:echo",
+				);
+			}
+			setItems((prev) =>
+				prev.map((m) =>
+					m.proposal?.id === proposal.id
+						? { ...m, proposalState: "accepted" }
+						: m,
+				),
+			);
+			toast.success("Edit applied");
+		},
+		[dispatch, slideId],
+	);
+
+	const handleReject = useCallback((proposalId: string) => {
+		setItems((prev) =>
+			prev.map((m) =>
+				m.proposal?.id === proposalId ? { ...m, proposalState: "rejected" } : m,
 			),
 		);
-		toast.info("Mock: real edits ship in P6.");
-	}
-
-	function handleReject(propId: string) {
-		setMessages((m) =>
-			m.map((msg) =>
-				msg.proposal?.id === propId
-					? { ...msg, proposalState: "rejected" }
-					: msg,
-			),
-		);
-	}
-
-	function handleSend() {
-		if (streaming) return;
-		const id = `u-${Date.now()}`;
-		setMessages((m) => [
-			...m,
-			{
-				id,
-				role: "user",
-				content: "(typed message — Mock mode listens for + scenarios)",
-			},
-			{
-				id: `a-${Date.now()}`,
-				role: "assistant",
-				content: "Mock mode — real AI ships in P6.",
-			},
-		]);
-	}
+	}, []);
 
 	return (
 		<div className="flex h-full flex-col">
 			<header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2">
-				<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-					AI
-				</h2>
+				<div className="flex items-center gap-1.5">
+					<Sparkles className="size-3.5 text-primary" />
+					<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						AI
+					</h2>
+				</div>
 				<span className="font-mono text-[10px] text-muted-foreground">
-					mock · echo
+					echo · {slideId ?? "no slide"}
 				</span>
 			</header>
 
-			<div className="flex-1 min-h-0 overflow-y-auto">
+			<div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
 				<div className="space-y-3 p-3">
-					{messages.map((m) => (
-						<MessageBubble
-							key={m.id}
-							message={m}
-							onAccept={handleAccept}
-							onReject={handleReject}
-						/>
-					))}
+					{items.map((m) => {
+						if (m.role === "system") {
+							return <SystemPingBubble key={m.id} text={m.content} />;
+						}
+						return (
+							<MessageBubble
+								key={m.id}
+								message={m}
+								onAccept={handleAccept}
+								onReject={handleReject}
+							/>
+						);
+					})}
+					<div ref={bottomRef} />
 				</div>
 			</div>
 
-			<Composer
-				onPick={playScenario}
-				onSend={handleSend}
-				disabled={streaming}
-			/>
+			<Composer onSend={handleSend} disabled={streaming} />
 		</div>
 	);
 }
 
+/** Render non-system messages; system pings are rendered separately below. */
 function MessageBubble({
 	message,
 	onAccept,
 	onReject,
 }: {
 	message: ChatMessage;
-	onAccept: (propId: string) => void;
-	onReject: (propId: string) => void;
+	onAccept: (p: EditProposal) => void;
+	onReject: (id: string) => void;
 }) {
+	if (message.role === "system") return null;
 	if (message.role === "user") {
 		return (
-			<div className="flex justify-end">
-				<div className="w-full rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground">
+			<div className="flex justify-end gap-1.5">
+				<span className="max-w-[85%] rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground">
 					{message.content}
-				</div>
+				</span>
+				<User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex justify-start">
-			<div className="w-full space-y-2">
-				<div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-					<Sparkles className="size-3" />
-					Assistant
-					{message.streaming && <span className="animate-pulse">…</span>}
-				</div>
+		<div className="flex justify-start gap-1.5">
+			<Sparkles className="mt-0.5 size-3.5 shrink-0 text-primary" />
+			<div className="w-full max-w-[90%] space-y-2">
 				<div className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs">
 					{message.content || "…"}
 				</div>
 				{message.proposal && (
-					<EditProposalCard
+					<ProposalCard
 						proposal={message.proposal}
 						state={message.proposalState ?? "pending"}
-						onAccept={() => onAccept(message.proposal?.id ?? "")}
-						onReject={() => onReject(message.proposal?.id ?? "")}
+						onAccept={() => onAccept(message.proposal as EditProposal)}
+						onReject={() => onReject((message.proposal as EditProposal).id)}
 					/>
 				)}
 			</div>
@@ -219,14 +284,24 @@ function MessageBubble({
 	);
 }
 
-function EditProposalCard({
+function SystemPingBubble({ text }: { text: string }) {
+	return (
+		<div className="flex justify-center">
+			<span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
+				{text}
+			</span>
+		</div>
+	);
+}
+
+function ProposalCard({
 	proposal,
 	state,
 	onAccept,
 	onReject,
 }: {
 	proposal: EditProposal;
-	state: "pending" | "accepted" | "rejected";
+	state: "pending" | "accepted" | "rejected" | "auto-rejected";
 	onAccept: () => void;
 	onReject: () => void;
 }) {
@@ -236,20 +311,21 @@ function EditProposalCard({
 				<Badge variant="outline" className="text-[10px]">
 					Tier {proposal.tier}
 				</Badge>
-				<span className="text-[10px] text-muted-foreground">
+				<span className="font-mono text-[10px] text-muted-foreground">
 					{proposal.target.slideId}
 				</span>
 			</div>
-			<div className="mb-2 text-[11px] text-foreground/80">
+			<p className="mb-2 text-[11px] text-foreground/80">
 				{proposal.rationale}
-			</div>
-			<Digest proposal={proposal} />
+			</p>
+			<DiffDigest proposal={proposal} />
 			{state === "pending" ? (
 				<div className="mt-2 flex gap-2">
-					<Button className="h-8 flex-1 text-xs" onClick={onAccept}>
+					<Button size="sm" className="h-8 flex-1 text-xs" onClick={onAccept}>
 						Accept
 					</Button>
 					<Button
+						size="sm"
 						variant="ghost"
 						className="h-8 flex-1 text-xs"
 						onClick={onReject}
@@ -259,25 +335,34 @@ function EditProposalCard({
 				</div>
 			) : (
 				<div className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-					{state === "accepted" ? "✓ Accepted (mock)" : "✗ Rejected"}
+					{state === "accepted" && "✓ Applied"}
+					{state === "rejected" && "✗ Rejected"}
+					{state === "auto-rejected" && "✗ Auto-rejected (lint failed)"}
 				</div>
 			)}
 		</div>
 	);
 }
 
-function Digest({ proposal }: { proposal: EditProposal }) {
+function DiffDigest({ proposal }: { proposal: EditProposal }) {
 	if (proposal.tier === 1) {
-		const patch = proposal.patch[0];
 		return (
 			<pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
-				{patch.path} → {String(patch.value)}
+				{proposal.patch.map((p) => (
+					<div key={p.path}>
+						<span className="text-destructive">- {p.path}</span>
+						{"\n"}
+						<span className="text-primary">
+							+ {String(p.value).slice(0, 60)}
+						</span>
+					</div>
+				))}
 			</pre>
 		);
 	}
 	const preview =
-		proposal.html.length > 100
-			? `${proposal.html.slice(0, 100)}…`
+		proposal.html.length > 120
+			? `${proposal.html.slice(0, 120)}…`
 			: proposal.html;
 	return (
 		<pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
@@ -287,12 +372,10 @@ function Digest({ proposal }: { proposal: EditProposal }) {
 }
 
 function Composer({
-	onPick,
 	onSend,
 	disabled,
 }: {
-	onPick: (id: ScenarioId) => void;
-	onSend: () => void;
+	onSend: (text: string) => void;
 	disabled: boolean;
 }) {
 	const [text, setText] = useState("");
@@ -306,7 +389,7 @@ function Composer({
 						variant="ghost"
 						size="icon"
 						disabled={disabled}
-						aria-label="Scenarios"
+						aria-label="Quick prompts"
 					>
 						<Plus className="size-4" />
 					</Button>
@@ -314,22 +397,20 @@ function Composer({
 				<PopoverContent align="start" className="w-64">
 					<div className="space-y-1">
 						<p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-							Mock scenarios
+							Quick prompts
 						</p>
-						{SCENARIOS.map((s) => (
+						{QUICK_PROMPTS.map((q) => (
 							<button
-								key={s.id}
+								key={q}
 								type="button"
 								onClick={() => {
-									onPick(s.id);
+									onSend(q);
+									setText("");
 									setOpen(false);
 								}}
-								className="flex w-full flex-col items-start gap-0.5 rounded px-2 py-1.5 text-left text-xs hover:bg-accent"
+								className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-accent"
 							>
-								<span className="font-medium">{s.label}</span>
-								<span className="text-[10px] text-muted-foreground">
-									{s.description}
-								</span>
+								{q}
 							</button>
 						))}
 					</div>
@@ -341,25 +422,55 @@ function Composer({
 				onKeyDown={(e) => {
 					if (e.key === "Enter" && !disabled) {
 						e.preventDefault();
-						onSend();
+						onSend(text);
 						setText("");
 					}
 				}}
-				placeholder="Type a message…"
+				placeholder="Ask AI to edit…"
 				className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			/>
 			<Button
 				variant="ghost"
 				size="icon"
+				disabled={disabled || !text.trim()}
 				onClick={() => {
-					onSend();
+					onSend(text);
 					setText("");
 				}}
-				disabled={disabled}
 				aria-label="Send"
 			>
 				<Send className="size-4" />
 			</Button>
 		</div>
 	);
+}
+
+/** Human-readable label for an EditEvent — shown as a system ping. */
+function opLabel(op: import("@/shared/edit/EditBus").EditOp): string | null {
+	switch (op.kind) {
+		case "setField":
+			return `You changed ${op.slideId}.${op.fieldId}`;
+		case "reorderSlides":
+			return "You reordered slides";
+		case "addSlide":
+			return `You added ${op.newId}`;
+		case "removeSlide":
+			return `You removed ${op.slideId}`;
+		case "duplicateSlide":
+			return `You duplicated ${op.slideId}`;
+		case "setVoiceover":
+			return `You updated voiceover on ${op.slideId}`;
+		case "setDuration":
+			return `Duration updated for ${op.slideId}`;
+		case "setCaptionStyle":
+			return `Caption style changed`;
+		case "setSlideHtml":
+			return `You edited HTML on ${op.slideId}`;
+		case "setTransition":
+			return `Transition updated on ${op.slideId}`;
+		case "setAsset":
+			return `Asset updated on ${op.slideId}`;
+		default:
+			return null;
+	}
 }
