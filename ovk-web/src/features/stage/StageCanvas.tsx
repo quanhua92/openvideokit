@@ -134,7 +134,7 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 					}}
 				/>
 			)}
-			<div style={{ position: "relative", zIndex: 1 }}>
+			<div style={{ position: "relative", zIndex: 1, width: "100%" }}>
 				{title && (
 					<h1
 						style={{
@@ -152,6 +152,8 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 					<p
 						style={{
 							marginTop: 32,
+							marginLeft: "auto",
+							marginRight: "auto",
 							fontSize: 40,
 							color: "rgba(255,255,255,0.8)",
 							lineHeight: 1.4,
