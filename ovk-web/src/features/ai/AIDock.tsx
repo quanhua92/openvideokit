@@ -365,6 +365,8 @@ function ProposalCard({
 }
 
 function DiffDigest({ proposal }: { proposal: EditProposal }) {
+	const [expanded, setExpanded] = useState(false);
+
 	if (proposal.tier === 1) {
 		return (
 			<pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
@@ -382,14 +384,31 @@ function DiffDigest({ proposal }: { proposal: EditProposal }) {
 	}
 	
 	const htmlStr = "html" in proposal && proposal.html ? proposal.html : "";
-	const preview =
-		htmlStr.length > 120
-			? `${htmlStr.slice(0, 120)}…`
-			: htmlStr;
+	
+	if (!htmlStr) {
+		return (
+			<pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
+				{proposal.tier === 3 ? "Root operation" : ""}
+			</pre>
+		);
+	}
+
+	const isTruncated = htmlStr.length > 120;
+	const preview = !expanded && isTruncated ? `${htmlStr.slice(0, 120)}…` : htmlStr;
+
 	return (
-		<pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
-			{preview || (proposal.tier === 3 ? "Root operation" : "")}
-		</pre>
+		<div className="relative">
+			<pre 
+				className={`overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug ${isTruncated ? "cursor-pointer hover:bg-muted/70 transition-colors" : ""}`}
+				onClick={() => isTruncated && setExpanded(!expanded)}
+				title={isTruncated ? (expanded ? "Click to collapse" : "Click to expand") : undefined}
+			>
+				{preview}
+			</pre>
+			{!expanded && isTruncated && (
+				<div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-muted/50 to-transparent" />
+			)}
+		</div>
 	);
 }
 

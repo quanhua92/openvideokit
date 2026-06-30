@@ -34,6 +34,7 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 							localTime={activeSlide.localTime}
 							activeStart={activeSlide.start}
 							captionStyle={project.root.theme.caption_style}
+							slideHtml={activeSlide.slideId ? project.slideHtml[activeSlide.slideId] : undefined}
 						/>
 					</div>
 				</ResizablePanel>

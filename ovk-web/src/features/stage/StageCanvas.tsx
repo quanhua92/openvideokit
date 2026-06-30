@@ -25,11 +25,13 @@ export function StageCanvas({
 	localTime,
 	activeStart,
 	captionStyle,
+	slideHtml,
 }: {
 	slide: SlideIndex | null;
 	localTime: number;
 	activeStart: number;
 	captionStyle: CaptionStyle;
+	slideHtml?: string;
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [scale, setScale] = useState(0.2);
@@ -68,7 +70,11 @@ export function StageCanvas({
 			>
 				{slide ? (
 					<>
-						<SlideView slide={slide} />
+						{slideHtml ? (
+							<HtmlView slide={slide} html={slideHtml} />
+						) : (
+							<SlideView slide={slide} />
+						)}
 						{/* Caption overlay — INSIDE the scale, matching HyperFrames 1080p canvas.
 							Scrim only renders when captions exist AND the user has it on. */}
 						{slide.voiceover.text.trim() && (
@@ -166,5 +172,27 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 				)}
 			</div>
 		</div>
+	);
+}
+
+function HtmlView({ slide, html }: { slide: SlideIndex; html: string }) {
+	const imgUrl = useAssetUrl(slide.assets.img) ?? "";
+	
+	const processedHtml = html
+		.replace(/<\/?template>/gi, "")
+		.replace(/__SLIDE_ID__/g, slide.id)
+		.replace(/__TITLE__/g, slide.fields.title ?? "")
+		.replace(/__BODY__/g, slide.fields.body ?? "")
+		.replace(/__IMAGE__/g, imgUrl);
+
+	return (
+		<>
+			<style>{`.html-view-host > div { width: 100%; height: 100%; }`}</style>
+			<div
+				className="html-view-host"
+				style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+				dangerouslySetInnerHTML={{ __html: processedHtml }}
+			/>
+		</>
 	);
 }
