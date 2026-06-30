@@ -67,6 +67,10 @@ export function hasTailwind(src: string): boolean {
  * failing rule.
  */
 export function lintHtml(src: string): LintResult {
+	if (src.trim() === "") {
+		return { ok: true }; // Empty string means "clear custom override and use template default"
+	}
+
 	// R1: exactly one <template>
 	const templateCount = countTag(src, "template");
 	if (templateCount === 0) {
