@@ -5,13 +5,14 @@
  *
  * Overflow menu contains:
  *   - Recent projects (link to overview)
+ *   - Undo / Redo (project routes only; backed by useUndoRedo + ⌘Z)
  *   - Export (opens ExportDialog)
  *   - Theme submenu (Light / Dark / System) — quick access
  *   - Settings link (full preferences page)
  */
 
-import { Link, Outlet } from "@tanstack/react-router";
-import { Clapperboard, MoreHorizontal } from "lucide-react";
+import { Link, Outlet, useParams } from "@tanstack/react-router";
+import { Clapperboard, MoreHorizontal, Redo2, Undo2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
+	DropdownMenuShortcut,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
@@ -27,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ExportDialog } from "@/features/export/components/ExportDialog";
 import { FIXTURE_PROJECT_ID } from "@/shared/api/msw/fixtures";
+import { useUndoRedo } from "@/shared/edit/useUndoRedo";
 import type { Theme } from "@/shared/lib/theme";
 import { useTheme } from "@/shared/lib/useTheme";
 
@@ -42,6 +45,13 @@ const THEME_OPTIONS: ReadonlyArray<{ value: Theme; label: string }> = [
 export function AppShell({ children }: { children?: ReactNode }) {
 	const [exportOpen, setExportOpen] = useState(false);
 
+	// projectId is only present on /projects/$projectId* routes. Undo/redo is
+	// project-scoped, so we mount the hook here (keeps the ⌘Z listener alive
+	// across the app) and hide the menu items when no project is active.
+	const params = useParams({ strict: false });
+	const projectId = params.projectId as string | undefined;
+	const undoRedo = useUndoRedo(projectId);
+
 	return (
 		<div className="flex h-svh flex-col bg-background text-foreground">
 			<header className="flex h-12 items-center justify-between border-b border-border px-4">
@@ -49,7 +59,14 @@ export function AppShell({ children }: { children?: ReactNode }) {
 					<Clapperboard className="size-5" />
 					<span className="text-sm font-semibold">OpenVideoKit</span>
 				</div>
-				<OverflowMenu onExport={() => setExportOpen(true)} />
+				<OverflowMenu
+					onExport={() => setExportOpen(true)}
+					showHistory={Boolean(projectId)}
+					canUndo={undoRedo.canUndo}
+					canRedo={undoRedo.canRedo}
+					onUndo={undoRedo.undo}
+					onRedo={undoRedo.redo}
+				/>
 			</header>
 			<main className="flex-1 overflow-hidden">{children ?? <Outlet />}</main>
 			<ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
@@ -57,7 +74,23 @@ export function AppShell({ children }: { children?: ReactNode }) {
 	);
 }
 
-function OverflowMenu({ onExport }: { onExport: () => void }) {
+interface OverflowMenuProps {
+	onExport: () => void;
+	showHistory: boolean;
+	canUndo: boolean;
+	canRedo: boolean;
+	onUndo: () => void;
+	onRedo: () => void;
+}
+
+function OverflowMenu({
+	onExport,
+	showHistory,
+	canUndo,
+	canRedo,
+	onUndo,
+	onRedo,
+}: OverflowMenuProps) {
 	const { theme, setTheme } = useTheme();
 
 	return (
@@ -75,6 +108,29 @@ function OverflowMenu({ onExport }: { onExport: () => void }) {
 					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuItem disabled>More soon…</DropdownMenuItem>
+				{showHistory && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							onClick={onUndo}
+							disabled={!canUndo}
+							className="cursor-pointer"
+						>
+							<Undo2 className="size-4" />
+							<span>Undo</span>
+							<DropdownMenuShortcut>⌘Z</DropdownMenuShortcut>
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={onRedo}
+							disabled={!canRedo}
+							className="cursor-pointer"
+						>
+							<Redo2 className="size-4" />
+							<span>Redo</span>
+							<DropdownMenuShortcut>⌘⇧Z</DropdownMenuShortcut>
+						</DropdownMenuItem>
+					</>
+				)}
 				<DropdownMenuSeparator />
 				<DropdownMenuItem onClick={onExport} className="cursor-pointer">
 					Export

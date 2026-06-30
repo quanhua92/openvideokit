@@ -2,11 +2,12 @@
  * EditBus runtime — single mutation path for the project document.
  *
  * dispatch(op, actor?, opts?):
- *   1. Reads current project from TanStack Query cache.
- *   2. applyOp(project, op) → new project.
- *   3. setQueryData(['project', projectId], newProject).
- *   4. Emits EditEvent to subscribers (for chat pings, etc.).
- *   5. If !opts.skipHistory → pushes event to past stack.
+ *   1. Reads current project from TanStack Query cache (PRE-edit state).
+ *   2. Computes the inverse from the pre-edit state (inverseOp).
+ *   3. applyOp(project, op) → new project.
+ *   4. setQueryData(['project', projectId], newProject).
+ *   5. Emits EditEvent (carrying op + inverse) to subscribers.
+ *   6. If !opts.skipHistory → pushes event to past stack.
  *
  * Every mutation goes through this bus — both human edits and AI Accept
  * calls (P6). No backdoor.
@@ -23,6 +24,7 @@ import type { ProjectBundle } from "@/shared/api/client";
 import { useHistory } from "@/shared/store/history";
 import { applyOp } from "./applyOp";
 import type { EditActor, EditBus, EditEvent, EditOp } from "./EditBus";
+import { inverseOp } from "./inverseOp";
 
 interface DispatchOpts {
 	/** Skip pushing to the undo/redo stacks (used internally by undo/redo). */
@@ -39,7 +41,7 @@ export function EditBusProvider({
 	projectId,
 	children,
 }: {
-	projectId: string;
+	projectId: string | undefined;
 	children: ReactNode;
 }) {
 	const queryClient = useQueryClient();
@@ -51,6 +53,11 @@ export function EditBusProvider({
 			const current = queryClient.getQueryData<ProjectBundle>(cacheKey) ?? null;
 			if (!current) return;
 
+			// Capture the inverse from the PRE-edit state, before applyOp runs.
+			// inverseOp reads the previous field/slide value out of `current`;
+			// doing this after setQueryData would read the new value (a no-op).
+			const inverse = inverseOp(op, current);
+
 			const next = applyOp(current, op);
 			if (next === current) return; // applyOp rejected the op (e.g. bad id)
 
@@ -61,6 +68,7 @@ export function EditBusProvider({
 				at: Date.now(),
 				actor,
 				op,
+				inverse,
 			};
 			for (const fn of subscribersRef.current) fn(event);
 

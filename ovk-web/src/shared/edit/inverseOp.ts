@@ -1,8 +1,13 @@
 /**
  * inverseOp — pure: (op, projectBefore) → inverse op that would undo `op`.
  *
- * Used by useUndoRedo to flip the past/future stacks. Returns null when no
- * meaningful inverse exists (e.g. setSlideHtml before P5 ships HTML storage).
+ * Used by useUndoRedo to flip the past/future stacks. Returns null only
+ * when the data doesn't support an inverse (e.g. removing a slide that no
+ * longer exists) — never because an op kind is unhandled.
+ *
+ * Exhaustiveness: the `default` branch assigns `op` to `never`. If a new
+ * EditOp variant is added without a case here, TypeScript errors at compile
+ * time, so undo can never silently break for a new op.
  */
 import type { ProjectBundle } from "@/shared/api/client";
 
@@ -42,6 +47,11 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
 				slide: removedSlide,
 				at: idx,
 			};
+		}
+
+		case "restoreSlide": {
+			// Inverse of restoring a slide is removing it again.
+			return { kind: "removeSlide", slideId: op.slide.id };
 		}
 
 		case "setTransition": {
@@ -86,7 +96,12 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
 			const prev = before.slideHtml?.[op.slideId] ?? "";
 			return { kind: "setSlideHtml", slideId: op.slideId, html: prev };
 		}
-	}
 
-	return null;
+		default: {
+			// Compile-time exhaustiveness: if a new EditOp kind is added without
+			// a case above, `op` is no longer `never` and this errors.
+			const _exhaustive: never = op;
+			return _exhaustive;
+		}
+	}
 }

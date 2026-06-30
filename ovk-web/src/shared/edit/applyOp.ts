@@ -201,5 +201,13 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
 				},
 			};
 		}
+
+		default: {
+			// Compile-time exhaustiveness: adding a new EditOp kind without a
+			// case above is a TS error, so applyOp can never silently return
+			// undefined and corrupt the query cache.
+			const _exhaustive: never = op;
+			return _exhaustive;
+		}
 	}
 }

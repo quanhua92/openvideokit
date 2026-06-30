@@ -7,6 +7,7 @@
  *
  * Each creator returns a value conforming to EditOp from EditBus.ts.
  */
+import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import type { EditOp } from "./EditBus";
 
 export function setField(
@@ -42,6 +43,13 @@ export function duplicateSlide(
 	newId: string,
 ): Extract<EditOp, { kind: "duplicateSlide" }> {
 	return { kind: "duplicateSlide", slideId, newId };
+}
+
+export function restoreSlide(
+	slide: SlideIndex,
+	at: number,
+): Extract<EditOp, { kind: "restoreSlide" }> {
+	return { kind: "restoreSlide", slide, at };
 }
 
 export function setTransition(

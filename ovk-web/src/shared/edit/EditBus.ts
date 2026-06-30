@@ -40,12 +40,19 @@ export type EditOp =
 	| { kind: "setCaptionStyle"; style: string }
 	| { kind: "setSlideHtml"; slideId: string; html: string };
 
-/** An op + metadata about who/when. Emitted on every dispatch. */
+/** An op + metadata about who/when. Emitted on every dispatch.
+ *
+ *  `op` is the forward op (replayed by redo). `inverse` is pre-computed at
+ *  dispatch time against the PRE-edit state (replayed by undo). The inverse
+ *  MUST be captured before applyOp mutates the cache, because inverseOp reads
+ *  the previous value out of the project bundle — deriving it lazily at undo
+ *  time would read the post-edit value and be a no-op. */
 export interface EditEvent {
 	id: string;
 	at: number;
 	actor: EditActor;
 	op: EditOp;
+	inverse: EditOp | null;
 }
 
 /** Subscriber callback. */
