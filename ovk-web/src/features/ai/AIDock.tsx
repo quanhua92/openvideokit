@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/popover";
 import type { EditProposal } from "@/shared/ai/types";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
-import { setSlideHtml } from "@/shared/edit/ops";
+import { addSlide, setSlideHtml } from "@/shared/edit/ops";
 import { lintHtml } from "@/shared/lib/lintHtml";
 
 import { translatePatch } from "./lib/applyPatch";
@@ -138,9 +138,9 @@ export function AIDock({ slideId }: { slideId: string | null }) {
 							prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
 						);
 					} else if (evt.type === "proposal") {
-						// Check Tier-2 lint before attaching.
-						const isTier2 = evt.edit.tier === 2;
-						const lintOk = isTier2 ? lintHtml(evt.edit.html).ok : true;
+						const hasHtml = "html" in evt.edit && typeof (evt.edit as any).html === "string";
+						const lintRes = hasHtml ? lintHtml((evt.edit as any).html as string) : null;
+						const lintOk = lintRes ? lintRes.ok : true;
 						setItems((prev) =>
 							prev.map((m) =>
 								m.id === assistantId
@@ -153,14 +153,13 @@ export function AIDock({ slideId }: { slideId: string | null }) {
 									: m,
 							),
 						);
-						if (!lintOk) {
-							const lint = lintHtml(evt.edit.html);
+						if (!lintOk && lintRes) {
 							setItems((prev) => [
 								...prev,
 								{
 									id: `sys-${Date.now()}`,
 									role: "system" as const,
-									content: `Auto-rejected: ${lint.firedRule?.id} — ${lint.firedRule?.message}`,
+									content: `Auto-rejected: ${lintRes.firedRule?.id} — ${lintRes.firedRule?.message}`,
 								},
 							]);
 						}
@@ -192,15 +191,22 @@ export function AIDock({ slideId }: { slideId: string | null }) {
 				if (unsupported.length > 0) {
 					toast.warning(`Skipped unsupported paths: ${unsupported.join(", ")}`);
 				}
-			} else {
+			} else if (proposal.tier === 2) {
 				dispatch(
 					setSlideHtml(proposal.target.slideId, proposal.html),
 					"ai:echo",
 				);
+			} else if (proposal.tier === 3) {
+				if (proposal.op === "addSlide") {
+					dispatch(addSlide(proposal.newId, "default", proposal.afterId), "ai:echo");
+					if (proposal.html) {
+						dispatch(setSlideHtml(proposal.newId, proposal.html), "ai:echo");
+					}
+				}
 			}
 			setItems((prev) =>
 				prev.map((m) =>
-					m.proposal?.id === proposal.id
+					"proposal" in m && m.proposal?.id === proposal.id
 						? { ...m, proposalState: "accepted" }
 						: m,
 				),
@@ -213,7 +219,7 @@ export function AIDock({ slideId }: { slideId: string | null }) {
 	const handleReject = useCallback((proposalId: string) => {
 		setItems((prev) =>
 			prev.map((m) =>
-				m.proposal?.id === proposalId ? { ...m, proposalState: "rejected" } : m,
+				"proposal" in m && m.proposal?.id === proposalId ? { ...m, proposalState: "rejected" } : m,
 			),
 		);
 	}, []);
@@ -326,7 +332,7 @@ function ProposalCard({
 					Tier {proposal.tier}
 				</Badge>
 				<span className="font-mono text-[10px] text-muted-foreground">
-					{proposal.target.slideId}
+					{"slideId" in proposal.target ? proposal.target.slideId : "project"}
 				</span>
 			</div>
 			<p className="mb-2 text-[11px] text-foreground/80">
@@ -367,20 +373,22 @@ function DiffDigest({ proposal }: { proposal: EditProposal }) {
 						<span className="text-destructive">- {p.path}</span>
 						{"\n"}
 						<span className="text-primary">
-							+ {String(p.value).slice(0, 60)}
+							+ {String("value" in p ? p.value : "").slice(0, 60)}
 						</span>
 					</div>
 				))}
 			</pre>
 		);
 	}
+	
+	const htmlStr = "html" in proposal && proposal.html ? proposal.html : "";
 	const preview =
-		proposal.html.length > 120
-			? `${proposal.html.slice(0, 120)}…`
-			: proposal.html;
+		htmlStr.length > 120
+			? `${htmlStr.slice(0, 120)}…`
+			: htmlStr;
 	return (
 		<pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
-			{preview}
+			{preview || (proposal.tier === 3 ? "Root operation" : "")}
 		</pre>
 	);
 }

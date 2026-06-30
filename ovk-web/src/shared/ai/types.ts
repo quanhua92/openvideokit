@@ -87,4 +87,14 @@ export type EditProposal =
 			target: Extract<EditTarget, { kind: "slide" }>;
 			html: string;
 			rationale: string;
+	  }
+	| {
+			id: string;
+			tier: 3;
+			target: Extract<EditTarget, { kind: "root" }>;
+			op: "addSlide";
+			afterId: string;
+			newId: string;
+			html?: string;
+			rationale: string;
 	  };

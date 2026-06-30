@@ -78,11 +78,11 @@ const SCENARIOS: Scenario[] = [
 		build: (ctx) =>
 			withStream("Here's a new pricing slide layout.", {
 				id: rand(),
-				tier: 2 as const,
-				target: {
-					kind: "slide" as const,
-					slideId: ctx.activeSlideId ?? "slide-0",
-				},
+				tier: 3 as const,
+				target: { kind: "root" as const },
+				op: "addSlide" as const,
+				afterId: ctx.activeSlideId ?? "slide-0",
+				newId: rand(),
 				html: `<template>\n  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">\n    <h1>Pricing</h1>\n    <p>__BODY__</p>\n  </div>\n</template>`,
 				rationale: "Standard pricing layout tied to existing fields.",
 			}),

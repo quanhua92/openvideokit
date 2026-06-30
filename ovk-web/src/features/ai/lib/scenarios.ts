@@ -69,8 +69,11 @@ export const SCENARIOS: ReadonlyArray<{
 			assistantPreamble: `Here's a pricing card layout for the new slide.`,
 			proposal: {
 				id: `prop-${Math.random().toString(36).slice(2, 8)}`,
-				tier: 2,
-				target: { kind: "slide", slideId },
+				tier: 3,
+				target: { kind: "root" },
+				op: "addSlide",
+				afterId: slideId,
+				newId: `slide-${Math.random().toString(36).slice(2, 8)}`,
 				html: `<template><div data-composition-id="__SLIDE_ID__"><h1>Plans</h1><p>__BODY__</p></div></template>`,
 				rationale:
 					"Standard 3-tier pricing layout, ties into existing field shape.",
