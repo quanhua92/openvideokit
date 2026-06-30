@@ -289,26 +289,42 @@ const BG_SWATCHES = [
 
 function BackgroundPicker({
 	slideId,
-	value,
+	value: initialValue,
 }: {
 	slideId: string;
 	value: string;
 }) {
 	const { dispatch } = useEditBus();
+	const [localColor, setLocalColor] = useState(initialValue);
+
+	// Sync external → local when slide changes.
+	useEffect(() => {
+		setLocalColor(initialValue);
+	}, [initialValue]);
+
+	// Debounce dispatch so dragging the color picker doesn't re-render
+	// the entire studio on every pixel move.
+	useEffect(() => {
+		if (localColor === initialValue) return;
+		const t = setTimeout(() => {
+			dispatch(setField(slideId, "bg", localColor));
+		}, 150);
+		return () => clearTimeout(t);
+	}, [localColor, initialValue, slideId, dispatch]);
 
 	return (
 		<div className="space-y-2">
 			<div className="flex items-center gap-2">
 				<input
 					type="color"
-					value={value}
-					onChange={(e) => dispatch(setField(slideId, "bg", e.target.value))}
+					value={localColor}
+					onChange={(e) => setLocalColor(e.target.value)}
 					className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
 				/>
 				<input
 					type="text"
-					value={value}
-					onChange={(e) => dispatch(setField(slideId, "bg", e.target.value))}
+					value={localColor}
+					onChange={(e) => setLocalColor(e.target.value)}
 					className="h-7 w-20 rounded border border-border bg-background px-2 font-mono text-xs"
 				/>
 			</div>
@@ -317,10 +333,13 @@ function BackgroundPicker({
 					<button
 						key={c}
 						type="button"
-						onClick={() => dispatch(setField(slideId, "bg", c))}
+						onClick={() => {
+							setLocalColor(c);
+							dispatch(setField(slideId, "bg", c));
+						}}
 						className={cn(
 							"size-5 rounded-full border transition",
-							value.toLowerCase() === c.toLowerCase()
+							localColor.toLowerCase() === c.toLowerCase()
 								? "border-foreground ring-1 ring-foreground"
 								: "border-border",
 						)}
