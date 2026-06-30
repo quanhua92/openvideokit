@@ -30,6 +30,8 @@ import { lintHtml } from "@/shared/lib/lintHtml";
 
 import { translatePatch } from "./lib/applyPatch";
 
+import { create } from "zustand";
+
 interface ChatMessage {
 	id: string;
 	role: "user" | "assistant" | "system";
@@ -46,6 +48,24 @@ interface SystemPing {
 
 type ThreadItem = ChatMessage | SystemPing;
 
+const useAIStore = create<{
+	items: ThreadItem[];
+	setItems: (updater: ThreadItem[] | ((prev: ThreadItem[]) => ThreadItem[])) => void;
+}>((set) => ({
+	items: [
+		{
+			id: "welcome",
+			role: "assistant",
+			content:
+				"Hi! I can edit slides. Try a quick prompt below or type your own.",
+		},
+	],
+	setItems: (updater) =>
+		set((state) => ({
+			items: typeof updater === "function" ? updater(state.items) : updater,
+		})),
+}));
+
 const QUICK_PROMPTS = [
 	"Change the title to be punchier",
 	"Rewrite the HTML with bigger text",
@@ -55,14 +75,8 @@ const QUICK_PROMPTS = [
 
 export function AIDock({ slideId }: { slideId: string | null }) {
 	const { dispatch, subscribe } = useEditBus();
-	const [items, setItems] = useState<ThreadItem[]>([
-		{
-			id: "welcome",
-			role: "assistant",
-			content:
-				"Hi! I can edit slides. Try a quick prompt below or type your own.",
-		},
-	]);
+	const items = useAIStore((s) => s.items);
+	const setItems = useAIStore((s) => s.setItems);
 	const [streaming, setStreaming] = useState(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
