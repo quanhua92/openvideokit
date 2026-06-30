@@ -17,6 +17,14 @@ import {
 	type WordTiming,
 } from "../lib/timeWordsByCharRatio";
 
+/** Convert #rrggbb + alpha → rgba() string. */
+function hexToRgba(hex: string, alpha: number): string {
+	const r = parseInt(hex.slice(1, 3), 16);
+	const g = parseInt(hex.slice(3, 5), 16);
+	const b = parseInt(hex.slice(5, 7), 16);
+	return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function CaptionLayer({
 	slide,
 	captionStyle: _captionStyle,
@@ -74,7 +82,7 @@ export function CaptionLayer({
 	const cssVars: Record<string, string> = {
 		"--caption-scale": String(c.fontScale),
 		"--caption-weight": String(c.fontWeight),
-		"--caption-dim": `rgba(255, 255, 255, ${c.dimOpacity})`,
+		"--caption-dim": hexToRgba(c.dimColor, c.dimOpacity),
 		"--caption-active": c.activeColor,
 		"--caption-letter-spacing": `${c.letterSpacing}em`,
 		"--caption-pill-bg": c.pill ? c.pillColor : "transparent",

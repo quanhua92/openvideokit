@@ -83,6 +83,13 @@ export function CaptionControls() {
 				onChange={(c) => patch({ activeColor: c })}
 			/>
 
+			{/* Non-active text color */}
+			<ColorRow
+				label="Dim text color"
+				value={custom.dimColor}
+				onChange={(c) => patch({ dimColor: c })}
+			/>
+
 			{/* Pill background color (only when pill is on) */}
 			{custom.pill && (
 				<ColorRow

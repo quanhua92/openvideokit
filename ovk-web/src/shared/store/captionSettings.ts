@@ -17,6 +17,8 @@ export interface CaptionCustomSettings {
 	activeColor: string;
 	/** Pill background color (hex) — only used when pill is on. */
 	pillColor: string;
+	/** Non-active word text color (hex). */
+	dimColor: string;
 	/** Inactive word opacity (0–1). */
 	dimOpacity: number;
 	/** Font weight 400–900. */
@@ -39,6 +41,7 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 	highlight: {
 		activeColor: "#0a0a14",
 		pillColor: "#ffea00",
+		dimColor: "#ffffff",
 		dimOpacity: 0.5,
 		fontWeight: 900,
 		glow: 0,
@@ -51,6 +54,7 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 	neon: {
 		activeColor: "#00f5ff",
 		pillColor: "#0a0a14",
+		dimColor: "#ffffff",
 		dimOpacity: 0.25,
 		fontWeight: 700,
 		glow: 0.8,
@@ -63,6 +67,7 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 	editorial: {
 		activeColor: "#ffd700",
 		pillColor: "#1a1a2e",
+		dimColor: "#ffffff",
 		dimOpacity: 0.32,
 		fontWeight: 400,
 		glow: 0,
@@ -75,6 +80,7 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 	"eco-green": {
 		activeColor: "#4ade80",
 		pillColor: "#0a1a0a",
+		dimColor: "#ffffff",
 		dimOpacity: 0.3,
 		fontWeight: 800,
 		glow: 0.5,
