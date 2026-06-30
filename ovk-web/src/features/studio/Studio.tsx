@@ -48,6 +48,7 @@ const EMPTY_PROJECT: ProjectBundle = {
 		slides: [],
 	},
 	slides: {},
+	slideHtml: {},
 };
 
 export function Studio({ projectId }: { projectId: string }) {

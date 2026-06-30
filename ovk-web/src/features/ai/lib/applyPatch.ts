@@ -53,6 +53,7 @@ function translateOne(slideId: string, p: JsonPatchOp): EditOp | null {
 
 	// /voiceover/text
 	if (p.path === "/voiceover/text") {
+		if (p.op === "remove") return null;
 		return {
 			kind: "setVoiceover",
 			slideId,
@@ -62,6 +63,7 @@ function translateOne(slideId: string, p: JsonPatchOp): EditOp | null {
 
 	// /voiceover/voice
 	if (p.path === "/voiceover/voice") {
+		if (p.op === "remove") return null;
 		return {
 			kind: "setVoiceover",
 			slideId,

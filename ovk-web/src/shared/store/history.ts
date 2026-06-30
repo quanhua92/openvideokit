@@ -8,7 +8,7 @@
  */
 import { create } from "zustand";
 
-import type { EditEvent } from "./EditBus";
+import type { EditEvent } from "@/shared/edit/EditBus";
 
 interface HistoryStore {
 	past: EditEvent[];

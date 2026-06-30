@@ -87,4 +87,6 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
 			return { kind: "setSlideHtml", slideId: op.slideId, html: prev };
 		}
 	}
+
+	return null;
 }
