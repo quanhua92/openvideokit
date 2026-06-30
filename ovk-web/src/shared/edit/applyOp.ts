@@ -187,5 +187,19 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
 				},
 			};
 		}
+
+		case "restoreSlide": {
+			const slides = [...project.root.slides];
+			const insertAt = Math.max(0, Math.min(op.at, slides.length));
+			slides.splice(insertAt, 0, op.slide.id);
+			return {
+				...project,
+				root: { ...project.root, slides },
+				slides: {
+					...project.slides,
+					[op.slide.id]: op.slide,
+				},
+			};
+		}
 	}
 }

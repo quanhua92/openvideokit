@@ -36,13 +36,12 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
 		case "removeSlide": {
 			const removedSlide = before.slides[op.slideId];
 			if (!removedSlide) return null;
-			// Add it back in its original position.
 			const idx = before.root.slides.indexOf(op.slideId);
 			return {
-				kind: "restoreSlide",
+				kind: "restoreSlide" as const,
 				slide: removedSlide,
 				at: idx,
-			} as unknown as EditOp; // restoreSlide lives below
+			};
 		}
 
 		case "setTransition": {

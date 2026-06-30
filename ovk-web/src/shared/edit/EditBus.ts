@@ -25,6 +25,11 @@ export type EditOp =
 	| { kind: "removeSlide"; slideId: string }
 	| { kind: "duplicateSlide"; slideId: string; newId: string }
 	| {
+			kind: "restoreSlide";
+			slide: import("@/shared/api/schemas/slideIndex").SlideIndex;
+			at: number;
+	  }
+	| {
 			kind: "setTransition";
 			slideId: string;
 			transition: Record<string, unknown> | null;
