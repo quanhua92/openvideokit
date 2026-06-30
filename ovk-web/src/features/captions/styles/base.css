@@ -9,7 +9,7 @@
 
 .caption-phrase .word {
 	display: inline-block;
-	font-size: calc(clamp(10px, 3.5cqw, 28px) * var(--caption-scale, 1));
+	font-size: calc(48px * var(--caption-scale, 1));
 	font-weight: var(--caption-weight, 900);
 	color: var(--caption-dim, rgba(255, 255, 255, 0.5));
 	margin: 0 0.05em;

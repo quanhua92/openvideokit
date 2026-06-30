@@ -136,8 +136,8 @@ export function CaptionControls() {
 			<SliderRow
 				label="Font size"
 				value={custom.fontScale}
-				min={0.5}
-				max={1.5}
+				min={0.3}
+				max={3.0}
 				step={0.05}
 				display={`${Math.round(custom.fontScale * 100)}%`}
 				onChange={(v) => patch({ fontScale: v })}

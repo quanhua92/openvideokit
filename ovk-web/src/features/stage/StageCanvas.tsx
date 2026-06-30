@@ -67,34 +67,35 @@ export function StageCanvas({
 				}}
 			>
 				{slide ? (
-					<SlideView slide={slide} />
+					<>
+						<SlideView slide={slide} />
+						{/* Caption overlay — INSIDE the scale, matching HyperFrames 1080p canvas.
+							Scrim only renders when captions exist AND the user has it on. */}
+						{slide.voiceover.text.trim() && (
+							<>
+								{captionCustom.scrim && (
+									<div
+										className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4"
+										style={{
+											background:
+												"linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)",
+										}}
+									/>
+								)}
+								<CaptionLayer
+									slide={slide}
+									captionStyle={captionStyle}
+									activeStart={activeStart}
+								/>
+							</>
+						)}
+					</>
 				) : (
 					<div className="flex h-full items-center justify-center text-neutral-500">
 						No active slide
 					</div>
 				)}
 			</div>
-
-			{/* Caption overlay — OUTSIDE the scale, at viewport resolution.
-				    Scrim only renders when captions exist AND the user has it on. */}
-			{slide && slide.voiceover.text.trim() && (
-				<>
-					{captionCustom.scrim && (
-						<div
-							className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4"
-							style={{
-								background:
-									"linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)",
-							}}
-						/>
-					)}
-					<CaptionLayer
-						slide={slide}
-						captionStyle={captionStyle}
-						activeStart={activeStart}
-					/>
-				</>
-			)}
 		</div>
 	);
 }
