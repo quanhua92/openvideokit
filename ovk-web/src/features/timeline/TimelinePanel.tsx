@@ -74,6 +74,10 @@ export function TimelinePanel({
 	const playheadX = t * PX_PER_SEC;
 	const totalWidth = Math.max(total * PX_PER_SEC + 80, 600);
 
+	let activeIndex = starts.findIndex((s, i) => t >= s && t < s + durations[i]);
+	if (activeIndex === -1 && t >= total && ids.length > 0) activeIndex = ids.length - 1;
+	const activeSlideId = activeIndex >= 0 ? ids[activeIndex] : null;
+
 	const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
 	const onDragEnd = (e: DragEndEvent) => {
 		setActiveId(null);
@@ -93,6 +97,19 @@ export function TimelinePanel({
 		const lastId = ids[ids.length - 1];
 		dispatch(addSlide(newId, "default", lastId));
 		toast.success(`Added ${newId}`);
+	};
+
+	const handleDuplicateActive = () => {
+		if (!activeSlideId) return;
+		const newId = `slide-${Math.random().toString(36).slice(2, 8)}`;
+		dispatch(duplicateSlide(activeSlideId, newId));
+		toast.success(`Duplicated ${activeSlideId}`);
+	};
+
+	const handleRemoveActive = () => {
+		if (!activeSlideId) return;
+		dispatch(removeSlide(activeSlideId));
+		toast.success(`Removed ${activeSlideId}`);
 	};
 
 	return (
@@ -122,6 +139,25 @@ export function TimelinePanel({
 				</div>
 			</div>
 
+			<div className="flex items-center gap-2 border-b border-border bg-muted/20 px-4 py-1.5 min-h-[36px]">
+				{activeSlideId ? (
+					<>
+						<span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mr-2">
+							{project.slides[activeSlideId]?.fields.title || activeSlideId}
+						</span>
+						<div className="h-3 w-px bg-border mx-1" />
+						<Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleDuplicateActive}>
+							<Copy className="mr-1.5 size-3" /> Duplicate
+						</Button>
+						<Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-destructive hover:text-destructive" onClick={handleRemoveActive}>
+							<Trash2 className="mr-1.5 size-3" /> Delete
+						</Button>
+					</>
+				) : (
+					<span className="text-xs text-muted-foreground">Select a slide to see actions</span>
+				)}
+			</div>
+
 			<div className="relative flex-1 overflow-x-auto">
 				<DndContext
 					sensors={sensors}
@@ -145,19 +181,10 @@ export function TimelinePanel({
 										title={project.slides[id]?.fields.title ?? id}
 										duration={durations[i]}
 										left={starts[i] * PX_PER_SEC}
-										active={Math.abs(t - starts[i]) < durations[i]}
+										active={id === activeSlideId}
 										onJump={() => {
 											seek(starts[i] + 0.01);
 											onSeekToSlide?.(id);
-										}}
-										onDuplicate={() => {
-											const newId = `slide-${Math.random().toString(36).slice(2, 8)}`;
-											dispatch(duplicateSlide(id, newId));
-											toast.success(`Duplicated ${id}`);
-										}}
-										onRemove={() => {
-											dispatch(removeSlide(id));
-											toast.success(`Removed ${id}`);
 										}}
 									/>
 								))}
@@ -205,8 +232,6 @@ function SortableClip({
 	left,
 	active,
 	onJump,
-	onDuplicate,
-	onRemove,
 }: {
 	id: string;
 	title: string;
@@ -214,8 +239,6 @@ function SortableClip({
 	left: number;
 	active: boolean;
 	onJump: () => void;
-	onDuplicate: () => void;
-	onRemove: () => void;
 }) {
 	const {
 		attributes,
@@ -260,39 +283,13 @@ function SortableClip({
 				</button>
 				<button
 					type="button"
-					className="flex-1 truncate text-left text-xs font-medium"
+					className="flex-1 truncate text-left text-xs font-medium pr-2"
 					onClick={onJump}
 				>
 					{title}
 				</button>
-				<div className="hidden group-hover:flex items-center gap-0.5">
-					<Button
-						variant="ghost"
-						size="icon"
-						className="size-5"
-						aria-label="Duplicate"
-						onClick={(e) => {
-							e.stopPropagation();
-							onDuplicate();
-						}}
-					>
-						<Copy className="size-3" />
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="size-5 text-destructive hover:text-destructive"
-						aria-label="Remove"
-						onClick={(e) => {
-							e.stopPropagation();
-							onRemove();
-						}}
-					>
-						<Trash2 className="size-3" />
-					</Button>
-				</div>
 			</div>
-			<span className="pl-9 font-mono text-[10px] text-muted-foreground">
+			<span className="pl-9 font-mono text-[10px] text-muted-foreground truncate pr-2">
 				{duration.toFixed(1)}s
 			</span>
 		</div>
