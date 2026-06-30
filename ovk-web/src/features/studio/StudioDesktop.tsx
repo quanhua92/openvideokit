@@ -7,6 +7,7 @@ import { CaptionControls } from "@/features/captions/components/CaptionControls"
 import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
 import { HtmlEditor } from "@/features/html-editor/HtmlEditor";
 import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
+import { ProjectPanel } from "@/features/project/ProjectPanel";
 import { StageCanvas } from "@/features/stage/StageCanvas";
 import { TimelinePanel } from "@/features/timeline/TimelinePanel";
 import { EmptySlot } from "./EmptySlot";
@@ -86,6 +87,7 @@ export function StudioDesktop({ data }: { data: StudioData }) {
 								</div>
 							)}
 							{activeTab === "ai" && <AIDock slideId={activeSlide.slideId} />}
+							{activeTab === "project" && <ProjectPanel project={project} />}
 						</div>
 						
 						<TransportBar />

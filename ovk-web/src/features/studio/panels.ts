@@ -8,6 +8,7 @@ import {
 	Images,
 	LayoutPanelLeft,
 	MessageSquare,
+	Settings2,
 	Sparkles,
 } from "lucide-react";
 
@@ -17,7 +18,8 @@ export type PanelId =
 	| "html"
 	| "assets"
 	| "captions"
-	| "ai";
+	| "ai"
+	| "project";
 
 export interface PanelDescriptor {
 	id: PanelId;
@@ -35,6 +37,7 @@ export const PANELS: ReadonlyArray<PanelDescriptor> = [
 	{ id: "captions", label: "Captions", icon: MessageSquare, landsIn: "P4" },
 	{ id: "html", label: "HTML", icon: Braces, landsIn: "P5" },
 	{ id: "assets", label: "Assets", icon: Images, landsIn: "P7" },
+	{ id: "project", label: "Project", icon: Settings2, landsIn: "P3" },
 ];
 
 /** Look up a panel by id. Throws at module load if the PANELS table is missing an entry. */

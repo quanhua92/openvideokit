@@ -31,7 +31,7 @@ export function MobileToolbar({
 							<Button
 								variant={isActive ? "secondary" : "ghost"}
 								onClick={() => onChange(p.id)}
-								className="flex h-full flex-1 flex-col gap-0.5 rounded-none px-1 py-1.5 text-[10px]"
+								className="flex h-full min-w-14 shrink-0 flex-col gap-0.5 rounded-none px-1 py-1.5 text-[10px]"
 								aria-label={p.label}
 								aria-pressed={isActive}
 							>
