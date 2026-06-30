@@ -14,6 +14,7 @@ import { useAssetUrl } from "@/features/assets/hooks/useAssetUrl";
 import { CaptionLayer } from "@/features/captions/components/CaptionLayer";
 import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
+import { stampSafe } from "@/shared/lib/placeholders";
 import { useCaptionSettings } from "@/shared/store/captionSettings";
 
 import { scaleToFit } from "./lib/scale";
@@ -109,7 +110,7 @@ export function StageCanvas({
 function SlideView({ slide }: { slide: SlideIndex }) {
 	const title = slide.fields.title ?? "";
 	const body = slide.fields.body ?? "";
-	const bgColor = slide.fields.bg ?? "#0a0a14";
+	const bgColor = slide.fields.bg_color ?? "#0a0a14";
 	const imgUrl = useAssetUrl(slide.assets.img);
 
 	return (
@@ -177,13 +178,13 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 
 function HtmlView({ slide, html }: { slide: SlideIndex; html: string }) {
 	const imgUrl = useAssetUrl(slide.assets.img) ?? "";
-	
-	const processedHtml = html
-		.replace(/<\/?template>/gi, "")
-		.replace(/__SLIDE_ID__/g, slide.id)
-		.replace(/__TITLE__/g, slide.fields.title ?? "")
-		.replace(/__BODY__/g, slide.fields.body ?? "")
-		.replace(/__IMAGE__/g, imgUrl);
+
+	let processedHtml = html.replace(/<\/?template>/gi, "");
+	processedHtml = processedHtml.replaceAll("__OVK_SLIDE_ID__", slide.id);
+	for (const [id, value] of Object.entries(slide.fields)) {
+		processedHtml = stampSafe(processedHtml, id, value);
+	}
+	processedHtml = stampSafe(processedHtml, "image", imgUrl);
 
 	return (
 		<>

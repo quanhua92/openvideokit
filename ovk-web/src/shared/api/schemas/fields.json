@@ -1,0 +1,18 @@
+{
+	"title": { "label": "Title", "type": "text", "default": "New slide" },
+	"body": { "label": "Body", "type": "text", "default": "" },
+	"caption": { "label": "Caption", "type": "text", "default": "" },
+	"quote": { "label": "Quote", "type": "text", "default": "" },
+	"name": { "label": "Name", "type": "text", "default": "" },
+	"step": { "label": "Step", "type": "text", "default": "" },
+	"image": { "label": "Image", "type": "image" },
+	"bg_image": { "label": "Background image", "type": "image" },
+	"logo": { "label": "Logo", "type": "image" },
+	"avatar": { "label": "Avatar", "type": "image" },
+	"video": { "label": "Video", "type": "video" },
+	"audio": { "label": "Audio", "type": "audio" },
+	"url": { "label": "URL", "type": "text", "default": "" },
+	"cta": { "label": "Call to action", "type": "text", "default": "" },
+	"bg_color": { "label": "Background color", "type": "color", "default": "#0a0a14" },
+	"accent": { "label": "Accent", "type": "color", "default": "#4ade80" }
+}

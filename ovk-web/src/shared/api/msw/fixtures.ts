@@ -101,41 +101,41 @@ export const fixtureSlides: Record<string, SlideIndex> = {
 
 export const fixtureSlideHtml: Record<string, string> = {
 	"slide-0": `<template>
-  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+  <div data-composition-id="__OVK_SLIDE_ID__" data-width="1920" data-height="1080">
     <div class="content">
-      <h1>__TITLE__</h1>
-      <p>__BODY__</p>
+      <h1>__OVK_TITLE__</h1>
+      <p>__OVK_BODY__</p>
     </div>
     <style>
-      [data-composition-id="__SLIDE_ID__"] { background: #0a0a14; }
-      [data-composition-id="__SLIDE_ID__"] .content { text-align: center; padding-top: 38vh; }
-      [data-composition-id="__SLIDE_ID__"] h1 { font-size: 120px; font-weight: 800; color: #fff; }
+      [data-composition-id="__OVK_SLIDE_ID__"] { background: #0a0a14; }
+      [data-composition-id="__OVK_SLIDE_ID__"] .content { text-align: center; padding-top: 38vh; }
+      [data-composition-id="__OVK_SLIDE_ID__"] h1 { font-size: 120px; font-weight: 800; color: #fff; }
     </style>
   </div>
 </template>`,
 	"slide-1": `<template>
-  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+  <div data-composition-id="__OVK_SLIDE_ID__" data-width="1920" data-height="1080">
     <div class="content">
-      <h1>__TITLE__</h1>
-      <p>__BODY__</p>
+      <h1>__OVK_TITLE__</h1>
+      <p>__OVK_BODY__</p>
     </div>
     <style>
-      [data-composition-id="__SLIDE_ID__"] { background: #0d1b2a; }
-      [data-composition-id="__SLIDE_ID__"] .content { text-align: center; padding-top: 38vh; }
-      [data-composition-id="__SLIDE_ID__"] h1 { font-size: 100px; font-weight: 700; color: #4ade80; }
+      [data-composition-id="__OVK_SLIDE_ID__"] { background: #0d1b2a; }
+      [data-composition-id="__OVK_SLIDE_ID__"] .content { text-align: center; padding-top: 38vh; }
+      [data-composition-id="__OVK_SLIDE_ID__"] h1 { font-size: 100px; font-weight: 700; color: #4ade80; }
     </style>
   </div>
 </template>`,
 	"slide-2": `<template>
-  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+  <div data-composition-id="__OVK_SLIDE_ID__" data-width="1920" data-height="1080">
     <div class="content">
-      <h1>__TITLE__</h1>
-      <p>__BODY__</p>
+      <h1>__OVK_TITLE__</h1>
+      <p>__OVK_BODY__</p>
     </div>
     <style>
-      [data-composition-id="__SLIDE_ID__"] { background: #1a0a2e; }
-      [data-composition-id="__SLIDE_ID__"] .content { text-align: center; padding-top: 35vh; }
-      [data-composition-id="__SLIDE_ID__"] h1 { font-size: 90px; font-weight: 800; color: #fff; text-transform: uppercase; }
+      [data-composition-id="__OVK_SLIDE_ID__"] { background: #1a0a2e; }
+      [data-composition-id="__OVK_SLIDE_ID__"] .content { text-align: center; padding-top: 35vh; }
+      [data-composition-id="__OVK_SLIDE_ID__"] h1 { font-size: 90px; font-weight: 800; color: #fff; text-transform: uppercase; }
     </style>
   </div>
 </template>`,

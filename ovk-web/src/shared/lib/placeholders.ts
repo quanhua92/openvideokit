@@ -9,9 +9,9 @@
  * (HF's getVariables() returns {} in sub-compositions).
  */
 
-/** Field id → __FIELD__ (uppercased). e.g. title → __TITLE__ */
+/** Field id → __OVK_FIELD__ (uppercased, namespaced). e.g. title → __OVK_TITLE__ */
 export function placeholderFor(id: string): string {
-	return `__${id.toUpperCase()}__`;
+	return `__OVK_${id.toUpperCase()}__`;
 }
 
 /**

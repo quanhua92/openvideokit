@@ -10,8 +10,8 @@ import {
 } from "./lintHtml";
 
 const GOOD = `<template>
-  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
-    <h1>__TITLE__</h1>
+  <div data-composition-id="__OVK_SLIDE_ID__" data-width="1920" data-height="1080">
+    <h1>__OVK_TITLE__</h1>
     <style>body { margin: 0; }</style>
   </div>
 </template>`;
@@ -27,7 +27,7 @@ describe("helpers", () => {
 	it("extractTemplateContent returns inner HTML", () => {
 		const inner = extractTemplateContent(GOOD);
 		expect(inner).toContain("data-composition-id");
-		expect(inner).toContain("__TITLE__");
+		expect(inner).toContain("__OVK_TITLE__");
 	});
 
 	it("extractTemplateContent returns empty string when no template", () => {
@@ -115,5 +115,34 @@ describe("lintHtml R1–R4", () => {
 			"<html><template><div>no comp id</div></template></html>",
 		);
 		expect(r.firedRule?.id).toBe("R2");
+	});
+});
+
+describe("lintHtml R5 (binding coverage)", () => {
+	it("passes for structural + schema tokens (GOOD fixture)", () => {
+		expect(lintHtml(GOOD).ok).toBe(true);
+	});
+
+	it("passes for the __OVK_CUSTOM_*__ escape hatch", () => {
+		const r = lintHtml(
+			'<template><div data-composition-id="x"><p>__OVK_CUSTOM_COMMAND__</p></div></template>',
+		);
+		expect(r.ok).toBe(true);
+	});
+
+	it("fails for an unknown schema token", () => {
+		const r = lintHtml(
+			'<template><div data-composition-id="x"><p>__OVK_NONEXISTENT__</p></div></template>',
+		);
+		expect(r.ok).toBe(false);
+		expect(r.firedRule?.id).toBe("R5");
+	});
+
+	it("fails for a legacy non-namespaced token", () => {
+		const r = lintHtml(
+			'<template><div data-composition-id="x"><p>__TITLE__</p></div></template>',
+		);
+		expect(r.ok).toBe(false);
+		expect(r.firedRule?.id).toBe("R5");
 	});
 });

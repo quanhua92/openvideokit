@@ -12,16 +12,16 @@ import { CodeMirrorLazy } from "./CodeMirrorLazy";
 import { LintGate } from "./LintGate";
 
 const DEFAULT_SHELL = `<template>
-  <div data-composition-id="__SLIDE_ID__" data-width="1920" data-height="1080">
+  <div data-composition-id="__OVK_SLIDE_ID__" data-width="1920" data-height="1080">
     <div class="content">
-      <h1>__TITLE__</h1>
-      <p>__BODY__</p>
+      <h1>__OVK_TITLE__</h1>
+      <p>__OVK_BODY__</p>
     </div>
     <style>
-      [data-composition-id="__SLIDE_ID__"] { background: #0a0a14; color: white; }
-      [data-composition-id="__SLIDE_ID__"] .content { text-align: center; padding-top: 35vh; }
-      [data-composition-id="__SLIDE_ID__"] h1 { font-size: 120px; font-weight: 800; margin-bottom: 24px; letter-spacing: -0.02em; }
-      [data-composition-id="__SLIDE_ID__"] p { font-size: 40px; font-weight: 400; opacity: 0.8; }
+      [data-composition-id="__OVK_SLIDE_ID__"] { background: #0a0a14; color: white; }
+      [data-composition-id="__OVK_SLIDE_ID__"] .content { text-align: center; padding-top: 35vh; }
+      [data-composition-id="__OVK_SLIDE_ID__"] h1 { font-size: 120px; font-weight: 800; margin-bottom: 24px; letter-spacing: -0.02em; }
+      [data-composition-id="__OVK_SLIDE_ID__"] p { font-size: 40px; font-weight: 400; opacity: 0.8; }
     </style>
   </div>
 </template>`;

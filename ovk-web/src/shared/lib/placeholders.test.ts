@@ -8,18 +8,18 @@ import {
 } from "./placeholders";
 
 describe("placeholderFor", () => {
-	it("uppercases the field id", () => {
-		expect(placeholderFor("title")).toBe("__TITLE__");
-		expect(placeholderFor("body")).toBe("__BODY__");
+	it("uppercases the field id into the __OVK_ namespace", () => {
+		expect(placeholderFor("title")).toBe("__OVK_TITLE__");
+		expect(placeholderFor("body")).toBe("__OVK_BODY__");
 	});
 
 	it("handles multi-word ids", () => {
-		expect(placeholderFor("hero_title")).toBe("__HERO_TITLE__");
+		expect(placeholderFor("hero_title")).toBe("__OVK_HERO_TITLE__");
 	});
 });
 
 describe("stampSafe vs stampNaive", () => {
-	const html = "<h1>__TITLE__</h1>";
+	const html = "<h1>__OVK_TITLE__</h1>";
 
 	it("stampSafe preserves regex-special characters in the value", () => {
 		// `$&` is a regex backreference — naive stamp would corrupt this.
@@ -53,18 +53,18 @@ describe("stampSafe vs stampNaive", () => {
 describe("extractPlaceholders", () => {
 	it("lists placeholders in order, deduped", () => {
 		const src = `
-			<div data-composition-id="__SLIDE_ID__">
-				<h1>__TITLE__</h1>
-				<p>__BODY__</p>
-				<img src="__IMAGE__"/>
-				<h2>__TITLE__ again</h2>
+			<div data-composition-id="__OVK_SLIDE_ID__">
+				<h1>__OVK_TITLE__</h1>
+				<p>__OVK_BODY__</p>
+				<img src="__OVK_IMAGE__"/>
+				<h2>__OVK_TITLE__ again</h2>
 			</div>
 		`;
 		expect(extractPlaceholders(src)).toEqual([
-			"__SLIDE_ID__",
-			"__TITLE__",
-			"__BODY__",
-			"__IMAGE__",
+			"__OVK_SLIDE_ID__",
+			"__OVK_TITLE__",
+			"__OVK_BODY__",
+			"__OVK_IMAGE__",
 		]);
 	});
 
@@ -80,5 +80,11 @@ describe("extractPlaceholders", () => {
 		expect(extractPlaceholders("<div>__FIELD_1__</div>")).toEqual([
 			"__FIELD_1__",
 		]);
+	});
+
+	it("matches the custom escape namespace", () => {
+		expect(
+			extractPlaceholders("<div>__OVK_CUSTOM_COMMAND__</div>"),
+		).toEqual(["__OVK_CUSTOM_COMMAND__"]);
 	});
 });

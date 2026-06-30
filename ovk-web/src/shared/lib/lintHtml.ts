@@ -13,9 +13,29 @@
  * proposals pass through the SAME gate.
  */
 
+import fieldsSchema from "@/shared/api/schemas/fields.json";
+import { extractPlaceholders } from "./placeholders";
+
+const SCHEMA_KEYS = new Set(Object.keys(fieldsSchema));
+const OVK = "__OVK_";
+const STRUCTURAL_TOKEN = "__OVK_SLIDE_ID__";
+
+/** R5: a placeholder is valid if it is structural, custom-namespace, or a known schema key. */
+function unknownTokenMessage(token: string): string | null {
+	if (token === STRUCTURAL_TOKEN) return null;
+	if (token.startsWith("__OVK_CUSTOM_")) return null;
+	if (token.startsWith(OVK) && token.endsWith("__")) {
+		const fieldId = token.slice(OVK.length, -2).toLowerCase();
+		return SCHEMA_KEYS.has(fieldId)
+			? null
+			: `unknown field token ${token} — not in schema.json and not __OVK_CUSTOM_*__`;
+	}
+	return `non-namespaced token ${token} — use __OVK_<FIELD>__ (or __OVK_CUSTOM_<NAME>__)`;
+}
+
 export interface LintResult {
 	ok: boolean;
-	firedRule?: { id: "R1" | "R2" | "R3" | "R4"; message: string };
+	firedRule?: { id: "R1" | "R2" | "R3" | "R4" | "R5"; message: string };
 }
 
 /** Count occurrences of a tag in a string (case-insensitive, naive scan). */
@@ -126,6 +146,17 @@ export function lintHtml(src: string): LintResult {
 					"Tailwind detected — use vanilla CSS + GSAP in composition HTML (RFC §16)",
 			},
 		};
+	}
+
+	// R5: binding coverage — every __OVK_*__ token must be a known schema key,
+	// the structural __OVK_SLIDE_ID__, or an __OVK_CUSTOM_*__ escape hatch.
+	const inner5 = extractTemplateContent(src);
+	const tokens = extractPlaceholders(inner5);
+	for (const token of tokens) {
+		const msg = unknownTokenMessage(token);
+		if (msg) {
+			return { ok: false, firedRule: { id: "R5", message: msg } };
+		}
 	}
 
 	return { ok: true };
