@@ -145,7 +145,7 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
 					[op.slideId]: {
 						...slide,
 						voiceover: {
-							text: op.text,
+							text: op.text !== undefined ? op.text : slide.voiceover.text,
 							voice: op.voice ?? slide.voiceover.voice,
 						},
 					},

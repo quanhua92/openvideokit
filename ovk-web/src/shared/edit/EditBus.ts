@@ -35,7 +35,7 @@ export type EditOp =
 			transition: Record<string, unknown> | null;
 	  }
 	| { kind: "setAsset"; slideId: string; fieldId: string; ref: string }
-	| { kind: "setVoiceover"; slideId: string; text: string; voice?: string }
+	| { kind: "setVoiceover"; slideId: string; text?: string; voice?: string }
 	| { kind: "setDuration"; slideId: string; duration: number }
 	| { kind: "setCaptionStyle"; style: string }
 	| { kind: "setSlideHtml"; slideId: string; html: string };

@@ -61,7 +61,7 @@ export function setAsset(
 
 export function setVoiceover(
 	slideId: string,
-	text: string,
+	text?: string,
 	voice?: string,
 ): Extract<EditOp, { kind: "setVoiceover" }> {
 	return { kind: "setVoiceover", slideId, text, voice };

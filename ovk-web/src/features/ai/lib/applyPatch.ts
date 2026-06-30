@@ -65,7 +65,6 @@ function translateOne(slideId: string, p: JsonPatchOp): EditOp | null {
 		return {
 			kind: "setVoiceover",
 			slideId,
-			text: "", // caller fills text from current state
 			voice: String(p.value ?? "en-US-AriaNeural"),
 		};
 	}
