@@ -25,6 +25,7 @@ graph TD
         Prop[Properties Panel]
         HE[HTML Editor]
         AI[AI Dock]
+        Proj[Project Panel]
     end
 
     subgraph Bus [State & Logic]
@@ -61,3 +62,4 @@ graph TD
 2. **TanStack Query**: Acts as the single source of truth for the active project.
 3. **StageCanvas**: The preview engine. It is strictly a read-only consumer of the active slide. It does not possess complex editing logic; its only job is rendering the `SlideView` (fallback) or the `HtmlView` (HTML override) at 60fps.
 4. **EditBus**: A custom synchronous event dispatcher (`EditBusProvider`, mounted at the **root** in `__root.tsx` so the entire app — header included — shares one bus). It intercepts UI actions, updates the TanStack Query cache locally, and captures each op's inverse from the *pre-edit* state onto the history stack. Both `applyOp` and `inverseOp` are exhaustiveness-checked, so a new op kind without an apply/inverse case is a compile error.
+5. **Panel registry**: Every editor surface is a first-class panel registered in `src/features/studio/panels.ts` (`PanelId` union + `PANELS` table). Adding a surface = one row there + one component; the activity bar (`MobileToolbar`) and both studio layouts read from this single table. See [editor-components.md §5](./editor-components.md).
