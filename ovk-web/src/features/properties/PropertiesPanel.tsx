@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AssetDropzone } from "@/features/assets/components/AssetDropzone";
 import { useAssetUrl } from "@/features/assets/hooks/useAssetUrl";
+import fieldsSchema from "@/shared/api/schemas/fields.json";
 import { cn } from "@/lib/utils";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
@@ -27,6 +28,11 @@ import {
 	setField,
 	setVoiceover,
 } from "@/shared/edit/ops";
+
+function fieldLabel(id: string): string {
+	const entry = (fieldsSchema as Record<string, { label?: string }>)[id];
+	return entry?.label ?? id;
+}
 
 export function PropertiesPanel({
 	slide,
@@ -70,25 +76,26 @@ export function PropertiesPanel({
 				</div>
 			</header>
 			<div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
-				<Section icon={Type} title="Fields">
-					<div className="space-y-2">
-						{Object.entries(slide.fields)
-							.filter(([id]) => id !== "bg")
-							.map(([id, value]) => (
-								<FieldInput
-									key={id}
-									slideId={slideId}
-									fieldId={id}
-									initialValue={value}
-								/>
-							))}
-					</div>
-				</Section>
+			<Section icon={Type} title="Fields">
+				<div className="space-y-2">
+					{Object.entries(slide.fields)
+						.filter(([id]) => id !== "bg_color")
+						.map(([id, value]) => (
+							<FieldInput
+								key={id}
+								slideId={slideId}
+								fieldId={id}
+								label={fieldLabel(id)}
+								initialValue={value}
+							/>
+						))}
+				</div>
+			</Section>
 
 				<Section icon={Palette} title="Background">
 					<BackgroundPicker
 						slideId={slideId}
-						value={slide.fields.bg ?? "#0a0a14"}
+						value={slide.fields.bg_color ?? "#0a0a14"}
 					/>
 				</Section>
 
@@ -195,10 +202,12 @@ function Section({
 function FieldInput({
 	slideId,
 	fieldId,
+	label,
 	initialValue,
 }: {
 	slideId: string;
 	fieldId: string;
+	label: string;
 	initialValue: string;
 }) {
 	const { dispatch } = useEditBus();
@@ -220,7 +229,7 @@ function FieldInput({
 	return (
 		<div className="space-y-1">
 			<div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-				{fieldId}
+				{label}
 			</div>
 			<Textarea
 				value={value}
@@ -307,7 +316,7 @@ function BackgroundPicker({
 	useEffect(() => {
 		if (localColor === initialValue) return;
 		const t = setTimeout(() => {
-			dispatch(setField(slideId, "bg", localColor));
+			dispatch(setField(slideId, "bg_color", localColor));
 		}, 150);
 		return () => clearTimeout(t);
 	}, [localColor, initialValue, slideId, dispatch]);
@@ -335,7 +344,7 @@ function BackgroundPicker({
 						type="button"
 						onClick={() => {
 							setLocalColor(c);
-							dispatch(setField(slideId, "bg", c));
+							dispatch(setField(slideId, "bg_color", c));
 						}}
 						className={cn(
 							"size-5 rounded-full border transition",
