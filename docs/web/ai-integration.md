@@ -41,3 +41,6 @@ If the user asks to "Add a new slide", the AI executes a function/tool call.
 When the user requests visual changes (e.g., "Make the text much bigger and red"), the AI streams a full HTML string in a markdown code block.
 - **DiffDigest**: The chat UI wraps the raw HTML in a `DiffDigest` component. It truncates massive HTML walls behind a "Click to expand" UI so the chat remains readable.
 - **Validation**: Before the HTML is committed, it must pass the same `lintHtml` rules as human-written code. If the AI hallucinates `<html>` wrappers instead of `<template>`, it is blocked.
+
+### Undoability
+All three tiers converge on the same `EditBus.dispatch(op, 'ai:echo')`. Because the bus captures the pre-edit inverse for every op (see [state.md](./state.md)), AI-accepted edits are fully undoable via ⌘Z / the overflow menu — identical to human edits. There is no separate AI history track.

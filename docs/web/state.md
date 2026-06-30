@@ -11,21 +11,27 @@ The `ovk-web` application avoids massive global React context trees. Instead, it
 ```mermaid
 sequenceDiagram
     participant UI as Component (e.g. Properties)
-    participant Bus as EditBus
-    participant Immer as applyOp (Immer)
+    participant Bus as EditBus.dispatch
+    participant Inv as inverseOp
+    participant Apply as applyOp (pure reducer)
     participant Cache as TanStack Query Cache
     participant History as History Store
 
-    UI->>Bus: dispatch({ kind: 'setField', fieldId: 'title', value: 'Hello' })
-    Bus->>Immer: Drafts new ProjectBundle
-    Immer-->>Bus: Returns updated Bundle & Inverse Op
-    Bus->>Cache: queryClient.setQueryData(newBundle)
-    Bus->>History: pushPast(inverseOp)
+    UI->>Bus: dispatch(setField title='Hello')
+    Bus->>Cache: getQueryData → preEdit bundle
+    Bus->>Inv: inverseOp(op, preEdit) → captures old title
+    Bus->>Apply: applyOp(preEdit, op) → newBundle
+    Bus->>Cache: setQueryData(newBundle)
+    Bus->>History: pushPast(event { op, inverse })
     Note over UI,Cache: Only components subscribed to 'fields.title' re-render
 ```
 
-- **Operations**: The UI only emits strict commands (`addSlide`, `removeSlide`, `setField`, `setSlideHtml`, `duplicateSlide`).
-- **Undo/Redo**: Every operation dispatched through the bus automatically generates its inverse (via `inverseOp.ts`) and pushes it to a localized Zustand history stack.
+- **Operations**: The UI only emits strict commands (`addSlide`, `removeSlide`, `duplicateSlide`, `restoreSlide`, `reorderSlides`, `setField`, `setSlideHtml`, `setTransition`, `setAsset`, `setVoiceover`, `setDuration`, `setCaptionStyle`).
+- **Undo/Redo**: The inverse is captured **at dispatch time** from the *pre-edit* state (`inverseOp(op, current)` runs *before* `applyOp`), and stored on `EditEvent.inverse`. The history stack (`useHistory` Zustand) holds these events.
+  - `undo()` pops the event and replays `event.inverse` (with `skipHistory`). It does **not** recompute the inverse — recomputing against the post-edit cache would read back the new value and be a no-op for value ops like `setField`.
+  - `redo()` pops the future stack and replays the original `event.op`.
+  - **Exhaustiveness**: `applyOp` and `inverseOp` each end with a `const _exhaustive: never = op` guard. Adding a new `EditOp` variant without a case is a compile error, so undo can never silently break.
+- **UI**: Undo/Redo live in the `AppShell` overflow menu (⌘Z / ⌘⇧Z / Ctrl-Y), shown only on project routes, disabled when the stacks are empty.
 
 ## 2. The Playhead (60fps Volatile State)
 

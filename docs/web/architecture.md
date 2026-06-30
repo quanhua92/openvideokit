@@ -44,8 +44,8 @@ graph TD
     HE -- "setSlideHtml" --> EB
     AI -- "JSON Patch / Macros" --> EB
 
-    EB -- "Mutates via Immer" --> TQ
-    EB -- "Records Inverse" --> Hist
+    EB -- "Mutates via pure reducer" --> TQ
+    EB -- "Captures pre-edit inverse" --> Hist
 
     TQ -- "Data Binding" --> UI
     TQ -- "Active Slide Data" --> Preview
@@ -60,4 +60,4 @@ graph TD
 1. **API Mocking (MSW)**: Currently, `ovk-web` operates completely standalone via a Mock Service Worker (`src/shared/api/msw/handlers.ts`). MSW intercepts `GET /api/projects/:id` and returns a fixture `ProjectBundle`.
 2. **TanStack Query**: Acts as the single source of truth for the active project.
 3. **StageCanvas**: The preview engine. It is strictly a read-only consumer of the active slide. It does not possess complex editing logic; its only job is rendering the `SlideView` (fallback) or the `HtmlView` (HTML override) at 60fps.
-4. **EditBus**: A custom synchronous event dispatcher that intercepts UI actions, updates the TanStack Query cache locally, and pushes inverse actions to the history stack.
+4. **EditBus**: A custom synchronous event dispatcher (`EditBusProvider`, mounted at the **root** in `__root.tsx` so the entire app — header included — shares one bus). It intercepts UI actions, updates the TanStack Query cache locally, and captures each op's inverse from the *pre-edit* state onto the history stack. Both `applyOp` and `inverseOp` are exhaustiveness-checked, so a new op kind without an apply/inverse case is a compile error.
