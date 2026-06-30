@@ -12,7 +12,7 @@
  * the comparison checks voiceover.text only, not the whole project. A
  * duration update never trips the text comparator.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ProjectBundle } from "@/shared/api/client";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
 import { setDuration } from "@/shared/edit/ops";
@@ -27,6 +27,7 @@ export function useVoiceover(project: ProjectBundle): {
 	const { dispatch } = useEditBus();
 	const prevTextsRef = useRef<Record<string, string>>({});
 	const inflight = useRef(false);
+	const [isRegenerating, setIsRegenerating] = useState(false);
 
 	useEffect(() => {
 		const texts: Record<string, string> = {};
@@ -43,6 +44,7 @@ export function useVoiceover(project: ProjectBundle): {
 
 		const t = setTimeout(async () => {
 			inflight.current = true;
+			setIsRegenerating(true);
 			try {
 				const payload = {
 					slides: Object.entries(texts).map(([id, text]) => ({
@@ -64,11 +66,12 @@ export function useVoiceover(project: ProjectBundle): {
 				prevTextsRef.current = texts;
 			} finally {
 				inflight.current = false;
+				setIsRegenerating(false);
 			}
 		}, 500);
 
 		return () => clearTimeout(t);
 	}, [project, dispatch]);
 
-	return { isRegenerating: inflight.current };
+	return { isRegenerating };
 }
