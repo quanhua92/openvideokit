@@ -99,9 +99,11 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
 
 		default: {
 			// Compile-time exhaustiveness: if a new EditOp kind is added without
-			// a case above, `op` is no longer `never` and this errors.
+			// a case above, `op` is no longer `never` and this errors. Runtime
+			// defense: return null so a bogus op can't produce a bad inverse.
 			const _exhaustive: never = op;
-			return _exhaustive;
+			void _exhaustive;
+			return null;
 		}
 	}
 }

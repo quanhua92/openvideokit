@@ -179,12 +179,12 @@ function SlideView({ slide }: { slide: SlideIndex }) {
 function HtmlView({ slide, html }: { slide: SlideIndex; html: string }) {
 	const imgUrl = useAssetUrl(slide.assets.img) ?? "";
 
-	let processedHtml = html.replace(/<\/?template>/gi, "");
-	processedHtml = processedHtml.replaceAll("__OVK_SLIDE_ID__", slide.id);
-	for (const [id, value] of Object.entries(slide.fields)) {
-		processedHtml = stampSafe(processedHtml, id, value);
-	}
-	processedHtml = stampSafe(processedHtml, "image", imgUrl);
+		let processedHtml = html.replace(/<\/?template>/gi, "");
+		processedHtml = stampSafe(processedHtml, "SLIDE_ID", slide.id);
+		for (const [id, value] of Object.entries(slide.fields)) {
+			processedHtml = stampSafe(processedHtml, id, value);
+		}
+		processedHtml = stampSafe(processedHtml, "image", imgUrl);
 
 	return (
 		<>

@@ -204,10 +204,12 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
 
 		default: {
 			// Compile-time exhaustiveness: adding a new EditOp kind without a
-			// case above is a TS error, so applyOp can never silently return
-			// undefined and corrupt the query cache.
+			// case above is a TS error. Runtime defense: if an unexpected op
+			// reaches here (type cast / bad data), return the project unchanged
+			// rather than a non-ProjectBundle value that would corrupt the cache.
 			const _exhaustive: never = op;
-			return _exhaustive;
+			void _exhaustive;
+			return project;
 		}
 	}
 }

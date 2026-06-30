@@ -1,5 +1,5 @@
 /**
- * Panel identifiers — the six first-class editor surfaces.
+ * Panel identifiers — the seven first-class editor surfaces.
  * Reserved from P1 so later phases plug into the same slots.
  */
 import {

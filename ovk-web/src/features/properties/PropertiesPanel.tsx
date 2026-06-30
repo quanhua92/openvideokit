@@ -92,7 +92,7 @@ export function PropertiesPanel({
 				</div>
 			</Section>
 
-				<Section icon={Palette} title="Background">
+			<Section icon={Palette} title="Background">
 					<BackgroundPicker
 						slideId={slideId}
 						value={slide.fields.bg_color ?? "#0a0a14"}

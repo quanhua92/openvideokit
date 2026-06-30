@@ -36,6 +36,12 @@ import { useTheme } from "@/shared/lib/useTheme";
 const PROJECT_TO = "/projects/$projectId" as const;
 const PROJECT_PARAMS = { projectId: FIXTURE_PROJECT_ID };
 
+const IS_MAC =
+	typeof navigator !== "undefined" &&
+	/Mac|iPhone|iPod|iPad/i.test(navigator.platform || navigator.userAgent);
+const UNDO_HINT = IS_MAC ? "⌘Z" : "Ctrl+Z";
+const REDO_HINT = IS_MAC ? "⌘⇧Z" : "Ctrl+Shift+Z";
+
 const THEME_OPTIONS: ReadonlyArray<{ value: Theme; label: string }> = [
 	{ value: "light", label: "Light" },
 	{ value: "dark", label: "Dark" },
@@ -118,7 +124,7 @@ function OverflowMenu({
 						>
 							<Undo2 className="size-4" />
 							<span>Undo</span>
-							<DropdownMenuShortcut>⌘Z</DropdownMenuShortcut>
+							<DropdownMenuShortcut>{UNDO_HINT}</DropdownMenuShortcut>
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={onRedo}
@@ -127,7 +133,7 @@ function OverflowMenu({
 						>
 							<Redo2 className="size-4" />
 							<span>Redo</span>
-							<DropdownMenuShortcut>⌘⇧Z</DropdownMenuShortcut>
+							<DropdownMenuShortcut>{REDO_HINT}</DropdownMenuShortcut>
 						</DropdownMenuItem>
 					</>
 				)}

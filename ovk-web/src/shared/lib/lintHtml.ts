@@ -83,7 +83,7 @@ export function hasTailwind(src: string): boolean {
 }
 
 /**
- * Run R1–R4 in order. Returns ok:true if all pass, otherwise the first
+ * Run R1–R5 in order. Returns ok:true if all pass, otherwise the first
  * failing rule.
  */
 export function lintHtml(src: string): LintResult {
@@ -150,8 +150,7 @@ export function lintHtml(src: string): LintResult {
 
 	// R5: binding coverage — every __OVK_*__ token must be a known schema key,
 	// the structural __OVK_SLIDE_ID__, or an __OVK_CUSTOM_*__ escape hatch.
-	const inner5 = extractTemplateContent(src);
-	const tokens = extractPlaceholders(inner5);
+	const tokens = extractPlaceholders(inner);
 	for (const token of tokens) {
 		const msg = unknownTokenMessage(token);
 		if (msg) {
