@@ -15,6 +15,8 @@
  * fill the freed space. Tap "Show stage" to bring it back.
  */
 
+import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
+import * as ResizablePrimitive from "react-resizable-panels";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,81 +41,97 @@ export function StudioMobile({ data }: { data: StudioData }) {
 
 	return (
 		<div className="flex h-full flex-col">
-			{stageHidden ? (
-				<button
-					type="button"
-					onClick={() => setStageHidden(false)}
-					className="flex h-8 shrink-0 items-center justify-center gap-1.5 border-b border-border bg-muted/40 text-xs text-muted-foreground hover:bg-muted"
-					aria-label="Show stage"
-				>
-					<ChevronDown className="size-3" />
-					Show stage
-				</button>
-			) : (
-				<div className="relative h-[30vh] min-h-36 shrink-0">
-					<StageCanvas
-						slide={activeSlide.slide}
-						localTime={activeSlide.localTime}
-						activeStart={activeSlide.start}
-						captionStyle={project.root.theme.caption_style}
-					/>
-					<Button
-						variant="secondary"
-						size="icon"
-						className="absolute right-2 top-2 size-7 opacity-90"
-						onClick={() => setStageHidden(true)}
-						aria-label="Hide stage"
-					>
-						<ChevronUp className="size-3.5" />
-					</Button>
-				</div>
-			)}
+			<ResizablePrimitive.Group
+				orientation="vertical"
+				id="ovk-mobile"
+				className="flex flex-1 min-h-0 h-full w-full flex-col"
+			>
+				{!stageHidden && (
+					<>
+						<ResizablePanel id="stage" defaultSize={35} minSize={20}>
+							<div className="relative h-full w-full bg-black">
+								<StageCanvas
+									slide={activeSlide.slide}
+									localTime={activeSlide.localTime}
+									activeStart={activeSlide.start}
+									captionStyle={project.root.theme.caption_style}
+								/>
+								<Button
+									variant="secondary"
+									size="icon"
+									className="absolute right-2 top-2 size-7 opacity-90"
+									onClick={() => setStageHidden(true)}
+									aria-label="Hide stage"
+								>
+									<ChevronUp className="size-3.5" />
+								</Button>
+							</div>
+						</ResizablePanel>
+						<ResizableHandle withHandle />
+					</>
+				)}
 
-			<TransportBar />
+				<ResizablePanel id="panels" defaultSize={65} minSize={30}>
+					<div className="flex h-full flex-col">
+						{stageHidden && (
+							<button
+								type="button"
+								onClick={() => setStageHidden(false)}
+								className="flex h-8 shrink-0 items-center justify-center gap-1.5 border-b border-border bg-muted/40 text-xs text-muted-foreground hover:bg-muted"
+								aria-label="Show stage"
+							>
+								<ChevronDown className="size-3" />
+								Show stage
+							</button>
+						)}
+						<TransportBar />
 
-			<div className="flex-1 overflow-hidden border-t border-border">
-				{active === "props" && (
-					<PropertiesPanel
-						slide={activeSlide.slide}
-						slideId={activeSlide.slideId}
-					/>
-				)}
-				{active === "timeline" && <TimelinePanel project={project} />}
-				{active === "html" && activeSlide.slideId && (
-					<HtmlEditor
-						key={activeSlide.slideId}
-						slideId={activeSlide.slideId}
-						prior={project.slideHtml[activeSlide.slideId] ?? ""}
-					/>
-				)}
-				{active === "html" && !activeSlide.slideId && (
-					<EmptySlot panel={getPanel("html")} />
-				)}
-				{active === "assets" && activeSlide.slideId ? (
-					<div className="h-full">
-						<AssetLibrary slideId={activeSlide.slideId} />
-					</div>
-				) : active === "assets" ? (
-					<EmptySlot panel={getPanel("assets")} />
-				) : null}
-				{active === "captions" && activeSlide.slide && (
-					<div className="h-full overflow-y-auto">
-						<div className="space-y-4 p-4">
-							<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-								Captions
-							</h2>
-							{activeSlide.slideId && (
-								<CaptionTextEditor
+						<div className="flex-1 overflow-hidden border-t border-border">
+							{active === "props" && (
+								<PropertiesPanel
 									slide={activeSlide.slide}
 									slideId={activeSlide.slideId}
 								/>
 							)}
-							<CaptionControls />
+							{active === "timeline" && <TimelinePanel project={project} />}
+							{active === "html" && activeSlide.slideId && (
+								<HtmlEditor
+									key={activeSlide.slideId}
+									slideId={activeSlide.slideId}
+									prior={project.slideHtml[activeSlide.slideId] ?? ""}
+								/>
+							)}
+							{active === "html" && !activeSlide.slideId && (
+								<EmptySlot panel={getPanel("html")} />
+							)}
+							{active === "assets" && activeSlide.slideId ? (
+								<div className="h-full">
+									<AssetLibrary slideId={activeSlide.slideId} />
+								</div>
+							) : active === "assets" ? (
+								<EmptySlot panel={getPanel("assets")} />
+							) : null}
+							{active === "captions" && activeSlide.slide && (
+								<div className="h-full overflow-y-auto">
+									<div className="space-y-4 p-4">
+										<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+											Captions
+										</h2>
+										{activeSlide.slideId && (
+											<CaptionTextEditor
+												slide={activeSlide.slide}
+												slideId={activeSlide.slideId}
+											/>
+										)}
+										<CaptionControls />
+									</div>
+								</div>
+							)}
+							{active === "ai" && <AIDock slideId={activeSlide.slideId} />}
 						</div>
 					</div>
-				)}
-				{active === "ai" && <AIDock slideId={activeSlide.slideId} />}
-			</div>
+				</ResizablePanel>
+			</ResizablePrimitive.Group>
 
 			<MobileToolbar active={active} onChange={setActive} />
 		</div>
