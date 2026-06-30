@@ -8,6 +8,7 @@
  * Both layouts receive the same props so panel components are slot-agnostic
  * — only the topology differs.
  */
+import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cumulativeStarts } from "@/features/timeline/lib/cumulativeStarts";
 import { useVoiceover } from "@/features/voiceover/hooks/useVoiceover";
@@ -64,15 +65,17 @@ export function Studio({ projectId }: { projectId: string }) {
 	// Keep the playhead duration in sync with the project's total so the
 	// TransportBar scrubber is bounded correctly.
 	const setDuration = usePlayhead((s) => s.setDuration);
-	if (data) {
-		const durations = data.root.slides.map(
-			(id) => data.slides[id]?.duration ?? 0,
-		);
-		const { total } = cumulativeStarts(durations);
-		if (Math.abs(usePlayhead.getState().duration - total) > 0.01) {
-			setDuration(total);
+	useEffect(() => {
+		if (data) {
+			const durations = data.root.slides.map(
+				(id) => data.slides[id]?.duration ?? 0,
+			);
+			const { total } = cumulativeStarts(durations);
+			if (Math.abs(usePlayhead.getState().duration - total) > 0.01) {
+				setDuration(total);
+			}
 		}
-	}
+	}, [data, setDuration]);
 
 	if (isLoading) return <StudioSkeleton />;
 	if (error instanceof Error)
