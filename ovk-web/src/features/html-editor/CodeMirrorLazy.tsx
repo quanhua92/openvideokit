@@ -10,6 +10,7 @@ import type { Extension } from "@codemirror/state";
 import { lazy, Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTheme } from "@/shared/lib/useTheme";
 
 const CodeMirror = lazy(() => import("@uiw/react-codemirror"));
 
@@ -22,6 +23,8 @@ export function CodeMirrorLazy({
 	value: string;
 	onChange: (value: string) => void;
 }) {
+	const { resolved } = useTheme();
+
 	return (
 		<Suspense
 			fallback={
@@ -36,6 +39,7 @@ export function CodeMirrorLazy({
 				value={value}
 				onChange={(val) => onChange(val)}
 				extensions={extensions}
+				theme={resolved}
 				basicSetup={{
 					lineNumbers: true,
 					highlightActiveLine: true,
