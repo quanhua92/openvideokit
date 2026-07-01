@@ -75,7 +75,9 @@ export function useVoiceover(projectId: string, project: ProjectBundle): void {
         const audioUrls: Record<string, string> = {};
         for (const timing of data.timings) {
           dispatch(setDuration(timing.slideId, timing.duration));
-          if (timing.audio) audioUrls[timing.slideId] = timing.audio;
+          if (timing.audio) {
+            audioUrls[timing.slideId] = `${timing.audio}?t=${Date.now()}`;
+          }
         }
         if (Object.keys(audioUrls).length > 0) {
           setAudioUrls(audioUrls);
