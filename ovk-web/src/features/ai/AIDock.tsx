@@ -67,12 +67,19 @@ const useAIStore = create<{
 
 const QUICK_PROMPTS = [
   "Change the title to be punchier",
+  "Set slide-0 title to Hello",
   "Rewrite the HTML with bigger text",
   "Update the narration text",
   "Add a pricing slide",
 ];
 
-export function AIDock({ slideId }: { slideId: string | null }) {
+export function AIDock({
+  slideId,
+  slideIds,
+}: {
+  slideId: string | null;
+  slideIds: string[];
+}) {
   const { dispatch, subscribe } = useEditBus();
   const items = useAIStore((s) => s.items);
   const setItems = useAIStore((s) => s.setItems);
@@ -126,7 +133,7 @@ export function AIDock({ slideId }: { slideId: string | null }) {
           {
             activeSlideId: slideId,
             pins: [],
-            project: { rootSlides: [] },
+            project: { rootSlides: slideIds },
           },
         );
         let content = "";

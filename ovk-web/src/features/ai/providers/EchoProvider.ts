@@ -20,6 +20,26 @@ interface Scenario {
 
 const SCENARIOS: Scenario[] = [
   {
+    keywords: ["hello", "slide-0", "slide 0"],
+    build: (_ctx) =>
+      withStream("Done — set slide-0's title to Hello.", {
+        id: rand(),
+        tier: 1 as const,
+        target: {
+          kind: "slide" as const,
+          slideId: "slide-0",
+        },
+        patch: [
+          {
+            op: "replace" as const,
+            path: "/fields/title",
+            value: "Hello",
+          },
+        ],
+        rationale: "Explicitly targets slide-0 regardless of active slide.",
+      }),
+  },
+  {
     keywords: ["title", "change", "punchy", "bolder"],
     build: (ctx) =>
       withStream("Sure — here's a punchier title.", {
