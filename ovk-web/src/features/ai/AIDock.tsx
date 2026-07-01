@@ -340,9 +340,9 @@ function ProposalCard({
         <Badge variant="outline" className="text-[10px]">
           Tier {proposal.tier}
         </Badge>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <Badge variant="secondary" className="text-[10px]">
           {"slideId" in proposal.target ? proposal.target.slideId : "project"}
-        </span>
+        </Badge>
       </div>
       <p className="mb-2 text-[11px] text-foreground/80">
         {proposal.rationale}
