@@ -8,8 +8,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__
-from .config import CORS_ORIGINS
+from .config import CORS_ORIGINS, MAX_CONCURRENT_RENDERS
 from .events import set_loop
+from .rendering import init_executor, shutdown_executor
 from .routes import router
 from .store import init_store
 from .watcher import start_watcher, stop_watcher
@@ -37,9 +38,11 @@ async def lifespan(_app: FastAPI):
 
     set_loop(asyncio.get_running_loop())
     init_store()
+    init_executor(MAX_CONCURRENT_RENDERS)
     start_watcher()
     yield
     stop_watcher()
+    shutdown_executor()
 
 
 def create_app() -> FastAPI:

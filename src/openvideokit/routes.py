@@ -11,7 +11,7 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
-from . import events, store
+from . import events, rendering, store
 from .composition import build_root_composition, build_slide_composition
 from .store import ConflictError, compute_rev
 from .voiceover import generate_audio
@@ -151,3 +151,61 @@ def get_slide_audio(project_id: str, slide_id: str, audio_hash: str) -> FileResp
     if not mp3.is_file():
         raise HTTPException(status_code=404, detail=f"no audio for '{slide_id}/{audio_hash}'")
     return FileResponse(str(mp3), media_type="audio/mpeg")
+
+
+# ── Export / render jobs ─────────────────────────────────────────────────
+
+
+@router.post("/projects/{project_id}/export", status_code=202)
+def start_export(project_id: str) -> dict:
+    """Enqueue an MP4 render job. Returns immediately with job_id."""
+    project = _require(project_id)
+    job_id = rendering.enqueue_render(project, project_id)
+    return {"job_id": job_id, "status": "queued"}
+
+
+@router.get("/projects/{project_id}/export/jobs")
+def list_export_jobs(project_id: str) -> list[dict]:
+    """List all export jobs for a project, most recent first."""
+    _require(project_id)
+    return rendering.list_jobs(project_id)
+
+
+@router.get("/projects/{project_id}/export/jobs/{job_id}")
+def get_export_job(project_id: str, job_id: str) -> dict:
+    job = rendering.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    # Enforce ownership (skip for pre-restart reconstructed jobs)
+    jp = job.get("project_id", "")
+    if jp not in (project_id, "(unknown — pre-restart)"):
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    return job
+
+
+@router.post("/projects/{project_id}/export/jobs/{job_id}/cancel")
+def cancel_export(project_id: str, job_id: str) -> dict:
+    job = rendering.cancel_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    return job
+
+
+@router.get("/projects/{project_id}/export/jobs/{job_id}/download")
+def download_export(project_id: str, job_id: str) -> FileResponse:
+    job = rendering.get_job(job_id)
+    if job is None or job.get("status") != "done":
+        raise HTTPException(status_code=404, detail="mp4 not ready")
+    return FileResponse(
+        job["output"],
+        media_type="video/mp4",
+        filename=f"{project_id}-{job_id}.mp4",
+    )
+
+
+@router.get("/projects/{project_id}/export/jobs/{job_id}/log")
+def get_export_log(project_id: str, job_id: str) -> dict:
+    job = rendering.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    return {"log": rendering.read_job_log(job_id)}
