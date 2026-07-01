@@ -161,7 +161,8 @@ describe("dispatch → undo integration (setField restores previous value)", () 
 
     // --- simulate dispatch(setField) as EditBusProvider does (fixed) ---
     const op = setField("slide-0", "title", "BOLD: Eco Bottle");
-    const current = qc.getQueryData<ProjectBundle>(key)!; // pre-edit state
+    const current = qc.getQueryData<ProjectBundle>(key);
+    if (!current) throw new Error("pre-edit state missing");
     const event: EditEvent = {
       id: "evt-1",
       at: Date.now(),
@@ -170,16 +171,15 @@ describe("dispatch → undo integration (setField restores previous value)", () 
       inverse: inverseOp(op, current), // captured from PRE-edit state
     };
     qc.setQueryData(key, applyOp(current, op));
-    expect(
-      qc.getQueryData<ProjectBundle>(key)!.slides["slide-0"].fields.title,
-    ).toBe("BOLD: Eco Bottle");
+    const afterEdit = qc.getQueryData<ProjectBundle>(key);
+    expect(afterEdit?.slides["slide-0"].fields.title).toBe("BOLD: Eco Bottle");
 
     // --- simulate undo as useUndoRedo does (fixed): replay event.inverse ---
-    const undoCurrent = qc.getQueryData<ProjectBundle>(key)!; // post-edit
+    const undoCurrent = qc.getQueryData<ProjectBundle>(key);
+    if (!undoCurrent) throw new Error("post-edit state missing");
     qc.setQueryData(key, applyOp(undoCurrent, event.inverse as EditOp));
 
-    expect(
-      qc.getQueryData<ProjectBundle>(key)!.slides["slide-0"].fields.title,
-    ).toBe(ORIGINAL_TITLE);
+    const afterUndo = qc.getQueryData<ProjectBundle>(key);
+    expect(afterUndo?.slides["slide-0"].fields.title).toBe(ORIGINAL_TITLE);
   });
 });

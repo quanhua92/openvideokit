@@ -31,6 +31,7 @@
       var tl = gsap.timeline({ paused: true });
       tl.from('[data-composition-id="__OVK_SLIDE_ID__"] .content > *',
         { opacity: 0, y: 40, duration: 0.4, stagger: 0.1, ease: 'power3.out' });
+      // biome-ignore lint/complexity/useLiteralKeys: stamped slide ids contain hyphens (e.g. slide-0)
       window.__timelines['__OVK_SLIDE_ID__'] = tl;
     </script>
   </div>

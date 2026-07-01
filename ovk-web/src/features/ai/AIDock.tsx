@@ -93,9 +93,9 @@ export function AIDock({ slideId }: { slideId: string | null }) {
       };
       setItems((prev) => [...prev, ping]);
     });
-  }, [subscribe]);
+  }, [subscribe, setItems]);
 
-  // Auto-scroll to bottom after every render (messages change infrequently).
+  // Auto-scroll to bottom on every render (messages change infrequently).
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   });
@@ -137,11 +137,10 @@ export function AIDock({ slideId }: { slideId: string | null }) {
               prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
             );
           } else if (evt.type === "proposal") {
-            const hasHtml =
-              "html" in evt.edit && typeof (evt.edit as any).html === "string";
-            const lintRes = hasHtml
-              ? lintHtml((evt.edit as any).html as string)
-              : null;
+            const edit = evt.edit;
+            const html = "html" in edit ? edit.html : undefined;
+            const hasHtml = typeof html === "string";
+            const lintRes = hasHtml ? lintHtml(html) : null;
             const lintOk = lintRes ? lintRes.ok : true;
             setItems((prev) =>
               prev.map((m) =>
@@ -176,7 +175,7 @@ export function AIDock({ slideId }: { slideId: string | null }) {
         setStreaming(false);
       }
     },
-    [streaming, slideId],
+    [streaming, slideId, setItems],
   );
 
   const handleAccept = useCallback(
@@ -218,18 +217,21 @@ export function AIDock({ slideId }: { slideId: string | null }) {
       );
       toast.success("Edit applied");
     },
-    [dispatch, slideId],
+    [dispatch, slideId, setItems],
   );
 
-  const handleReject = useCallback((proposalId: string) => {
-    setItems((prev) =>
-      prev.map((m) =>
-        "proposal" in m && m.proposal?.id === proposalId
-          ? { ...m, proposalState: "rejected" }
-          : m,
-      ),
-    );
-  }, []);
+  const handleReject = useCallback(
+    (proposalId: string) => {
+      setItems((prev) =>
+        prev.map((m) =>
+          "proposal" in m && m.proposal?.id === proposalId
+            ? { ...m, proposalState: "rejected" }
+            : m,
+        ),
+      );
+    },
+    [setItems],
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -408,7 +410,15 @@ function DiffDigest({ proposal }: { proposal: EditProposal }) {
     <div className="relative">
       <pre
         className={`overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug ${isTruncated ? "cursor-pointer hover:bg-muted/70 transition-colors" : ""}`}
+        role={isTruncated ? "button" : undefined}
+        tabIndex={isTruncated ? 0 : undefined}
         onClick={() => isTruncated && setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (isTruncated && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
         title={
           isTruncated
             ? expanded
