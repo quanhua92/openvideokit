@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 
+from .events import broadcast
 from .seed import PROJECT_ID, PROJECT_NAME, fixture_project
 
 _Projects = dict[str, dict]
@@ -68,7 +69,9 @@ def update_project(project_id: str, bundle: dict, expected_rev: str) -> dict:
     if missing:
         raise ValueError(f"bundle missing required keys: {missing}")
     _STORE[project_id] = {k: bundle[k] for k in _BUNDLE_KEYS}
-    return _with_rev(_STORE[project_id])
+    result = _with_rev(_STORE[project_id])
+    broadcast(project_id, {"projectId": project_id, "rev": result["rev"]})
+    return result
 
 
 def _name_of(_project: dict) -> str:

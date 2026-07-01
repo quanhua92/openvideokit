@@ -50,7 +50,6 @@ async def put_project(project_id: str, body: dict) -> dict:
             status_code=409,
             detail={"message": "rev mismatch", "current": exc.current},
         ) from exc
-    events.broadcast(project_id, {"projectId": project_id, "rev": updated["rev"]})
     return updated
 
 
