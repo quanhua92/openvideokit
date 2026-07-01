@@ -18,13 +18,17 @@ Audio + metadata live inside the slide's own folder::
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
+import logging
 import subprocess
 import threading
 from pathlib import Path
 
 from .store import _slide_dir
+
+_logger = logging.getLogger(__name__)
 
 
 def _text_hash(text: str, voice: str, rate: str = "", pitch: str = "", volume: str = "") -> str:
@@ -58,17 +62,16 @@ def _probe_duration(path: Path) -> float:
     return float(json.loads(result.stdout)["format"]["duration"])
 
 
-def _try_cache(slide_dir: Path, text_hash: str) -> float | None:
-    meta = slide_dir / "audio.json"
-    if not meta.is_file():
+def _try_cache(slide_dir: Path, text_hash: str) -> dict | None:
+    """Return full companion metadata if audio-{hash}.json + .mp3 both exist."""
+    companion = slide_dir / f"audio-{text_hash}.json"
+    mp3 = slide_dir / f"audio-{text_hash}.mp3"
+    if not companion.is_file() or not mp3.is_file():
         return None
     try:
-        data = json.loads(meta.read_text(encoding="utf-8"))
+        return json.loads(companion.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
-    if data.get("textHash") == text_hash:
-        return data.get("duration")
-    return None
 
 
 def _save_meta(
@@ -81,23 +84,43 @@ def _save_meta(
     pitch: str = "",
     volume: str = "",
 ) -> None:
+    # Read existing audio.json to preserve history
+    existing: dict = {}
     meta = slide_dir / "audio.json"
-    meta.write_text(
-        json.dumps(
-            {
-                "textHash": text_hash,
-                "text": text,
-                "voice": voice,
-                "rate": rate,
-                "pitch": pitch,
-                "volume": volume,
-                "duration": round(duration, 3),
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
+    if meta.is_file():
+        with contextlib.suppress(json.JSONDecodeError, OSError):
+            existing = json.loads(meta.read_text(encoding="utf-8"))
+
+    # Move old hash into history
+    old_hash = existing.get("textHash")
+    history: list[str] = existing.get("history", [])
+    if old_hash and old_hash != text_hash and old_hash not in history:
+        history.insert(0, old_hash)
+
+    # Keep only last 2 — delete older audio files
+    while len(history) > 2:
+        stale = history.pop()
+        (slide_dir / f"audio-{stale}.mp3").unlink(missing_ok=True)
+        (slide_dir / f"audio-{stale}.json").unlink(missing_ok=True)
+
+    data = json.dumps(
+        {
+            "textHash": text_hash,
+            "text": text,
+            "voice": voice,
+            "rate": rate,
+            "pitch": pitch,
+            "volume": volume,
+            "duration": round(duration, 3),
+            "history": history,
+        },
+        ensure_ascii=False,
+        indent=2,
     )
+    # Companion: per-variant metadata
+    (slide_dir / f"audio-{text_hash}.json").write_text(data, encoding="utf-8")
+    # Pointer: latest/current variant
+    (slide_dir / "audio.json").write_text(data, encoding="utf-8")
 
 
 def generate_audio(project_id: str, slides: list[dict]) -> list[dict]:
@@ -113,23 +136,59 @@ def generate_audio(project_id: str, slides: list[dict]) -> list[dict]:
         volume = slide.get("volume", "")
 
         if not text:
-            timings.append({"slideId": sid, "duration": 0.0, "audio": ""})
+            timings.append({"slideId": sid, "duration": 0.0, "audio": "", "audioHash": ""})
             continue
 
         sdir = _slide_dir(project_id, sid)
         sdir.mkdir(parents=True, exist_ok=True)
         thash = _text_hash(text, voice, rate, pitch, volume)
-        audio_url = f"/api/projects/{project_id}/slides/{sid}/audio"
 
         cached = _try_cache(sdir, thash)
+        audio_url = f"/api/projects/{project_id}/slides/{sid}/audio/{thash}"
         if cached is not None:
-            timings.append({"slideId": sid, "duration": cached, "audio": audio_url})
+            _logger.info(
+                "TTS cache hit: %s/%s hash=%s companion=%s",
+                project_id,
+                sid,
+                thash,
+                cached,
+            )
+            timings.append(
+                {
+                    "slideId": sid,
+                    "duration": cached["duration"],
+                    "audio": audio_url,
+                    "audioHash": thash,
+                }
+            )
             continue
 
-        mp3_path = sdir / "audio.mp3"
-        _tts_sentence(text, voice, mp3_path, rate=rate, pitch=pitch, volume=volume)
-        dur = _probe_duration(mp3_path)
+        _logger.info(
+            "TTS generating: %s/%s hash=%s voice=%s text=%r",
+            project_id,
+            sid,
+            thash,
+            voice,
+            text[:80],
+        )
+        mp3_path = sdir / f"audio-{thash}.mp3"
+        try:
+            _tts_sentence(text, voice, mp3_path, rate=rate, pitch=pitch, volume=volume)
+            dur = _probe_duration(mp3_path)
+        except Exception:
+            timings.append({"slideId": sid, "duration": 0.0, "audio": "", "audioHash": ""})
+            continue
         _save_meta(sdir, thash, text, voice, dur, rate, pitch, volume)
-        timings.append({"slideId": sid, "duration": round(dur, 3), "audio": audio_url})
+        _logger.info(
+            "TTS done: %s/%s hash=%s dur=%.3fs text=%r",
+            project_id,
+            sid,
+            thash,
+            dur,
+            text[:80],
+        )
+        timings.append(
+            {"slideId": sid, "duration": round(dur, 3), "audio": audio_url, "audioHash": thash}
+        )
 
     return timings

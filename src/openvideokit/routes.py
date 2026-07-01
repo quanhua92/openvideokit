@@ -116,11 +116,38 @@ def measure_tts(project_id: str, body: dict) -> dict:
 
 
 @router.get("/projects/{project_id}/slides/{slide_id}/audio")
-def get_slide_audio(project_id: str, slide_id: str) -> FileResponse:
-    """Stream a slide's generated mp3."""
-    from .store import audio_path
+def get_latest_slide_audio(project_id: str, slide_id: str) -> FileResponse:
+    """Serve the latest cached audio for a slide (based on audio.json metadata).
 
-    mp3 = audio_path(project_id, slide_id)
+    Returns 404 if no audio has been generated yet — caller should POST /tts.
+    """
+    import json as _json
+    import logging
+
+    from .store import _slide_dir
+
+    sdir = _slide_dir(project_id, slide_id)
+    meta = sdir / "audio.json"
+    if not meta.is_file():
+        raise HTTPException(status_code=404, detail=f"no audio generated for '{slide_id}'")
+    try:
+        data = _json.loads(meta.read_text(encoding="utf-8"))
+    except (_json.JSONDecodeError, OSError):
+        raise HTTPException(status_code=404, detail=f"corrupt audio.json for '{slide_id}'") from None
+    thash = data.get("textHash", "")
+    mp3 = sdir / f"audio-{thash}.mp3"
     if not mp3.is_file():
-        raise HTTPException(status_code=404, detail=f"no audio for '{slide_id}'")
+        raise HTTPException(status_code=404, detail=f"audio file missing for '{slide_id}'")
+    logging.getLogger(__name__).debug("audio GET latest: %s/%s hash=%s", project_id, slide_id, thash)
+    return FileResponse(str(mp3), media_type="audio/mpeg")
+
+
+@router.get("/projects/{project_id}/slides/{slide_id}/audio/{audio_hash}")
+def get_slide_audio(project_id: str, slide_id: str, audio_hash: str) -> FileResponse:
+    """Stream a slide's content-addressed mp3 (audio-{hash}.mp3)."""
+    from .store import _slide_dir
+
+    mp3 = _slide_dir(project_id, slide_id) / f"audio-{audio_hash}.mp3"
+    if not mp3.is_file():
+        raise HTTPException(status_code=404, detail=f"no audio for '{slide_id}/{audio_hash}'")
     return FileResponse(str(mp3), media_type="audio/mpeg")
