@@ -38,6 +38,10 @@ export function useProjectSync(projectId: string) {
     const url = `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/events`;
     const es = new EventSource(url);
 
+    es.onerror = () => {
+      toast.error("Lost live sync — reconnecting…", { duration: 4000 });
+    };
+
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
@@ -111,40 +115,40 @@ export function useProjectSync(projectId: string) {
       try {
         const updated = await client.saveProject(projectId, local);
         baseRef.current = updated;
-        lastSerialized.current = JSON.stringify({
-          root: updated.root,
-          slides: updated.slides,
-          slideHtml: updated.slideHtml,
-        });
-        // Only update the rev — preserve any local edits that may have
-        // happened while the PUT was in-flight (avoids silently wiping
-        // the user's next edit).
         queryClient.setQueryData(
           ["project", projectId],
-          (old: ProjectBundle | undefined) =>
-            old ? { ...old, rev: updated.rev } : updated,
+          (old: ProjectBundle | undefined) => {
+            const next = old ? { ...old, rev: updated.rev } : updated;
+            lastSerialized.current = JSON.stringify({
+              root: next.root,
+              slides: next.slides,
+              slideHtml: next.slideHtml,
+            });
+            return next;
+          },
         );
         bumpVersion();
       } catch (e) {
         if (e instanceof ConflictError && baseRef.current) {
-          // 3-way merge: re-apply user's local edits onto server's version.
-          const merged = reapplyLocalEdits(
-            baseRef.current,
-            local,
-            e.serverBundle,
-          );
           try {
+            const merged = reapplyLocalEdits(
+              baseRef.current,
+              local,
+              e.serverBundle,
+            );
             const updated = await client.saveProject(projectId, merged);
             baseRef.current = updated;
-            lastSerialized.current = JSON.stringify({
-              root: updated.root,
-              slides: updated.slides,
-              slideHtml: updated.slideHtml,
-            });
             queryClient.setQueryData(
               ["project", projectId],
-              (old: ProjectBundle | undefined) =>
-                old ? { ...old, rev: updated.rev } : updated,
+              (old: ProjectBundle | undefined) => {
+                const next = old ? { ...old, rev: updated.rev } : updated;
+                lastSerialized.current = JSON.stringify({
+                  root: next.root,
+                  slides: next.slides,
+                  slideHtml: next.slideHtml,
+                });
+                return next;
+              },
             );
             bumpVersion();
             toast.success("Edit re-applied after sync conflict");

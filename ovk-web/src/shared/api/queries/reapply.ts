@@ -31,7 +31,7 @@ export function reapplyLocalEdits(
   if (JSON.stringify(local.root.slides) !== JSON.stringify(base.root.slides))
     merged.root.slides = [...local.root.slides];
   if (JSON.stringify(local.root.theme) !== JSON.stringify(base.root.theme))
-    merged.root.theme = { ...local.root.theme };
+    merged.root.theme = clone(local.root.theme);
   if (JSON.stringify(local.root.audio) !== JSON.stringify(base.root.audio))
     merged.root.audio = clone(local.root.audio);
   if (
@@ -68,7 +68,7 @@ export function reapplyLocalEdits(
     const lt = localSlide.transition ?? null;
     const bt = baseSlide.transition ?? null;
     if (JSON.stringify(lt) !== JSON.stringify(bt))
-      serverSlide.transition = localSlide.transition;
+      serverSlide.transition = clone(localSlide.transition);
   }
 
   // HTML changes
