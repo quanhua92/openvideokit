@@ -123,6 +123,16 @@ def _save_meta(
     (slide_dir / "audio.json").write_text(data, encoding="utf-8")
 
 
+def _touch_latest(slide_dir: Path, text_hash: str) -> None:
+    """Update audio.json's textHash to point to the current variant."""
+    from .store import _atomic_write
+
+    meta = slide_dir / "audio.json"
+    companion = slide_dir / f"audio-{text_hash}.json"
+    if companion.is_file():
+        _atomic_write(meta, companion.read_text(encoding="utf-8"))
+
+
 def generate_audio(project_id: str, slides: list[dict]) -> list[dict]:
     """TTS each slide → save mp3 + json into the slide folder → return durations."""
     timings: list[dict] = []
@@ -146,13 +156,15 @@ def generate_audio(project_id: str, slides: list[dict]) -> list[dict]:
         cached = _try_cache(sdir, thash)
         audio_url = f"/api/projects/{project_id}/slides/{sid}/audio/{thash}"
         if cached is not None:
-            _logger.info(
+            _logger.debug(
                 "TTS cache hit: %s/%s hash=%s companion=%s",
                 project_id,
                 sid,
                 thash,
                 cached,
             )
+            # Update the latest pointer so GET /audio serves the right variant
+            _touch_latest(sdir, thash)
             timings.append(
                 {
                     "slideId": sid,
