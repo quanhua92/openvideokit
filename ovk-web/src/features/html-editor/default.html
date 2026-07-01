@@ -1,0 +1,37 @@
+<template>
+  <div data-composition-id="__OVK_SLIDE_ID__" data-width="1920" data-height="1080">
+    <div class="content">
+      <h1>__OVK_TITLE__</h1>
+      <p>__OVK_BODY__</p>
+      <div class="accent"></div>
+    </div>
+    <style>
+      [data-composition-id="__OVK_SLIDE_ID__"] {
+        background: radial-gradient(ellipse at 50% 40%, #14142a 0%, #0a0a14 60%, #06060c 100%);
+      }
+      [data-composition-id="__OVK_SLIDE_ID__"] .content {
+        text-align: center;
+        padding-top: 38vh;
+      }
+      [data-composition-id="__OVK_SLIDE_ID__"] h1 {
+        font-size: 120px; font-weight: 900; color: #ffffff;
+        letter-spacing: -0.03em; line-height: 1.05; margin: 0;
+      }
+      [data-composition-id="__OVK_SLIDE_ID__"] p {
+        font-size: 60px; font-weight: 600; color: #a5b4fc;
+        margin-top: 32px; letter-spacing: -0.01em;
+      }
+      [data-composition-id="__OVK_SLIDE_ID__"] .accent {
+        width: 100px; height: 5px; border-radius: 3px;
+        background: linear-gradient(90deg, #818cf8, #c084fc);
+        margin: 40px auto 0;
+      }
+    </style>
+    <script>
+      var tl = gsap.timeline({ paused: true });
+      tl.from('[data-composition-id="__OVK_SLIDE_ID__"] .content > *',
+        { opacity: 0, y: 40, duration: 0.4, stagger: 0.1, ease: 'power3.out' });
+      window.__timelines['__OVK_SLIDE_ID__'] = tl;
+    </script>
+  </div>
+</template>

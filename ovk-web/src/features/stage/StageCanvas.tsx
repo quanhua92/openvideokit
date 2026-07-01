@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAssetUrl } from "@/features/assets/hooks/useAssetUrl";
 import { CaptionLayer } from "@/features/captions/components/CaptionLayer";
+import DEFAULT_SHELL from "@/features/html-editor/default.html?raw";
 import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import { stampSafe } from "@/shared/lib/placeholders";
@@ -71,11 +72,7 @@ export function StageCanvas({
 			>
 				{slide ? (
 					<>
-						{slideHtml ? (
-							<HtmlView slide={slide} html={slideHtml} />
-						) : (
-							<SlideView slide={slide} />
-						)}
+						<HtmlView slide={slide} html={slideHtml || DEFAULT_SHELL} />
 						{/* Caption overlay — INSIDE the scale, matching HyperFrames 1080p canvas.
 							Scrim only renders when captions exist AND the user has it on. */}
 						{slide.voiceover.text.trim() && (
@@ -107,84 +104,17 @@ export function StageCanvas({
 	);
 }
 
-function SlideView({ slide }: { slide: SlideIndex }) {
-	const title = slide.fields.title ?? "";
-	const body = slide.fields.body ?? "";
-	const bgColor = slide.fields.bg_color ?? "#0a0a14";
-	const imgUrl = useAssetUrl(slide.assets.img);
-
-	return (
-		<div
-			style={{
-				position: "absolute",
-				inset: 0,
-				background: imgUrl
-					? `url(${imgUrl}) center / cover no-repeat`
-					: bgColor,
-				color: "white",
-				display: "flex",
-				flexDirection: "column",
-				alignItems: "center",
-				justifyContent: "center",
-				textAlign: "center",
-				padding: "0 10%",
-				fontFamily: "system-ui, sans-serif",
-			}}
-		>
-			{/* Dark gradient overlay so text stays readable over images */}
-			{imgUrl && (
-				<div
-					style={{
-						position: "absolute",
-						inset: 0,
-						background:
-							"linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.8) 100%)",
-					}}
-				/>
-			)}
-			<div style={{ position: "relative", zIndex: 1, width: "100%" }}>
-				{title && (
-					<h1
-						style={{
-							fontSize: 120,
-							fontWeight: 800,
-							margin: 0,
-							lineHeight: 1.1,
-							letterSpacing: "-0.02em",
-						}}
-					>
-						{title}
-					</h1>
-				)}
-				{body && (
-					<p
-						style={{
-							marginTop: 32,
-							marginLeft: "auto",
-							marginRight: "auto",
-							fontSize: 40,
-							color: "rgba(255,255,255,0.8)",
-							lineHeight: 1.4,
-							maxWidth: "70%",
-						}}
-					>
-						{body}
-					</p>
-				)}
-			</div>
-		</div>
-	);
-}
-
 function HtmlView({ slide, html }: { slide: SlideIndex; html: string }) {
 	const imgUrl = useAssetUrl(slide.assets.img) ?? "";
 
-		let processedHtml = html.replace(/<\/?template>/gi, "");
-		processedHtml = stampSafe(processedHtml, "SLIDE_ID", slide.id);
-		for (const [id, value] of Object.entries(slide.fields)) {
-			processedHtml = stampSafe(processedHtml, id, value);
-		}
-		processedHtml = stampSafe(processedHtml, "image", imgUrl);
+	let processedHtml = html.replace(/<\/?template>/gi, "");
+	processedHtml = stampSafe(processedHtml, "SLIDE_ID", slide.id);
+	for (const [id, value] of Object.entries(slide.fields)) {
+		processedHtml = stampSafe(processedHtml, id, value);
+	}
+	processedHtml = stampSafe(processedHtml, "image", imgUrl);
+	// Blank any leftover tokens so unreplaced placeholders never render literally.
+	processedHtml = processedHtml.replace(/__OVK_[A-Z0-9_]*__/g, "");
 
 	return (
 		<>

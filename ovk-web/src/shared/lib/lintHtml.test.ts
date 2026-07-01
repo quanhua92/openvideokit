@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import DEFAULT_SHELL from "@/features/html-editor/default.html?raw";
 import {
 	countTag,
 	extractTemplateContent,
@@ -144,5 +145,11 @@ describe("lintHtml R5 (binding coverage)", () => {
 		);
 		expect(r.ok).toBe(false);
 		expect(r.firedRule?.id).toBe("R5");
+	});
+});
+
+describe("default.html (the editor prefill / preview fallback)", () => {
+	it("passes R1–R5 lint", () => {
+		expect(lintHtml(DEFAULT_SHELL).ok).toBe(true);
 	});
 });

@@ -110,6 +110,7 @@ export const fixtureSlideHtml: Record<string, string> = {
       [data-composition-id="__OVK_SLIDE_ID__"] { background: #0a0a14; }
       [data-composition-id="__OVK_SLIDE_ID__"] .content { text-align: center; padding-top: 38vh; }
       [data-composition-id="__OVK_SLIDE_ID__"] h1 { font-size: 120px; font-weight: 800; color: #fff; }
+      [data-composition-id="__OVK_SLIDE_ID__"] p { font-size: 52px; font-weight: 600; color: rgba(255,255,255,0.85); margin-top: 28px; }
     </style>
   </div>
 </template>`,
@@ -123,6 +124,7 @@ export const fixtureSlideHtml: Record<string, string> = {
       [data-composition-id="__OVK_SLIDE_ID__"] { background: #0d1b2a; }
       [data-composition-id="__OVK_SLIDE_ID__"] .content { text-align: center; padding-top: 38vh; }
       [data-composition-id="__OVK_SLIDE_ID__"] h1 { font-size: 100px; font-weight: 700; color: #4ade80; }
+      [data-composition-id="__OVK_SLIDE_ID__"] p { font-size: 48px; font-weight: 600; color: rgba(255,255,255,0.85); margin-top: 28px; }
     </style>
   </div>
 </template>`,
@@ -136,6 +138,7 @@ export const fixtureSlideHtml: Record<string, string> = {
       [data-composition-id="__OVK_SLIDE_ID__"] { background: #1a0a2e; }
       [data-composition-id="__OVK_SLIDE_ID__"] .content { text-align: center; padding-top: 35vh; }
       [data-composition-id="__OVK_SLIDE_ID__"] h1 { font-size: 90px; font-weight: 800; color: #fff; text-transform: uppercase; }
+      [data-composition-id="__OVK_SLIDE_ID__"] p { font-size: 44px; font-weight: 600; color: rgba(255,255,255,0.85); margin-top: 28px; }
     </style>
   </div>
 </template>`,
