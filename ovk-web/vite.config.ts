@@ -19,6 +19,11 @@ const config = defineConfig({
     proxy: {
       "/api": "http://localhost:8000",
     },
+    // HTTPS is enabled when OVK_CERT / OVK_KEY env vars are set
+    // (by scripts/start-https.sh for LAN/mobile access).
+    https: process.env.OVK_CERT
+      ? { cert: process.env.OVK_CERT, key: process.env.OVK_KEY }
+      : undefined,
   },
 });
 

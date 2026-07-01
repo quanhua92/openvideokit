@@ -15,7 +15,7 @@
 import { Plus, Send, Sparkles, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-
+import { create } from "zustand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,10 +27,7 @@ import type { EditProposal } from "@/shared/ai/types";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
 import { addSlide, setSlideHtml } from "@/shared/edit/ops";
 import { lintHtml } from "@/shared/lib/lintHtml";
-
 import { translatePatch } from "./lib/applyPatch";
-
-import { create } from "zustand";
 
 interface ChatMessage {
   id: string;

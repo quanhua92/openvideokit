@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fixtureBundle, fixtureSlides } from "../msw/fixtures";
+import { fixtureBundle, fixtureSlides } from "../fixtures";
 import { RootIndexSchema } from "./rootIndex";
 import { SlideIndexSchema } from "./slideIndex";
 

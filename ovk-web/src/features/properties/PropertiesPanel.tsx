@@ -18,8 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AssetDropzone } from "@/features/assets/components/AssetDropzone";
 import { useAssetUrl } from "@/features/assets/hooks/useAssetUrl";
-import fieldsSchema from "@/shared/api/schemas/fields.json";
 import { cn } from "@/lib/utils";
+import fieldsSchema from "@/shared/api/schemas/fields.json";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
 import {

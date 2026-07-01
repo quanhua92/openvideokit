@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ProjectBundle } from "@/shared/api/client";
-import { fixtureBundle } from "@/shared/api/msw/fixtures";
+import { fixtureBundle } from "@/shared/api/fixtures";
 import { applyOp, makeBlankSlide } from "./applyOp";
 import {
   addSlide,

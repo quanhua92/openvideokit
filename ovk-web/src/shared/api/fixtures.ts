@@ -1,11 +1,10 @@
 /**
- * Fixture project for MSW — RFC §5.2 root + RFC §5.3 slides.
- * 3 slides, 1 music asset, 1 voiceover asset, caption_style 'highlight'.
- *
- * Used by P2 to wire the read-only studio against realistic data.
+ * Fixture project — RFC §5.2 root + RFC §5.3 slides.
+ * 3 slides, caption_style 'highlight'. Used by tests and the AppShell
+ * default-project link.
  */
-import type { RootIndex } from "../schemas/rootIndex";
-import type { SlideIndex } from "../schemas/slideIndex";
+import type { RootIndex } from "./schemas/rootIndex";
+import type { SlideIndex } from "./schemas/slideIndex";
 
 /** Deterministic 64-char hex string for SHA refs in fixtures (NOT a real SHA-256). */
 function fakeSha(seed: string): string {

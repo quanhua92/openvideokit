@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ExportDialog } from "@/features/export/components/ExportDialog";
-import { FIXTURE_PROJECT_ID } from "@/shared/api/msw/fixtures";
+import { FIXTURE_PROJECT_ID } from "@/shared/api/fixtures";
 import { useUndoRedo } from "@/shared/edit/useUndoRedo";
 import type { Theme } from "@/shared/lib/theme";
 import { useTheme } from "@/shared/lib/useTheme";

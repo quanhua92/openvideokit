@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 
 import type { ProjectBundle } from "@/shared/api/client";
-import { fixtureBundle } from "@/shared/api/msw/fixtures";
+import { fixtureBundle } from "@/shared/api/fixtures";
 import { applyOp } from "./applyOp";
 import type { EditEvent, EditOp } from "./EditBus";
 import { inverseOp } from "./inverseOp";

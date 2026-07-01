@@ -7,9 +7,8 @@
  */
 import { Code2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-import DEFAULT_SHELL from "./default.html?raw";
 import { CodeMirrorLazy } from "./CodeMirrorLazy";
+import DEFAULT_SHELL from "./default.html?raw";
 import { LintGate } from "./LintGate";
 
 export function HtmlEditor({
