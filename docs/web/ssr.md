@@ -48,10 +48,11 @@ Conflating the two is the root of the review's confusion.
 
 ---
 
-## 4. The server-hosted + SSR + server-agent future
+## 4. The server-hosted SSR model (implemented)
 
-When files live on a server, a server-side agent edits them, and FastAPI SSR
-serves the preview, **stamping wins** for three reasons:
+The Python backend (`src/openvideokit/`) is now live. It serves self-contained
+stamped compositions and accepts PUTs with content-hash optimistic locking.
+**Stamping wins** for three reasons:
 
 1. **SSR string-replace is strictly simpler** than server-side attribute
    filling. Stamping is a stateless `str.replace` + `html_escape`; data-attributes
@@ -70,11 +71,11 @@ serves the preview, **stamping wins** for three reasons:
    human and an agent, stamping reads json + html, stamps, serves — no
    client-side binding state to reconcile.
 
-Under this model, data-attributes collapse to (at most) a **local optimistic
-overlay**: stamp once to `<span data-ovk-field="title">…</span>`, patch
-`.textContent` per keystroke for zero-latency feedback, reconcile with the
-server's authoritative re-stamp on debounce. A preview *perf optimization*,
-not the architecture.
+The current implementation builds **self-contained compositions**: all slides
+are inlined into the root document (no `data-composition-src` sub-loading), and
+a single GSAP root timeline drives scene transitions + per-slide entrance
+animations. This lets `<hyperframes-player>` use its direct-timeline adapter
+(`window.__timelines['root']`) without injecting the HF runtime.
 
 ---
 
@@ -198,10 +199,9 @@ archetypes compose from). The two are orthogonal.
 The **binding mechanism** (stamping), the **schema-first model**, and the
 **`__OVK_*__` convention** are durable long-term contracts.
 
-The **FastAPI Python backend** (`src/openvideokit/`) is **MVP and subject to
-rewrite**. This doc describes the mechanism and the model, not the MVP code
-locations. The backend adopts this standard when rewritten; it is not migrated
-in place.
+The **FastAPI Python backend** (`src/openvideokit/`) is the current
+implementation. It may be rewritten, but the stamping mechanism and token
+convention remain unchanged.
 
 ---
 

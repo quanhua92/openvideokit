@@ -9,8 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { client } from "../client";
 
 export function useProject(projectId: string) {
-	return useQuery({
-		queryKey: ["project", projectId],
-		queryFn: () => client.getProject(projectId),
-	});
+  return useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => client.getProject(projectId),
+  });
 }

@@ -32,6 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from openvideokit.captions import CAPTION_CSS, build_caption_html, build_caption_timeline_js
+
 from openvideokit.voiceover import generate_voiceover
 
 TEXT_PARTS = [
@@ -76,14 +77,14 @@ def bake_captions_into_index(
     if "{{ captions_html|safe }}" in content:
         content = content.replace("{{ captions_html|safe }}", caption_html)
     else:
-        marker = '<!-- CAPTION_LAYER -->'
+        marker = "<!-- CAPTION_LAYER -->"
         if marker in content:
             content = content.replace(marker, caption_html)
 
     if "{{ captions_js|safe }}" in content:
         content = content.replace("{{ captions_js|safe }}", caption_js)
     else:
-        marker = '// CAPTION_TIMELINE'
+        marker = "// CAPTION_TIMELINE"
         if marker in content:
             content = content.replace(marker, caption_js)
 

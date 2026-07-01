@@ -1,60 +1,60 @@
-"""Voiceover generation: TTS per sentence, silence padding, ffmpeg concat.
+"""edge-tts pipeline with content-addressed cache.
 
-Pipeline (per your workflow spec):
-  1. Split script into sentences (TEXT_PARTS) with target start times (TARGET_STARTS).
-  2. TTS each sentence via edge-tts → temp_sentence_i.mp3.
-  3. Probe actual duration with ffprobe.
-  4. If gap = target_start - current_time > 0, generate silence via ffmpeg anullsrc.
-  5. Concat all segments → assets/voiceover.mp3.
-  6. Write per-sentence timings → assets/voiceover_timings.json.
+For each slide:
+  1. Hash ``text + voice + rate + pitch + volume`` → cache key.
+  2. If ``audio.json`` sidecar exists with matching ``textHash`` →
+     read duration from json (instant, skip TTS).
+  3. Otherwise: edge-tts → mp3 → ffprobe → save both + json sidecar.
 
-Used by:
-  - scripts/generate_voiceover.py  (standalone CLI)
-  - templating.stamp_session()     (when a "voiceover" slot type is present)
+Audio + metadata live inside the slide's own folder::
+
+    slides/{slide_id}/
+    ├── index.json
+    ├── index.html
+    ├── audio.mp3     ← edge-tts output
+    └── audio.json    ← {textHash, duration, voice, rate, ...}
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import hashlib
 import json
+import logging
 import subprocess
-import tempfile
 import threading
-from dataclasses import dataclass, field
 from pathlib import Path
 
+from .store import _slide_dir
 
-@dataclass
-class SentenceTiming:
-    index: int
-    text: str
-    start: float
-    end: float
-    duration: float
-    words: list[dict] = field(default_factory=list)
-
-    def to_dict(self) -> dict:
-        return {
-            "index": self.index,
-            "text": self.text,
-            "start": round(self.start, 3),
-            "end": round(self.end, 3),
-            "duration": round(self.duration, 3),
-            "words": self.words,
-        }
+_logger = logging.getLogger(__name__)
 
 
-def probe_duration(path: Path) -> float:
+def _text_hash(text: str, voice: str, rate: str = "", pitch: str = "", volume: str = "") -> str:
+    return hashlib.sha256(f"{voice}\n{text}\n{rate}\n{pitch}\n{volume}".encode()).hexdigest()[:16]
+
+
+async def _tts_async(text: str, voice: str, output: Path, **opts: str) -> None:
+    import edge_tts
+
+    kwargs = {k: v for k, v in opts.items() if v}
+    communicate = edge_tts.Communicate(text, voice, **kwargs)
+    await communicate.save(str(output))
+
+
+def _tts_sentence(text: str, voice: str, output: Path, **opts: str) -> None:
+    def _worker() -> None:
+        asyncio.run(_tts_async(text, voice, output, **opts))
+
+    t = threading.Thread(target=_worker)
+    t.start()
+    t.join()
+
+
+def _probe_duration(path: Path) -> float:
     result = subprocess.run(
-        [
-            "ffprobe",
-            "-v",
-            "quiet",
-            "-print_format",
-            "json",
-            "-show_format",
-            str(path),
-        ],
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(path)],
         capture_output=True,
         text=True,
         check=True,
@@ -62,255 +62,145 @@ def probe_duration(path: Path) -> float:
     return float(json.loads(result.stdout)["format"]["duration"])
 
 
-def make_silence(duration: float, output: Path, sample_rate: int = 24000) -> None:
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "lavfi",
-            "-i",
-            f"anullsrc=channel_layout=mono:sample_rate={sample_rate}",
-            "-t",
-            f"{duration:.3f}",
-            "-c:a",
-            "libmp3lame",
-            "-q:a",
-            "9",
-            str(output),
-        ],
-        capture_output=True,
-        check=True,
+def _try_cache(slide_dir: Path, text_hash: str) -> dict | None:
+    """Return full companion metadata if audio-{hash}.json + .mp3 both exist."""
+    companion = slide_dir / f"audio-{text_hash}.json"
+    mp3 = slide_dir / f"audio-{text_hash}.mp3"
+    if not companion.is_file() or not mp3.is_file():
+        return None
+    try:
+        return json.loads(companion.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _save_meta(
+    slide_dir: Path,
+    text_hash: str,
+    text: str,
+    voice: str,
+    duration: float,
+    rate: str = "",
+    pitch: str = "",
+    volume: str = "",
+) -> None:
+    # Read existing audio.json to preserve history
+    existing: dict = {}
+    meta = slide_dir / "audio.json"
+    if meta.is_file():
+        with contextlib.suppress(json.JSONDecodeError, OSError):
+            existing = json.loads(meta.read_text(encoding="utf-8"))
+
+    # Move old hash into history
+    old_hash = existing.get("textHash")
+    history: list[str] = existing.get("history", [])
+    if old_hash and old_hash != text_hash and old_hash not in history:
+        history.insert(0, old_hash)
+
+    # Keep only last 2 — delete older audio files
+    while len(history) > 2:
+        stale = history.pop()
+        (slide_dir / f"audio-{stale}.mp3").unlink(missing_ok=True)
+        (slide_dir / f"audio-{stale}.json").unlink(missing_ok=True)
+
+    data = json.dumps(
+        {
+            "textHash": text_hash,
+            "text": text,
+            "voice": voice,
+            "rate": rate,
+            "pitch": pitch,
+            "volume": volume,
+            "duration": round(duration, 3),
+            "history": history,
+        },
+        ensure_ascii=False,
+        indent=2,
     )
+    # Companion: per-variant metadata
+    (slide_dir / f"audio-{text_hash}.json").write_text(data, encoding="utf-8")
+    # Pointer: latest/current variant
+    (slide_dir / "audio.json").write_text(data, encoding="utf-8")
 
 
-async def _tts_sentence(text: str, voice: str, output: Path) -> None:
-    import edge_tts
+def _touch_latest(slide_dir: Path, text_hash: str) -> None:
+    """Update audio.json's textHash to point to the current variant."""
+    from .store import _atomic_write
 
-    communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(str(output))
-
-
-def tts_sentence_sync(text: str, voice: str, output: Path) -> None:
-    """Sync wrapper — runs in a dedicated thread to work inside async event loops."""
-
-    def _worker() -> None:
-        asyncio.run(_tts_sentence(text, voice, output))
-
-    t = threading.Thread(target=_worker)
-    t.start()
-    t.join()
+    meta = slide_dir / "audio.json"
+    companion = slide_dir / f"audio-{text_hash}.json"
+    if companion.is_file():
+        _atomic_write(meta, companion.read_text(encoding="utf-8"))
 
 
-def generate_voiceover(
-    text_parts: list[str],
-    target_starts: list[float],
-    output_dir: Path,
-    voice: str = "vi-VN-HoaiMyNeural",
-    gap_threshold: float = 0.05,
-) -> dict:
-    """Generate voiceover.mp3 + voiceover_timings.json.
+def generate_audio(project_id: str, slides: list[dict]) -> list[dict]:
+    """TTS each slide → save mp3 + json into the slide folder → return durations."""
+    timings: list[dict] = []
 
-    Args:
-        text_parts: Script sentences (Vietnamese or any edge-tts supported language).
-        target_starts: Desired start time (seconds) for each sentence.
-        output_dir: Directory to write voiceover.mp3 and voiceover_timings.json.
-        voice: edge-tts voice ID (e.g. vi-VN-HoaiMy, en-US-AriaNeural).
-        gap_threshold: Minimum gap (seconds) to insert silence.
+    for slide in slides:
+        sid = slide["id"]
+        text = slide.get("text", "").strip()
+        voice = slide.get("voice", "en-US-AriaNeural")
+        rate = slide.get("rate", "")
+        pitch = slide.get("pitch", "")
+        volume = slide.get("volume", "")
 
-    Returns:
-        Timings dict with "voice" and "sentences" keys.
-    """
-    if len(text_parts) != len(target_starts):
-        raise ValueError(
-            f"text_parts ({len(text_parts)}) and target_starts ({len(target_starts)}) "
-            "must have the same length"
-        )
+        if not text:
+            timings.append({"slideId": sid, "duration": 0.0, "audio": "", "audioHash": ""})
+            continue
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    timings: list[SentenceTiming] = []
-    concat_files: list[str] = []
-    current_time = 0.0
+        sdir = _slide_dir(project_id, sid)
+        sdir.mkdir(parents=True, exist_ok=True)
+        thash = _text_hash(text, voice, rate, pitch, volume)
 
-    with tempfile.TemporaryDirectory() as tmpdir_s:
-        tmpdir = Path(tmpdir_s)
-
-        for i, (text, target_start) in enumerate(zip(text_parts, target_starts, strict=True)):
-            speech_file = tmpdir / f"sentence_{i:02d}.mp3"
-            tts_sentence_sync(text, voice, speech_file)
-            speech_dur = probe_duration(speech_file)
-
-            gap = target_start - current_time
-            if gap > gap_threshold:
-                silence_file = tmpdir / f"silence_{i:02d}.mp3"
-                make_silence(gap, silence_file)
-                concat_files.append(str(silence_file))
-                current_time += gap
-
-            timing = SentenceTiming(
-                index=i,
-                text=text,
-                start=current_time,
-                end=current_time + speech_dur,
-                duration=speech_dur,
+        cached = _try_cache(sdir, thash)
+        audio_url = f"/api/projects/{project_id}/slides/{sid}/audio/{thash}"
+        if cached is not None:
+            _logger.debug(
+                "TTS cache hit: %s/%s hash=%s companion=%s",
+                project_id,
+                sid,
+                thash,
+                cached,
             )
-            timings.append(timing)
-            concat_files.append(str(speech_file))
-            current_time += speech_dur
-
-        concat_list_file = tmpdir / "concat_list.txt"
-        concat_list_file.write_text(
-            "\n".join(f"file '{f}'" for f in concat_files), encoding="utf-8"
-        )
-
-        voiceover_path = output_dir / "voiceover.mp3"
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                str(concat_list_file),
-                "-c:a",
-                "libmp3lame",
-                "-ar",
-                "24000",
-                "-b:a",
-                "64k",
-                str(voiceover_path),
-            ],
-            capture_output=True,
-            check=True,
-        )
-
-    timings_data = {
-        "voice": voice,
-        "total_duration": round(current_time, 3),
-        "sentences": [t.to_dict() for t in timings],
-    }
-    timings_path = output_dir / "voiceover_timings.json"
-    timings_path.write_text(
-        json.dumps(timings_data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
-    return timings_data
-
-
-def generate_voiceover_smart(
-    text_parts: list[str],
-    output_dir: Path,
-    voice: str = "vi-VN-HoaiMyNeural",
-    start_offset: float = 0.5,
-    gap_between_slides: float = 0.8,
-) -> dict:
-    """Generate voiceover with SMART auto-timing.
-
-    Instead of requiring manual target_starts, this:
-      1. TTS each sentence first
-      2. Measures actual duration via ffprobe
-      3. Auto-calculates start times: slide N starts right after slide N-1 ends + gap
-
-    Args:
-        text_parts: Script sentences (one per slide).
-        output_dir: Where to write voiceover.mp3 + voiceover_timings.json.
-        voice: edge-tts voice ID.
-        start_offset: First slide starts at this time (seconds).
-        gap_between_slides: Pause between slides (seconds).
-
-    Returns:
-        Timings dict (same format as generate_voiceover).
-    """
-    output_dir.mkdir(parents=True, exist_ok=True)
-    timings: list[SentenceTiming] = []
-    concat_files: list[str] = []
-
-    with tempfile.TemporaryDirectory() as tmpdir_s:
-        tmpdir = Path(tmpdir_s)
-
-        # Phase 1: TTS all sentences, measure durations
-        durations: list[float] = []
-        speech_files: list[Path] = []
-        for i, text in enumerate(text_parts):
-            speech_file = tmpdir / f"sentence_{i:02d}.mp3"
-            tts_sentence_sync(text, voice, speech_file)
-            dur = probe_duration(speech_file)
-            durations.append(dur)
-            speech_files.append(speech_file)
-
-        # Phase 2: Compute smart target_starts from measured durations
-        target_starts: list[float] = []
-        cursor = start_offset
-        for i, dur in enumerate(durations):
-            target_starts.append(cursor)
-            cursor += dur
-            if i < len(durations) - 1:
-                cursor += gap_between_slides
-
-        # Phase 3: Build concat list with silence padding
-        current_time = 0.0
-        for i, (text, target_start) in enumerate(
-            zip(text_parts, target_starts, strict=True)
-        ):
-            gap = target_start - current_time
-            if gap > 0.05:
-                silence_file = tmpdir / f"silence_{i:02d}.mp3"
-                make_silence(gap, silence_file)
-                concat_files.append(str(silence_file))
-                current_time += gap
-
-            timing = SentenceTiming(
-                index=i,
-                text=text,
-                start=current_time,
-                end=current_time + durations[i],
-                duration=durations[i],
+            # Update the latest pointer so GET /audio serves the right variant
+            _touch_latest(sdir, thash)
+            timings.append(
+                {
+                    "slideId": sid,
+                    "duration": cached["duration"],
+                    "audio": audio_url,
+                    "audioHash": thash,
+                }
             )
-            timings.append(timing)
-            concat_files.append(str(speech_files[i]))
-            current_time += durations[i]
+            continue
 
-        # Phase 4: Concat
-        concat_list_file = tmpdir / "concat_list.txt"
-        concat_list_file.write_text(
-            "\n".join(f"file '{f}'" for f in concat_files), encoding="utf-8"
+        _logger.info(
+            "TTS generating: %s/%s hash=%s voice=%s text=%r",
+            project_id,
+            sid,
+            thash,
+            voice,
+            text[:80],
+        )
+        mp3_path = sdir / f"audio-{thash}.mp3"
+        try:
+            _tts_sentence(text, voice, mp3_path, rate=rate, pitch=pitch, volume=volume)
+            dur = _probe_duration(mp3_path)
+        except Exception:
+            timings.append({"slideId": sid, "duration": 0.0, "audio": "", "audioHash": ""})
+            continue
+        _save_meta(sdir, thash, text, voice, dur, rate, pitch, volume)
+        _logger.info(
+            "TTS done: %s/%s hash=%s dur=%.3fs text=%r",
+            project_id,
+            sid,
+            thash,
+            dur,
+            text[:80],
+        )
+        timings.append(
+            {"slideId": sid, "duration": round(dur, 3), "audio": audio_url, "audioHash": thash}
         )
 
-        voiceover_path = output_dir / "voiceover.mp3"
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                str(concat_list_file),
-                "-c:a",
-                "libmp3lame",
-                "-ar",
-                "24000",
-                "-b:a",
-                "64k",
-                str(voiceover_path),
-            ],
-            capture_output=True,
-            check=True,
-        )
-
-    timings_data = {
-        "voice": voice,
-        "total_duration": round(current_time, 3),
-        "start_offset": start_offset,
-        "gap_between_slides": gap_between_slides,
-        "sentences": [t.to_dict() for t in timings],
-    }
-    timings_path = output_dir / "voiceover_timings.json"
-    timings_path.write_text(
-        json.dumps(timings_data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
-    return timings_data
+    return timings

@@ -22,64 +22,64 @@ const STRUCTURAL_TOKEN = "__OVK_SLIDE_ID__";
 
 /** R5: a placeholder is valid if it is structural, custom-namespace, or a known schema key. */
 function unknownTokenMessage(token: string): string | null {
-	if (token === STRUCTURAL_TOKEN) return null;
-	if (token.startsWith("__OVK_CUSTOM_")) return null;
-	if (token.startsWith(OVK) && token.endsWith("__")) {
-		const fieldId = token.slice(OVK.length, -2).toLowerCase();
-		return SCHEMA_KEYS.has(fieldId)
-			? null
-			: `unknown field token ${token} — not in schema.json and not __OVK_CUSTOM_*__`;
-	}
-	return `non-namespaced token ${token} — use __OVK_<FIELD>__ (or __OVK_CUSTOM_<NAME>__)`;
+  if (token === STRUCTURAL_TOKEN) return null;
+  if (token.startsWith("__OVK_CUSTOM_")) return null;
+  if (token.startsWith(OVK) && token.endsWith("__")) {
+    const fieldId = token.slice(OVK.length, -2).toLowerCase();
+    return SCHEMA_KEYS.has(fieldId)
+      ? null
+      : `unknown field token ${token} — not in schema.json and not __OVK_CUSTOM_*__`;
+  }
+  return `non-namespaced token ${token} — use __OVK_<FIELD>__ (or __OVK_CUSTOM_<NAME>__)`;
 }
 
 export interface LintResult {
-	ok: boolean;
-	firedRule?: { id: "R1" | "R2" | "R3" | "R4" | "R5"; message: string };
+  ok: boolean;
+  firedRule?: { id: "R1" | "R2" | "R3" | "R4" | "R5"; message: string };
 }
 
 /** Count occurrences of a tag in a string (case-insensitive, naive scan). */
 export function countTag(src: string, tag: string): number {
-	const re = new RegExp(`<${tag}[\\s/>]`, "gi");
-	return (src.match(re) ?? []).length;
+  const re = new RegExp(`<${tag}[\\s/>]`, "gi");
+  return (src.match(re) ?? []).length;
 }
 
 /** Extract the inner content of the first `<template>...</template>`. */
 export function extractTemplateContent(src: string): string {
-	const open = src.match(/<template[\s>]/i);
-	if (!open || open.index === undefined) return "";
-	const start = open.index + open[0].length;
-	const close = src.slice(start).search(/<\/template>/i);
-	if (close < 0) return "";
-	return src.slice(start, start + close);
+  const open = src.match(/<template[\s>]/i);
+  if (!open || open.index === undefined) return "";
+  const start = open.index + open[0].length;
+  const close = src.slice(start).search(/<\/template>/i);
+  if (close < 0) return "";
+  return src.slice(start, start + close);
 }
 
 /** Check if `<html>`, `<head>`, or `<body>` appears OUTSIDE `<template>`. */
 export function hasHtmlWrapper(src: string): boolean {
-	const templateStart = src.search(/<template[\s>]/i);
-	const templateEnd = src.search(/<\/template>/i);
-	const before = templateStart > 0 ? src.slice(0, templateStart) : "";
-	const after = templateEnd > 0 ? src.slice(templateEnd + 12) : "";
-	const outside = `${before} ${after}`;
-	return (
-		/<html[\s>]/i.test(outside) ||
-		/<head[\s>]/i.test(outside) ||
-		/<body[\s>]/i.test(outside)
-	);
+  const templateStart = src.search(/<template[\s>]/i);
+  const templateEnd = src.search(/<\/template>/i);
+  const before = templateStart > 0 ? src.slice(0, templateStart) : "";
+  const after = templateEnd > 0 ? src.slice(templateEnd + 12) : "";
+  const outside = `${before} ${after}`;
+  return (
+    /<html[\s>]/i.test(outside) ||
+    /<head[\s>]/i.test(outside) ||
+    /<body[\s>]/i.test(outside)
+  );
 }
 
 /** Check if an attribute exists in the extracted template content. */
 export function hasAttribute(inner: string, attr: string): boolean {
-	return new RegExp(`${attr}\\s*=`, "i").test(inner);
+  return new RegExp(`${attr}\\s*=`, "i").test(inner);
 }
 
 /** Check for Tailwind usage (CDN script, @tailwind, @apply). */
 export function hasTailwind(src: string): boolean {
-	return (
-		/cdn\.tailwindcss\.com/i.test(src) ||
-		/@tailwind\s/.test(src) ||
-		/@apply\s/.test(src)
-	);
+  return (
+    /cdn\.tailwindcss\.com/i.test(src) ||
+    /@tailwind\s/.test(src) ||
+    /@apply\s/.test(src)
+  );
 }
 
 /**
@@ -87,76 +87,76 @@ export function hasTailwind(src: string): boolean {
  * failing rule.
  */
 export function lintHtml(src: string): LintResult {
-	if (src.trim() === "") {
-		return { ok: true }; // Empty string means "clear custom override and use template default"
-	}
+  if (src.trim() === "") {
+    return { ok: true }; // Empty string means "clear custom override and use template default"
+  }
 
-	// R1: exactly one <template>
-	const templateCount = countTag(src, "template");
-	if (templateCount === 0) {
-		return {
-			ok: false,
-			firedRule: {
-				id: "R1",
-				message: "missing <template> — slide HTML must be a bare <template>",
-			},
-		};
-	}
-	if (templateCount > 1) {
-		return {
-			ok: false,
-			firedRule: {
-				id: "R1",
-				message: `expected 1 <template>, found ${templateCount}`,
-			},
-		};
-	}
+  // R1: exactly one <template>
+  const templateCount = countTag(src, "template");
+  if (templateCount === 0) {
+    return {
+      ok: false,
+      firedRule: {
+        id: "R1",
+        message: "missing <template> — slide HTML must be a bare <template>",
+      },
+    };
+  }
+  if (templateCount > 1) {
+    return {
+      ok: false,
+      firedRule: {
+        id: "R1",
+        message: `expected 1 <template>, found ${templateCount}`,
+      },
+    };
+  }
 
-	// R2: no <html>/<head>/<body> outside <template>
-	if (hasHtmlWrapper(src)) {
-		return {
-			ok: false,
-			firedRule: {
-				id: "R2",
-				message:
-					"<html>/<head>/<body> found outside <template> — HF renders wrapped templates blank (v0.7.3)",
-			},
-		};
-	}
+  // R2: no <html>/<head>/<body> outside <template>
+  if (hasHtmlWrapper(src)) {
+    return {
+      ok: false,
+      firedRule: {
+        id: "R2",
+        message:
+          "<html>/<head>/<body> found outside <template> — HF renders wrapped templates blank (v0.7.3)",
+      },
+    };
+  }
 
-	// R3: extracted content has data-composition-id
-	const inner = extractTemplateContent(src);
-	if (!hasAttribute(inner, "data-composition-id")) {
-		return {
-			ok: false,
-			firedRule: {
-				id: "R3",
-				message: "missing data-composition-id in <template> content",
-			},
-		};
-	}
+  // R3: extracted content has data-composition-id
+  const inner = extractTemplateContent(src);
+  if (!hasAttribute(inner, "data-composition-id")) {
+    return {
+      ok: false,
+      firedRule: {
+        id: "R3",
+        message: "missing data-composition-id in <template> content",
+      },
+    };
+  }
 
-	// R4: no Tailwind
-	if (hasTailwind(src)) {
-		return {
-			ok: false,
-			firedRule: {
-				id: "R4",
-				message:
-					"Tailwind detected — use vanilla CSS + GSAP in composition HTML (RFC §16)",
-			},
-		};
-	}
+  // R4: no Tailwind
+  if (hasTailwind(src)) {
+    return {
+      ok: false,
+      firedRule: {
+        id: "R4",
+        message:
+          "Tailwind detected — use vanilla CSS + GSAP in composition HTML (RFC §16)",
+      },
+    };
+  }
 
-	// R5: binding coverage — every __OVK_*__ token must be a known schema key,
-	// the structural __OVK_SLIDE_ID__, or an __OVK_CUSTOM_*__ escape hatch.
-	const tokens = extractPlaceholders(inner);
-	for (const token of tokens) {
-		const msg = unknownTokenMessage(token);
-		if (msg) {
-			return { ok: false, firedRule: { id: "R5", message: msg } };
-		}
-	}
+  // R5: binding coverage — every __OVK_*__ token must be a known schema key,
+  // the structural __OVK_SLIDE_ID__, or an __OVK_CUSTOM_*__ escape hatch.
+  const tokens = extractPlaceholders(inner);
+  for (const token of tokens) {
+    const msg = unknownTokenMessage(token);
+    if (msg) {
+      return { ok: false, firedRule: { id: "R5", message: msg } };
+    }
+  }
 
-	return { ok: true };
+  return { ok: true };
 }

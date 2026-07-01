@@ -10,38 +10,38 @@ import { useEffect, useState } from "react";
 import { getAsset } from "@/features/assets/lib/assetStore";
 
 export function useAssetUrl(ref: string | undefined | null): string | null {
-	const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
 
-	useEffect(() => {
-		setUrl(null);
-		if (!ref) return;
+  useEffect(() => {
+    setUrl(null);
+    if (!ref) return;
 
-		let active = true;
-		let createdUrl: string | null = null;
+    let active = true;
+    let createdUrl: string | null = null;
 
-		void getAsset(ref)
-			.then((asset) => {
-				if (!active || !asset) return;
-				createdUrl = URL.createObjectURL(asset.blob);
-				// Double-check active after async — component may have unmounted
-				// during the IndexedDB read. Revoke immediately if so.
-				if (!active) {
-					URL.revokeObjectURL(createdUrl);
-					createdUrl = null;
-					return;
-				}
-				setUrl(createdUrl);
-			})
-			.catch(() => {
-				// IndexedDB read failed (quota, corrupted data, etc.)
-				if (active) setUrl(null);
-			});
+    void getAsset(ref)
+      .then((asset) => {
+        if (!active || !asset) return;
+        createdUrl = URL.createObjectURL(asset.blob);
+        // Double-check active after async — component may have unmounted
+        // during the IndexedDB read. Revoke immediately if so.
+        if (!active) {
+          URL.revokeObjectURL(createdUrl);
+          createdUrl = null;
+          return;
+        }
+        setUrl(createdUrl);
+      })
+      .catch(() => {
+        // IndexedDB read failed (quota, corrupted data, etc.)
+        if (active) setUrl(null);
+      });
 
-		return () => {
-			active = false;
-			if (createdUrl) URL.revokeObjectURL(createdUrl);
-		};
-	}, [ref]);
+    return () => {
+      active = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [ref]);
 
-	return url;
+  return url;
 }

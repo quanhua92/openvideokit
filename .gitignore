@@ -15,6 +15,7 @@ env/
 # Runtime data (created on demand, never commit)
 sessions/
 jobs/
+data/
 *.log
 *.mp4
 *.webm

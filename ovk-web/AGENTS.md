@@ -6,7 +6,7 @@
 
 A **scene-based, AI-assisted HTML-slide video editor** — a CapCut / Google Vids class tool delivered as a browser SPA. Users edit slides (title, body, background, image, voiceover), see a live preview, and export to MP4. AI can propose edits (Tier-1 JSON patches, Tier-2 HTML swaps) that humans accept or reject.
 
-**Tech stack:** TanStack Router · React 19 · Tailwind v4 · shadcn/ui · Vite 8 · Zustand · TanStack Query · zod · MSW · dnd-kit · CodeMirror 6 · Biome · Vitest · js-sha256 · idb-keyval
+**Tech stack:** TanStack Router · React 19 · Tailwind v4 · shadcn/ui · Vite 8 · Zustand · TanStack Query · zod · @hyperframes/player · dnd-kit · CodeMirror 6 · Biome · Vitest · js-sha256 · idb-keyval
 
 ## Quick start
 
@@ -183,8 +183,10 @@ AI proposals produce the same `EditOp` shapes as human edits. Accept dispatches 
 ### 3. Playhead writes via getState() — never React state
 The rAF loop in `usePlaybackClock` writes `playhead.t` via `usePlayhead.getState().seek()`. Components opt into re-renders via `usePlayhead(s => s.t)`. The Properties panel doesn't subscribe → no per-frame re-render.
 
-### 4. MSW always on (no backend yet)
-`enableMocking()` runs in all environments unless `VITE_USE_MSW=false`. When the real backend lands, set that env var and swap MSW handlers for real `fetch` calls.
+### 4. Python backend required (MSW removed)
+The Python SSR server (`src/openvideokit/`) must be running on `:8000`.
+`./scripts/dev.sh` starts both servers. The Vite dev proxy forwards
+`/api` → `:8000`. `VITE_API_BASE_URL` can point at a remote backend.
 
 ### 5. shadcn/ui is the design system
 No hand-rolled Button/Dialog/Tooltip/etc. Add via `pnpm dlx shadcn@latest add <name>`. The `--caption-active` color token is reserved for `features/captions/**` only (CI grep enforced).
@@ -193,6 +195,7 @@ No hand-rolled Button/Dialog/Tooltip/etc. Add via `pnpm dlx shadcn@latest add <n
 
 | Convention | Detail |
 |---|---|
+| **Indentation** | **Always spaces, never tabs — 2 spaces** for TS/TSX. Biome enforces (`indentStyle: "space"`, `indentWidth: 2`). |
 | **`__FIELD__` stamping** | `stampSafe(html, id, value)` uses function-form `replaceAll` — never the string form (corrupts on `$&`) |
 | **Caption rules** | Never use `transform`, `scale()`, `font-size`, or `text-shadow` on `.word--active`. GSAP `className:` tweens banned. `lintCaptionCSS` enforces. |
 | **Bare `<template>`** | Slide HTML must be a bare `<template>` — no `<html>`/`<head>`/`<body>` wrapper. `lintHtml` R1–R4 enforces. |

@@ -24,68 +24,68 @@ import { useHistory } from "@/shared/store/history";
 import { useEditBus } from "./EditBusProvider";
 
 export interface UseUndoRedo {
-	canUndo: boolean;
-	canRedo: boolean;
-	undo: () => void;
-	redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
 }
 
 export function useUndoRedo(projectId: string | undefined): UseUndoRedo {
-	const { dispatch } = useEditBus();
-	const past = useHistory((s) => s.past);
-	const future = useHistory((s) => s.future);
+  const { dispatch } = useEditBus();
+  const past = useHistory((s) => s.past);
+  const future = useHistory((s) => s.future);
 
-	const undo = () => {
-		if (!projectId) return;
-		const event = useHistory.getState().popPast();
-		if (!event) return;
-		if (!event.inverse) {
-			// No inverse was computable at dispatch time — put it back.
-			useHistory.getState().pushPast(event);
-			return;
-		}
-		dispatch(event.inverse, "human", { skipHistory: true });
-		useHistory.getState().pushFuture(event);
-	};
+  const undo = () => {
+    if (!projectId) return;
+    const event = useHistory.getState().popPast();
+    if (!event) return;
+    if (!event.inverse) {
+      // No inverse was computable at dispatch time — put it back.
+      useHistory.getState().pushPast(event);
+      return;
+    }
+    dispatch(event.inverse, "human", { skipHistory: true });
+    useHistory.getState().pushFuture(event);
+  };
 
-	const redo = () => {
-		if (!projectId) return;
-		const event = useHistory.getState().popFuture();
-		if (!event) return;
-		dispatch(event.op, "human", { skipHistory: true });
-		useHistory.getState().pushPast(event);
-	};
+  const redo = () => {
+    if (!projectId) return;
+    const event = useHistory.getState().popFuture();
+    if (!event) return;
+    dispatch(event.op, "human", { skipHistory: true });
+    useHistory.getState().pushPast(event);
+  };
 
-	// Latest-ref pattern: keep the listener bound once, but always invoke the
-	// freshest undo/redo (which read live state via getState()/getQueryData).
-	const undoRef = useRef(undo);
-	const redoRef = useRef(redo);
-	useEffect(() => {
-		undoRef.current = undo;
-		redoRef.current = redo;
-	});
+  // Latest-ref pattern: keep the listener bound once, but always invoke the
+  // freshest undo/redo (which read live state via getState()/getQueryData).
+  const undoRef = useRef(undo);
+  const redoRef = useRef(redo);
+  useEffect(() => {
+    undoRef.current = undo;
+    redoRef.current = redo;
+  });
 
-	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => {
-			const mod = e.metaKey || e.ctrlKey;
-			if (!mod) return;
-			if (e.key === "z" || e.key === "Z") {
-				e.preventDefault();
-				if (e.shiftKey) redoRef.current();
-				else undoRef.current();
-			} else if (e.key === "y" || e.key === "Y") {
-				e.preventDefault();
-				redoRef.current();
-			}
-		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (e.key === "z" || e.key === "Z") {
+        e.preventDefault();
+        if (e.shiftKey) redoRef.current();
+        else undoRef.current();
+      } else if (e.key === "y" || e.key === "Y") {
+        e.preventDefault();
+        redoRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-	return {
-		canUndo: past.length > 0,
-		canRedo: future.length > 0,
-		undo,
-		redo,
-	};
+  return {
+    canUndo: past.length > 0,
+    canRedo: future.length > 0,
+    undo,
+    redo,
+  };
 }

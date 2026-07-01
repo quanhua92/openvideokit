@@ -7,21 +7,21 @@
 import { useEffect, useState } from "react";
 
 export function useMediaQuery(query: string): boolean {
-	const [matches, setMatches] = useState(false);
+  const [matches, setMatches] = useState(false);
 
-	useEffect(() => {
-		if (typeof window === "undefined" || !window.matchMedia) return;
-		const mq = window.matchMedia(query);
-		setMatches(mq.matches);
-		const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-		mq.addEventListener("change", handler);
-		return () => mq.removeEventListener("change", handler);
-	}, [query]);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia(query);
+    setMatches(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [query]);
 
-	return matches;
+  return matches;
 }
 
 /** Convenience: returns true at ≥1024px (Tailwind `lg`). */
 export function useIsDesktop(): boolean {
-	return useMediaQuery("(min-width: 1024px)");
+  return useMediaQuery("(min-width: 1024px)");
 }

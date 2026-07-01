@@ -10,15 +10,15 @@
 
 /** Compute the arithmetic mean of a 2D number grid. */
 export function mean(frame: number[][]): number {
-	let sum = 0;
-	let count = 0;
-	for (const row of frame) {
-		for (const v of row) {
-			sum += v;
-			count++;
-		}
-	}
-	return count === 0 ? 0 : sum / count;
+  let sum = 0;
+  let count = 0;
+  for (const row of frame) {
+    for (const v of row) {
+      sum += v;
+      count++;
+    }
+  }
+  return count === 0 ? 0 : sum / count;
 }
 
 /**
@@ -26,18 +26,18 @@ export function mean(frame: number[][]): number {
  * Returns a number[][] of 0/1 values.
  */
 export function aHash(frame: number[][]): number[][] {
-	const m = mean(frame);
-	const rows = frame.length;
-	const cols = frame[0]?.length ?? 0;
-	const result: number[][] = [];
-	for (let r = 0; r < rows; r++) {
-		const row: number[] = [];
-		for (let c = 0; c < cols; c++) {
-			row.push(frame[r][c] > m ? 1 : 0);
-		}
-		result.push(row);
-	}
-	return result;
+  const m = mean(frame);
+  const rows = frame.length;
+  const cols = frame[0]?.length ?? 0;
+  const result: number[][] = [];
+  for (let r = 0; r < rows; r++) {
+    const row: number[] = [];
+    for (let c = 0; c < cols; c++) {
+      row.push(frame[r][c] > m ? 1 : 0);
+    }
+    result.push(row);
+  }
+  return result;
 }
 
 /**
@@ -45,19 +45,19 @@ export function aHash(frame: number[][]): number[][] {
  * Throws if shapes mismatch — prevents silent false cache HITs.
  */
 export function hamming(h1: number[][], h2: number[][]): number {
-	if (
-		h1.length !== h2.length ||
-		h1.some((row, i) => row.length !== (h2[i]?.length ?? 0))
-	) {
-		throw new Error("hamming: grids must have the same shape");
-	}
-	let dist = 0;
-	for (let r = 0; r < h1.length; r++) {
-		for (let c = 0; c < h1[r].length; c++) {
-			if (h1[r][c] !== h2[r][c]) dist++;
-		}
-	}
-	return dist;
+  if (
+    h1.length !== h2.length ||
+    h1.some((row, i) => row.length !== (h2[i]?.length ?? 0))
+  ) {
+    throw new Error("hamming: grids must have the same shape");
+  }
+  let dist = 0;
+  for (let r = 0; r < h1.length; r++) {
+    for (let c = 0; c < h1[r].length; c++) {
+      if (h1[r][c] !== h2[r][c]) dist++;
+    }
+  }
+  return dist;
 }
 
 /**
@@ -69,5 +69,5 @@ export const CACHE_THRESHOLD = 5;
 
 /** Decide HIT or MISS based on Hamming distance. */
 export function cacheDecision(distance: number): "HIT" | "MISS" {
-	return distance <= CACHE_THRESHOLD ? "HIT" : "MISS";
+  return distance <= CACHE_THRESHOLD ? "HIT" : "MISS";
 }

@@ -11,11 +11,11 @@
  * split). Trims each sentence and drops empty results.
  */
 export function splitSentences(text: string): string[] {
-	if (!text.trim()) return [];
-	// Mark sentence boundaries. A `.`/`!`/`?` is a boundary if NOT preceded by
-	// a digit AND followed by whitespace or end-of-string.
-	const tokens = text.match(/[^.!?]*[.!?]+|\S[^.!?]*$/g) ?? [];
-	return tokens.map((s) => s.trim()).filter((s) => s.length > 0);
+  if (!text.trim()) return [];
+  // Mark sentence boundaries. A `.`/`!`/`?` is a boundary if NOT preceded by
+  // a digit AND followed by whitespace or end-of-string.
+  const tokens = text.match(/[^.!?]*[.!?]+|\S[^.!?]*$/g) ?? [];
+  return tokens.map((s) => s.trim()).filter((s) => s.length > 0);
 }
 
 /**
@@ -24,12 +24,12 @@ export function splitSentences(text: string): string[] {
  * fixtures are reproducible.
  */
 export function textHash(text: string): number {
-	let h = 0x811c9dc5;
-	for (let i = 0; i < text.length; i++) {
-		h ^= text.charCodeAt(i);
-		h = Math.imul(h, 0x01000193);
-	}
-	return h >>> 0;
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
 }
 
 /**
@@ -37,9 +37,9 @@ export function textHash(text: string): number {
  * 2.0–6.0 second range. Same text → same duration (no test flakiness).
  */
 export function mockSentenceDuration(text: string): number {
-	const base = 2.0;
-	const range = 4.0; // → 2.0..6.0 seconds
-	return base + ((textHash(text) % 4000) / 1000) * (range / 4);
+  const base = 2.0;
+  const range = 4.0; // → 2.0..6.0 seconds
+  return base + ((textHash(text) % 4000) / 1000) * (range / 4);
 }
 
 /**
@@ -47,7 +47,7 @@ export function mockSentenceDuration(text: string): number {
  * text → 3.0s default (matches makeBlankSlide in applyOp).
  */
 export function mockSlideDuration(voiceText: string): number {
-	const sentences = splitSentences(voiceText);
-	if (sentences.length === 0) return 3.0;
-	return sentences.reduce((sum, s) => sum + mockSentenceDuration(s), 0);
+  const sentences = splitSentences(voiceText);
+  if (sentences.length === 0) return 3.0;
+  return sentences.reduce((sum, s) => sum + mockSentenceDuration(s), 0);
 }
