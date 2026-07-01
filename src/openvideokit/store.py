@@ -57,14 +57,17 @@ def get_project(project_id: str) -> dict | None:
     return _with_rev(bundle) if bundle else None
 
 
-def upsert_project(project_id: str, bundle: dict, expected_rev: str) -> dict:
+def update_project(project_id: str, bundle: dict, expected_rev: str) -> dict:
     """Replace a project bundle.  Raises ConflictError if rev is stale."""
     current = _STORE.get(project_id)
     if current is None:
         raise KeyError(project_id)
     if compute_rev(current) != expected_rev:
         raise ConflictError(project_id, _with_rev(current))
-    _STORE[project_id] = {k: bundle[k] for k in _BUNDLE_KEYS if k in bundle}
+    missing = [k for k in _BUNDLE_KEYS if k not in bundle]
+    if missing:
+        raise ValueError(f"bundle missing required keys: {missing}")
+    _STORE[project_id] = {k: bundle[k] for k in _BUNDLE_KEYS}
     return _with_rev(_STORE[project_id])
 
 

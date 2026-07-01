@@ -27,9 +27,12 @@ def subscribe(project_id: str) -> asyncio.Queue:
 def unsubscribe(project_id: str, q: asyncio.Queue) -> None:
     with contextlib.suppress(ValueError):
         _listeners[project_id].remove(q)
+    if not _listeners[project_id]:
+        del _listeners[project_id]
 
 
 def broadcast(project_id: str, data: dict) -> None:
+    payload = json.dumps(data)
     for q in _listeners.get(project_id, []):
         with contextlib.suppress(asyncio.QueueFull):
-            q.put_nowait(json.dumps(data))
+            q.put_nowait(payload)

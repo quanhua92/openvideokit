@@ -32,15 +32,12 @@ function parseProjectBundle(raw: unknown): ProjectBundle {
   if (typeof raw !== "object" || raw === null) {
     throw new Error("project bundle is not an object");
   }
-  const { root, slides, slideHtml } = raw as Record<string, unknown>;
+  const { root, slides, slideHtml, rev } = raw as Record<string, unknown>;
   if (slides === null || slides === undefined) {
     throw new Error("project bundle missing 'slides' field");
   }
   return {
-    rev:
-      typeof (raw as Record<string, unknown>).rev === "string"
-        ? ((raw as Record<string, unknown>).rev as string)
-        : "",
+    rev: typeof rev === "string" ? rev : "",
     root: RootIndexSchema.parse(root),
     slides: Object.fromEntries(
       Object.entries(slides as Record<string, unknown>).map(
@@ -98,6 +95,9 @@ export const client = {
     if (res.status === 409) {
       const error = await parseJson(res, "saveProject conflict");
       const current = (error as Record<string, unknown>).current;
+      if (!current) {
+        throw new Error(`saveProject ${projectId}: 409 with no 'current' bundle`);
+      }
       throw new ConflictError(parseProjectBundle(current));
     }
     if (!res.ok) {

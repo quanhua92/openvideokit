@@ -37,12 +37,14 @@ def get_project(project_id: str) -> dict:
 
 @router.put("/projects/{project_id}")
 async def put_project(project_id: str, body: dict) -> dict:
-    if project_id not in {p["id"] for p in store.list_projects()}:
+    if store.get_project(project_id) is None:
         raise HTTPException(status_code=404, detail=f"project '{project_id}' not found")
-    expected_rev = body.get("rev", "")
+    expected_rev = body.get("rev")
+    if expected_rev is None:
+        raise HTTPException(status_code=400, detail="'rev' is required for optimistic locking")
     bundle = {k: body[k] for k in ("root", "slides", "slideHtml") if k in body}
     try:
-        updated = store.upsert_project(project_id, bundle, expected_rev)
+        updated = store.update_project(project_id, bundle, expected_rev)
     except ConflictError as exc:
         raise HTTPException(
             status_code=409,
@@ -79,17 +81,18 @@ def get_slide_composition(project_id: str, slide_id: str) -> str:
 @router.get("/projects/{project_id}/events")
 async def project_events(project_id: str) -> StreamingResponse:
     """SSE stream — pushes ``{projectId, rev}`` on every project mutation."""
-    _require(project_id)
+    project = _require(project_id)
     queue = events.subscribe(project_id)
 
     async def stream():
         try:
-            yield f"data: {json.dumps({'type': 'open', 'rev': compute_rev(_require(project_id))})}\n\n"
+            yield f"data: {json.dumps({'type': 'open', 'rev': compute_rev(project)})}\n\n"
             while True:
-                data = await asyncio.wait_for(queue.get(), timeout=15)
-                yield f"data: {data}\n\n"
-        except TimeoutError:
-            yield ": keepalive\n\n"
+                try:
+                    data = await asyncio.wait_for(queue.get(), timeout=15)
+                    yield f"data: {data}\n\n"
+                except TimeoutError:
+                    yield ": keepalive\n\n"
         except asyncio.CancelledError:
             pass
         finally:

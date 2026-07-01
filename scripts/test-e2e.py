@@ -54,8 +54,12 @@ def assert_404(resp: requests.Response, label: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="ovk SSR end-to-end smoke test")
-    parser.add_argument("base_url", nargs="?", default=DEFAULT_BASE,
-                        help=f"Server base URL (default: {DEFAULT_BASE})")
+    parser.add_argument(
+        "base_url",
+        nargs="?",
+        default=DEFAULT_BASE,
+        help=f"Server base URL (default: {DEFAULT_BASE})",
+    )
     args = parser.parse_args()
     base = args.base_url.rstrip("/")
 
@@ -144,7 +148,8 @@ def main() -> None:
 
     # ── 5. PUT with rev (optimistic locking) ──────────────────────────────
     section(f"PUT /api/projects/{pid}")
-    assert "rev" in bundle, "bundle missing rev"
+    if "rev" not in bundle:
+        fail("bundle shape", "missing rev")
     original_rev = bundle["rev"]
     print(f"  original rev: {original_rev}")
 
@@ -152,8 +157,10 @@ def main() -> None:
     r = s.put(f"{base}/api/projects/{pid}", json=bundle, timeout=5)
     assert_ok(r, "PUT with correct rev")
     updated = r.json()
-    assert updated["rev"] != original_rev, "rev didn't change after PUT"
-    assert "E2E Edited Title" in str(updated["slides"]), "edit not persisted"
+    if updated["rev"] == original_rev:
+        fail("rev check", "rev didn't change after PUT")
+    if "E2E Edited Title" not in str(updated["slides"]):
+        fail("edit check", "edit not persisted in response")
     print(f"  ✓ new rev: {updated['rev']}")
 
     # Stale rev → 409
@@ -165,7 +172,8 @@ def main() -> None:
     # Verify the composition reflects the edit
     r = s.get(f"{base}/api/projects/{pid}/composition", timeout=5)
     assert_ok(r, "re-fetch composition")
-    assert "E2E Edited Title" in r.text, "edit not in composition"
+    if "E2E Edited Title" not in r.text:
+        fail("composition check", "edit not reflected in composition")
     print("  ✓ composition reflects the edit")
 
     # ── 6. 404s ────────────────────────────────────────────────────────────
