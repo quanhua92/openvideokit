@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import * as ResizablePrimitive from "react-resizable-panels";
+import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import { AIDock } from "@/features/ai/AIDock";
 import { AssetLibrary } from "@/features/assets/components/AssetLibrary";
 import { CaptionControls } from "@/features/captions/components/CaptionControls";
 import { CaptionTextEditor } from "@/features/captions/components/CaptionTextEditor";
 import { HtmlEditor } from "@/features/html-editor/HtmlEditor";
-import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
 import { ProjectPanel } from "@/features/project/ProjectPanel";
+import { PropertiesPanel } from "@/features/properties/PropertiesPanel";
 import { StageCanvas } from "@/features/stage/StageCanvas";
 import { TimelinePanel } from "@/features/timeline/TimelinePanel";
 import { EmptySlot } from "./EmptySlot";
@@ -18,7 +18,7 @@ import { TransportBar } from "./TransportBar";
 
 export function StudioDesktop({ data }: { data: StudioData }) {
   const [activeTab, setActiveTab] = useState<PanelId>("ai");
-  const { project, active: activeSlide, totalDuration } = data;
+  const { projectId, project, active: activeSlide, totalDuration } = data;
 
   return (
     <div className="flex h-full flex-col">
@@ -31,15 +31,10 @@ export function StudioDesktop({ data }: { data: StudioData }) {
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="flex h-full items-center justify-center bg-black">
             <StageCanvas
+              projectId={projectId}
               slide={activeSlide.slide}
-              localTime={activeSlide.localTime}
               activeStart={activeSlide.start}
               captionStyle={project.root.theme.caption_style}
-              slideHtml={
-                activeSlide.slideId
-                  ? project.slideHtml[activeSlide.slideId]
-                  : undefined
-              }
             />
           </div>
         </ResizablePanel>

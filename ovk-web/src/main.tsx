@@ -5,6 +5,8 @@ import { router } from "./app/router";
 import { enableMocking } from "./shared/api/msw/worker";
 import "./styles.css";
 
+import "@hyperframes/player";
+
 async function bootstrap() {
   try {
     await enableMocking();

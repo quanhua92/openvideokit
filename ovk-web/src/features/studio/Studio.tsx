@@ -29,6 +29,7 @@ import { StudioDesktop } from "./StudioDesktop";
 import { StudioMobile } from "./StudioMobile";
 
 export interface StudioData {
+  projectId: string;
   project: ProjectBundle;
   active: ActiveSlide;
   totalDuration: number;
@@ -86,6 +87,7 @@ export function Studio({ projectId }: { projectId: string }) {
   );
   const { total } = cumulativeStarts(durations);
   const studioData: StudioData = {
+    projectId,
     project: data,
     active,
     totalDuration: total,

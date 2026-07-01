@@ -1,11 +1,17 @@
 """Assemble HyperFrames compositions in memory.
 
-- `build_slide_composition`: stamp a single slide's `<template>` sub-comp.
-- `build_root_composition`: build the multi-slide root HTML the player loads
-  (GSAP + `#stage` + host divs + a root timeline that swaps z-index per slide).
+The root composition is **self-contained**: every slide is inlined directly
+(no ``data-composition-src`` sub-loading).  This lets ``<hyperframes-player>``
+use its *direct-timeline adapter* path — it reads ``window.__timelines`` and
+drives the GSAP timeline without injecting the HF runtime.
+
+- ``build_slide_composition`` — stamp one slide (kept for the sub-comp endpoint).
+- ``build_root_composition`` — the full self-contained document the player loads.
 """
 
 from __future__ import annotations
+
+import re
 
 from .stamp import stamp_many
 
@@ -29,13 +35,13 @@ _ROOT_SHELL = """<!doctype html>
   <div id="stage"
        data-composition-id="root" data-start="0"
        data-width="1920" data-height="1080" data-duration="{total:.1f}">
-{host_divs}
+{inlined_slides}
   </div>
   <script>
     window.__timelines = window.__timelines || {{}};
     (function () {{
       var tl = gsap.timeline({{ paused: true }});
-{scene}
+{timeline}
       tl.to({{}}, {{ duration: {total:.1f} }}, 0);
       window.__timelines['root'] = tl;
     }})();
@@ -43,21 +49,40 @@ _ROOT_SHELL = """<!doctype html>
 </body>
 </html>"""
 
+_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
+_TEMPLATE_RE = re.compile(r"</?template\b[^>]*>", re.IGNORECASE)
+
 
 def build_slide_composition(slide: dict, slide_html: str) -> str:
-    """Stamp the slide's id + fields into its bare `<template>` sub-comp."""
+    """Stamp the slide's id + fields into its bare ``<template>`` sub-comp."""
     values = {"slide_id": slide["id"]}
     values.update(slide.get("fields", {}))
     return stamp_many(slide_html, values)
 
 
+_DIV_RE = re.compile(r'(<div\s+data-composition-id="[^"]*")')
+
+
+def _inline_slide(slide: dict, slide_html: str, z_index: int) -> str:
+    """Stamp a slide, strip ``<template>`` + ``<script>``, inject absolute positioning."""
+    stamped = build_slide_composition(slide, slide_html)
+    stamped = _TEMPLATE_RE.sub("", stamped)
+    stamped = _SCRIPT_RE.sub("", stamped)
+    stamped = _DIV_RE.sub(
+        rf'\1 style="position:absolute;inset:0;z-index:{z_index};"',
+        stamped,
+        count=1,
+    )
+    return f"    {stamped.strip()}"
+
+
 def build_root_composition(project: dict, name: str = "Preview") -> str:
-    """Build the root composition that hosts every slide + drives scene swaps."""
+    """Build the self-contained root composition (all slides inlined)."""
     root = project["root"]
     slide_ids: list[str] = root["slides"]
     slides: dict = project["slides"]
+    slide_htmls: dict = project.get("slideHtml", {})
 
-    # Cumulative starts from each slide's measured duration.
     start = 0.0
     timings: list[tuple[str, float, float]] = []
     for sid in slide_ids:
@@ -66,26 +91,26 @@ def build_root_composition(project: dict, name: str = "Preview") -> str:
         start += dur
     total = max(start, 0.1)
 
-    host_lines = [_host_div(sid, idx, st, du) for idx, (sid, st, du) in enumerate(timings)]
-    scene_lines = [
-        f"      tl.set('[data-composition-id=\"{sid}\"]', {{ zIndex: {200 + i} }}, {st:.1f});"
-        for i, (sid, st, _du) in enumerate(timings)
-    ]
+    inlined = "\n".join(
+        _inline_slide(slides[sid], slide_htmls.get(sid, ""), 100 - idx)
+        for idx, (sid, _st, _du) in enumerate(timings)
+    )
+
+    timeline_lines: list[str] = []
+    for idx, (sid, st, _du) in enumerate(timings):
+        timeline_lines.append(
+            f"      tl.set('[data-composition-id=\"{sid}\"]', {{ zIndex: {200 + idx} }}, {st:.1f});"
+        )
+        timeline_lines.append(
+            f"      tl.from('[data-composition-id=\"{sid}\"] .content > *',"
+            f" {{ opacity: 0, y: 40, duration: 0.4, stagger: 0.1,"
+            f" ease: 'power3.out' }}, {st:.1f});"
+        )
 
     return _ROOT_SHELL.format(
         gsap=GSAP_CDN,
         name=name,
         total=total,
-        host_divs="\n".join(host_lines),
-        scene="\n".join(scene_lines) or "      // single slide — no scene swap needed",
-    )
-
-
-def _host_div(slide_id: str, idx: int, start: float, duration: float) -> str:
-    z = 100 - idx
-    return (
-        f'    <div data-composition-id="{slide_id}"\n'
-        f'         data-composition-src="compositions/{slide_id}"\n'
-        f'         data-start="{start:.1f}" data-duration="{duration:.1f}"\n'
-        f'         class="clip" style="position:absolute;inset:0;z-index:{z};"></div>'
+        inlined_slides=inlined,
+        timeline="\n".join(timeline_lines),
     )

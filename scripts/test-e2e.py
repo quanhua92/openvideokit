@@ -103,17 +103,19 @@ def main() -> None:
     for needle, why in [
         ("gsap", "GSAP script"),
         ('id="stage"', "#stage host"),
-        ("data-composition-src", "slide host div"),
         ("window.__timelines", "timeline registry"),
         ("'root'", "root timeline key"),
     ]:
         if needle not in root_html:
             fail(f"root missing {why!r}", f"looked for {needle!r}")
-    # every slide must be referenced by a host div
+    # self-contained: NO sub-comp references
+    if "data-composition-src" in root_html:
+        fail("self-contained", "found data-composition-src (should be inlined)")
+    # every slide must be inlined with stamped content
     for sid in slide_ids:
-        if f"compositions/{sid}" not in root_html:
-            fail("host div", f"slide {sid} not referenced in root")
-    print(f"  ✓ all {len(slide_ids)} slide host divs present")
+        if f'data-composition-id="{sid}"' not in root_html:
+            fail("inlined slide", f"slide {sid} missing from root")
+    print(f"  ✓ all {len(slide_ids)} slides inlined, no sub-comp refs")
 
     # ── 4. Each slide sub-composition ──────────────────────────────────────
     for sid in slide_ids:
