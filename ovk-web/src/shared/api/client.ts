@@ -11,7 +11,17 @@ import { RootIndexSchema } from "./schemas/rootIndex";
 import type { SlideIndex } from "./schemas/slideIndex";
 import { SlideIndexSchema } from "./schemas/slideIndex";
 
+export class ConflictError extends Error {
+  serverBundle: ProjectBundle;
+  constructor(serverBundle: ProjectBundle) {
+    super("rev mismatch — project was modified by another agent");
+    this.name = "ConflictError";
+    this.serverBundle = serverBundle;
+  }
+}
+
 export interface ProjectBundle {
+  rev: string;
   root: RootIndex;
   slides: Record<string, SlideIndex>;
   slideHtml: Record<string, string>;
@@ -27,6 +37,10 @@ function parseProjectBundle(raw: unknown): ProjectBundle {
     throw new Error("project bundle missing 'slides' field");
   }
   return {
+    rev:
+      typeof (raw as Record<string, unknown>).rev === "string"
+        ? ((raw as Record<string, unknown>).rev as string)
+        : "",
     root: RootIndexSchema.parse(root),
     slides: Object.fromEntries(
       Object.entries(slides as Record<string, unknown>).map(
@@ -67,5 +81,28 @@ export const client = {
     return SlideIndexSchema.parse(
       await parseJson(res, `getSlide ${projectId}/${slideId}`),
     );
+  },
+
+  async saveProject(
+    projectId: string,
+    bundle: ProjectBundle,
+  ): Promise<ProjectBundle> {
+    const res = await fetch(
+      `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bundle),
+      },
+    );
+    if (res.status === 409) {
+      const error = await parseJson(res, "saveProject conflict");
+      const current = (error as Record<string, unknown>).current;
+      throw new ConflictError(parseProjectBundle(current));
+    }
+    if (!res.ok) {
+      throw new Error(`saveProject ${projectId}: ${res.status}`);
+    }
+    return parseProjectBundle(await parseJson(res, `saveProject ${projectId}`));
   },
 };

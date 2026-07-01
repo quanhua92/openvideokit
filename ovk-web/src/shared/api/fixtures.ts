@@ -144,12 +144,14 @@ export const fixtureSlideHtml: Record<string, string> = {
 };
 
 export interface ProjectBundle {
+  rev: string;
   root: RootIndex;
   slides: Record<string, SlideIndex>;
   slideHtml: Record<string, string>;
 }
 
 export const fixtureBundle: ProjectBundle = {
+  rev: "fixture-rev-0000",
   root: fixtureRoot,
   slides: fixtureSlides,
   slideHtml: fixtureSlideHtml,

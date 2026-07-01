@@ -142,7 +142,33 @@ def main() -> None:
             fail("token leak", f"unstamped tokens: {leaked}")
         print(f"  ✓ {sid}: stamped, title={title!r}, no token leaks")
 
-    # ── 5. 404s ────────────────────────────────────────────────────────────
+    # ── 5. PUT with rev (optimistic locking) ──────────────────────────────
+    section(f"PUT /api/projects/{pid}")
+    assert "rev" in bundle, "bundle missing rev"
+    original_rev = bundle["rev"]
+    print(f"  original rev: {original_rev}")
+
+    bundle["slides"][slide_ids[0]]["fields"]["title"] = "E2E Edited Title"
+    r = s.put(f"{base}/api/projects/{pid}", json=bundle, timeout=5)
+    assert_ok(r, "PUT with correct rev")
+    updated = r.json()
+    assert updated["rev"] != original_rev, "rev didn't change after PUT"
+    assert "E2E Edited Title" in str(updated["slides"]), "edit not persisted"
+    print(f"  ✓ new rev: {updated['rev']}")
+
+    # Stale rev → 409
+    r = s.put(f"{base}/api/projects/{pid}", json=bundle, timeout=5)
+    if r.status_code != 409:
+        fail("stale rev", f"expected 409, got {r.status_code}")
+    print(f"  ✓ stale rev rejected: HTTP {r.status_code}")
+
+    # Verify the composition reflects the edit
+    r = s.get(f"{base}/api/projects/{pid}/composition", timeout=5)
+    assert_ok(r, "re-fetch composition")
+    assert "E2E Edited Title" in r.text, "edit not in composition"
+    print("  ✓ composition reflects the edit")
+
+    # ── 6. 404s ────────────────────────────────────────────────────────────
     section("404 paths")
     r = s.get(f"{base}/api/projects/does-not-exist", timeout=5)
     assert_404(r, "unknown project bundle")

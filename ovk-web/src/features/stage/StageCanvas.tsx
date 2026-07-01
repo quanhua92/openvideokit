@@ -22,6 +22,7 @@ import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import { compositionUrl } from "@/shared/config";
 import { useCaptionSettings } from "@/shared/store/captionSettings";
+import { useCompositionVersion } from "@/shared/store/compositionVersion";
 import { usePlayhead } from "@/shared/store/playhead";
 
 import { scaleToFit } from "./lib/scale";
@@ -43,6 +44,7 @@ export function StageCanvas({
   const playerRef = useRef<HyperframesPlayer>(null);
   const [scale, setScale] = useState(0.2);
   const [ready, setReady] = useState(false);
+  const version = useCompositionVersion((s) => s.version);
   const { custom: captionCustom } = useCaptionSettings();
 
   // Measure container → compute caption overlay scale (matches the player's
@@ -92,7 +94,7 @@ export function StageCanvas({
       {/* HF player — owns the 1920×1080 surface, auto-scales to fit */}
       <hyperframes-player
         ref={playerRef}
-        src={compositionUrl(projectId)}
+        src={`${compositionUrl(projectId)}?v=${version}`}
         style={{ width: "100%", height: "100%" }}
       />
 
