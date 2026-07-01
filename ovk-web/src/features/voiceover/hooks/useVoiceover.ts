@@ -24,18 +24,22 @@ interface TtsResponse {
 export function useVoiceover(projectId: string, project: ProjectBundle): void {
   const { dispatch } = useEditBus();
   const prevTextsRef = useRef<Record<string, string>>({});
+  const prevVoicesRef = useRef<Record<string, string>>({});
   const inflight = useRef(false);
   const setAudioUrls = useAudioUrls((s) => s.setUrls);
 
   useEffect(() => {
     const texts: Record<string, string> = {};
+    const voices: Record<string, string> = {};
     for (const id of project.root.slides) {
       texts[id] = project.slides[id]?.voiceover.text ?? "";
+      voices[id] = project.slides[id]?.voiceover.voice ?? "";
     }
 
     const prev = prevTextsRef.current;
     const changed =
       Object.entries(texts).some(([id, t]) => prev[id] !== t) ||
+      Object.entries(voices).some(([id, v]) => prevVoicesRef.current[id] !== v) ||
       Object.keys(prev).length === 0;
 
     if (!changed || inflight.current) return;
@@ -44,11 +48,17 @@ export function useVoiceover(projectId: string, project: ProjectBundle): void {
       inflight.current = true;
       try {
         const payload = {
-          slides: Object.entries(texts).map(([id, text]) => ({
-            id,
-            text,
-            voice: project.slides[id]?.voiceover.voice ?? "en-US-AriaNeural",
-          })),
+          slides: Object.entries(texts).map(([id, text]) => {
+            const vo = project.slides[id]?.voiceover;
+            return {
+              id,
+              text,
+              voice: vo?.voice ?? "en-US-AriaNeural",
+              rate: vo?.rate ?? "",
+              pitch: vo?.pitch ?? "",
+              volume: vo?.volume ?? "",
+            };
+          }),
         };
         const res = await fetch(
           `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/tts`,
@@ -69,6 +79,7 @@ export function useVoiceover(projectId: string, project: ProjectBundle): void {
           setAudioUrls(audioUrls);
         }
         prevTextsRef.current = texts;
+        prevVoicesRef.current = voices;
       } finally {
         inflight.current = false;
       }

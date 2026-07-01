@@ -22,6 +22,9 @@ export const SlideVoiceoverSchema = z.object({
   voice: z.string().regex(/Neural$/, {
     message: 'voice id must end in "Neural" (e.g. vi-VN-HoaiMyNeural)',
   }),
+  rate: z.string().optional(),
+  pitch: z.string().optional(),
+  volume: z.string().optional(),
 });
 export type SlideVoiceover = z.infer<typeof SlideVoiceoverSchema>;
 

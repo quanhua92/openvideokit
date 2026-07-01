@@ -32,6 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from openvideokit.captions import CAPTION_CSS, build_caption_html, build_caption_timeline_js
+
 from openvideokit.voiceover import generate_voiceover
 
 TEXT_PARTS = [
