@@ -89,16 +89,17 @@ def _save_to_disk(project_id: str, bundle: dict) -> None:
         json.dumps(root, ensure_ascii=False, indent=2),
     )
 
-    # Per-slide
+    # Per-slide (voiceover NOT saved — it lives in audio.json, managed by TTS)
     for slide_id in root.get("slides", []):
         sdir = _slide_dir(project_id, slide_id)
         sdir.mkdir(parents=True, exist_ok=True)
 
         slide = slides.get(slide_id)
         if slide:
+            disk_slide = {k: v for k, v in slide.items() if k != "voiceover"}
             _atomic_write(
                 sdir / "index.json",
-                json.dumps(slide, ensure_ascii=False, indent=2),
+                json.dumps(disk_slide, ensure_ascii=False, indent=2),
             )
 
         html = slide_html.get(slide_id, "")
@@ -124,6 +125,14 @@ def _load_from_disk(project_id: str) -> dict | None:
         if idx.is_file():
             with contextlib.suppress(json.JSONDecodeError, OSError):
                 slides[slide_id] = json.loads(idx.read_text(encoding="utf-8"))
+        # Voiceover comes from audio.json (written by TTS endpoint)
+        audio_meta = sdir / "audio.json"
+        if audio_meta.is_file():
+            with contextlib.suppress(json.JSONDecodeError, OSError):
+                am = json.loads(audio_meta.read_text(encoding="utf-8"))
+                vo = {k: am[k] for k in ("text", "voice", "rate", "pitch", "volume") if k in am}
+                if vo:
+                    slides.setdefault(slide_id, {})["voiceover"] = vo
         html = sdir / "index.html"
         if html.is_file():
             slide_html[slide_id] = html.read_text(encoding="utf-8")
@@ -148,7 +157,19 @@ def _scan_disk() -> dict[str, dict]:
 
 
 def compute_rev(bundle: dict) -> str:
-    data = {k: bundle[k] for k in _BUNDLE_KEYS if k in bundle}
+    """SHA-256 prefix of the canonical JSON (excludes rev + voiceover)."""
+    data = {}
+    for k in _BUNDLE_KEYS:
+        if k not in bundle:
+            continue
+        if k == "slides":
+            # Strip voiceover — it's managed by TTS, not part of the rev
+            data["slides"] = {
+                sid: {fk: fv for fk, fv in s.items() if fk != "voiceover"}
+                for sid, s in bundle["slides"].items()
+            }
+        else:
+            data[k] = bundle[k]
     raw = json.dumps(data, sort_keys=True, ensure_ascii=False).encode()
     return hashlib.sha256(raw).hexdigest()[:16]
 
