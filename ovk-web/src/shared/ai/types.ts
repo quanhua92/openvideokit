@@ -49,6 +49,7 @@ export interface AIContext {
   /** Snapshots the provider may consult to ground responses. */
   project: {
     rootSlides: string[];
+    slides: Record<string, { fields: Record<string, string> }>;
   };
 }
 

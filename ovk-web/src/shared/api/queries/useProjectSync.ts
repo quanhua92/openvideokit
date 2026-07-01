@@ -41,11 +41,36 @@ export function useProjectSync(projectId: string) {
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-        if (data.rev) {
-          isFetching.current = true;
-          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+        if (!data.rev) return;
+
+        // Skip echoes of our own writes (PUT response already updated us).
+        if (baseRef.current && data.rev === baseRef.current.rev) return;
+
+        // Check for unsaved local edits — if we have pending changes,
+        // DON'T invalidate (the refetch would overwrite them).  The
+        // debounce PUT will reconcile via 409 + 3-way merge.
+        const current = queryClient.getQueryData<ProjectBundle>([
+          "project",
+          projectId,
+        ]);
+        const currentSerialized = current
+          ? JSON.stringify({
+              root: current.root,
+              slides: current.slides,
+              slideHtml: current.slideHtml,
+            })
+          : "";
+
+        if (currentSerialized !== lastSerialized.current) {
+          // Unsaved local changes — just reload the preview, don't refetch.
           bumpVersion();
+          return;
         }
+
+        // No local changes — safe to refetch server data.
+        isFetching.current = true;
+        queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+        bumpVersion();
       } catch {
         // keepalive ping or malformed — ignore
       }

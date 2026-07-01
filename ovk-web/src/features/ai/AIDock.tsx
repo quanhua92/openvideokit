@@ -76,9 +76,11 @@ const QUICK_PROMPTS = [
 export function AIDock({
   slideId,
   slideIds,
+  slides,
 }: {
   slideId: string | null;
   slideIds: string[];
+  slides: Record<string, { fields: Record<string, string> }>;
 }) {
   const { dispatch, subscribe } = useEditBus();
   const items = useAIStore((s) => s.items);
@@ -133,7 +135,7 @@ export function AIDock({
           {
             activeSlideId: slideId,
             pins: [],
-            project: { rootSlides: slideIds },
+            project: { rootSlides: slideIds, slides },
           },
         );
         let content = "";
@@ -182,7 +184,7 @@ export function AIDock({
         setStreaming(false);
       }
     },
-    [streaming, slideId, setItems],
+    [streaming, slideId, slideIds, slides, setItems],
   );
 
   const handleAccept = useCallback(

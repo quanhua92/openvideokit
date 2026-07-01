@@ -41,23 +41,27 @@ const SCENARIOS: Scenario[] = [
   },
   {
     keywords: ["title", "change", "punchy", "bolder"],
-    build: (ctx) =>
-      withStream("Sure — here's a punchier title.", {
+    build: (ctx) => {
+      const targetId = ctx.activeSlideId ?? "slide-0";
+      const currentTitle =
+        ctx.project.slides[targetId]?.fields.title ?? "Untitled";
+      return withStream("Sure — here's a punchier title.", {
         id: rand(),
         tier: 1 as const,
         target: {
           kind: "slide" as const,
-          slideId: ctx.activeSlideId ?? "slide-0",
+          slideId: targetId,
         },
         patch: [
           {
             op: "replace" as const,
             path: "/fields/title",
-            value: "BOLD: Eco Bottle",
+            value: `BOLD: ${currentTitle}`,
           },
         ],
         rationale: "Stronger verbs + brand emphasis.",
-      }),
+      });
+    },
   },
   {
     keywords: ["body", "change", "text"],
