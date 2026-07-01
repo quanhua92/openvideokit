@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__
 from .config import CORS_ORIGINS
+from .events import set_loop
 from .routes import router
 from .store import init_store
 from .watcher import start_watcher, stop_watcher
@@ -16,6 +17,25 @@ from .watcher import start_watcher, stop_watcher
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    import asyncio
+    import logging
+
+    fmt = logging.Formatter(
+        "%(asctime)s.%(msecs)03d %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    # Ensure root has a handler, then format everything
+    logging.basicConfig(level=logging.INFO)
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    for h in root.handlers:
+        h.setFormatter(fmt)
+    for name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        lg = logging.getLogger(name)
+        for h in lg.handlers:
+            h.setFormatter(fmt)
+
+    set_loop(asyncio.get_running_loop())
     init_store()
     start_watcher()
     yield

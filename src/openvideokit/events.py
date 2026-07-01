@@ -1,11 +1,9 @@
 """SSE pub/sub — lightweight per-project event broadcast.
 
-The PUT handler calls ``broadcast()`` after every mutation; the SSE endpoint
-subscribes a queue per connected client.  When a server-side AI agent lands
-later it calls the same path.
-
-All callers are async (event-loop thread) so ``asyncio.Queue.put_nowait`` is
-safe — no cross-thread synchronization needed.
+The PUT handler and file watcher both call ``broadcast()``. The watcher
+runs on a **separate thread** (watchdog daemon), so we must marshal
+``put_nowait`` onto the event loop via ``call_soon_threadsafe`` to avoid
+corrupting ``asyncio.Queue`` internals.
 """
 
 from __future__ import annotations
@@ -16,6 +14,13 @@ import json
 from collections import defaultdict
 
 _listeners: dict[str, list[asyncio.Queue]] = defaultdict(list)
+_loop: asyncio.AbstractEventLoop | None = None
+
+
+def set_loop(loop: asyncio.AbstractEventLoop) -> None:
+    """Capture the running event loop (called from app lifespan)."""
+    global _loop
+    _loop = loop
 
 
 def subscribe(project_id: str) -> asyncio.Queue:
@@ -31,8 +36,26 @@ def unsubscribe(project_id: str, q: asyncio.Queue) -> None:
         del _listeners[project_id]
 
 
+def _safe_put(q: asyncio.Queue, payload: str) -> None:
+    with contextlib.suppress(asyncio.QueueFull):
+        q.put_nowait(payload)
+
+
 def broadcast(project_id: str, data: dict) -> None:
+    """Broadcast to all subscribers. Thread-safe via call_soon_threadsafe."""
     payload = json.dumps(data)
-    for q in _listeners.get(project_id, []):
-        with contextlib.suppress(asyncio.QueueFull):
-            q.put_nowait(payload)
+    listeners = list(_listeners.get(project_id, []))
+    if not listeners:
+        return
+    # Are we on the event loop thread?
+    try:
+        on_loop = asyncio.get_running_loop() is _loop
+    except RuntimeError:
+        on_loop = False  # no running loop → we're on a worker thread
+
+    if _loop is not None and not on_loop:
+        for q in listeners:
+            _loop.call_soon_threadsafe(_safe_put, q, payload)
+    else:
+        for q in listeners:
+            _safe_put(q, payload)
