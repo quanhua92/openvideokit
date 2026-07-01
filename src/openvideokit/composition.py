@@ -17,6 +17,8 @@ from .stamp import stamp_many
 
 GSAP_CDN = "https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
 
+_SAFE_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+
 _ROOT_SHELL = """<!doctype html>
 <html lang="en">
 <head>
@@ -92,12 +94,14 @@ def build_root_composition(project: dict, name: str = "Preview") -> str:
     total = max(start, 0.1)
 
     inlined = "\n".join(
-        _inline_slide(slides[sid], slide_htmls.get(sid, ""), 100 - idx)
+        _inline_slide(slides.get(sid, {"id": sid}), slide_htmls.get(sid, ""), 100 - idx)
         for idx, (sid, _st, _du) in enumerate(timings)
     )
 
     timeline_lines: list[str] = []
     for idx, (sid, st, _du) in enumerate(timings):
+        if not _SAFE_ID.match(sid):
+            raise ValueError(f"unsafe slide id: {sid!r}")
         timeline_lines.append(
             f"      tl.set('[data-composition-id=\"{sid}\"]', {{ zIndex: {200 + idx} }}, {st:.1f});"
         )

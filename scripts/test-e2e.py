@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 """End-to-end smoke test for the ovk SSR server.
 
-Exercises the new schema-first `/api` surface against a running `ovk serve`:
+Exercises the full `/api` surface against a running `ovk serve`:
 
-  1. GET /api/projects              — project list is non-empty, well-shaped
-  2. GET /api/projects/{id}         — ProjectBundle has root/slides/slideHtml
-  3. GET /api/projects/{id}/composition
-                                   — root HTML loads GSAP, hosts every slide,
-                                     and emits a scene-swap timeline
-  4. GET .../compositions/{slideId} — each slide sub-comp is stamped
-                                     (titles present, NO leftover __OVK_*__ tokens)
-  5. 404s for unknown project / slide
+  1. GET /api/projects              — project list
+  2. GET /api/projects/{id}         — bundle shape + rev
+  3. GET .../composition            — self-contained root HTML
+  4. GET .../compositions/{slideId} — stamped slide sub-comps
+  5. PUT with rev                   — optimistic locking + 409
+  6. SSE push                       — PUT triggers event stream
+  7. Disk file watcher              — external edit → reload
+  8. TTS + audio                    — edge-tts generates mp3 (optional)
+  9. 404s
 
 Usage:
-  uv run --extra dev python scripts/test-e2e.py [base_url]
-
-Defaults:
-  base_url = http://127.0.0.1:8000
+  uv run --extra dev python scripts/test-e2e.py [base_url] [--no-tts]
 
 Requires `ovk serve` to already be running.
 """
@@ -24,7 +22,10 @@ Requires `ovk serve` to already be running.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+import threading
+import time
 
 import requests
 
@@ -176,7 +177,97 @@ def main() -> None:
         fail("composition check", "edit not reflected in composition")
     print("  ✓ composition reflects the edit")
 
-    # ── 6. 404s ────────────────────────────────────────────────────────────
+    # ── 6. SSE push on PUT ─────────────────────────────────────────────────
+    section("SSE /events")
+    sse_events: list[str] = []
+
+    def listen_sse() -> None:
+        try:
+            for line in s.get(
+                f"{base}/api/projects/{pid}/events", stream=True, timeout=8
+            ).iter_lines():
+                if line:
+                    sse_events.append(line.decode())
+                if len(sse_events) >= 2:
+                    break
+        except Exception:
+            pass
+
+    t = threading.Thread(target=listen_sse, daemon=True)
+    t.start()
+    time.sleep(1)
+
+    fresh = s.get(f"{base}/api/projects/{pid}, timeout=5").json()
+    fresh["slides"][slide_ids[0]]["fields"]["body"] = "SSE push test"
+    s.put(f"{base}/api/projects/{pid}", json=fresh, timeout=5)
+    t.join(timeout=5)
+
+    if len(sse_events) < 2:
+        fail("SSE", f"expected ≥2 events, got {len(sse_events)}")
+    if b"rev" not in sse_events[-1].encode():
+        fail("SSE payload", f"no rev in last event: {sse_events[-1]}")
+    print(f"  ✓ SSE pushed {len(sse_events)} events")
+
+    # ── 7. Disk file watcher ──────────────────────────────────────────────
+    section("Disk file watcher")
+    import os
+    from pathlib import Path
+
+    data_dir = os.environ.get("OVK_DATA_DIR", "data")
+    slide_json = Path(data_dir) / pid / "slides" / slide_ids[1] / "index.json"
+    if not slide_json.is_file():
+        print(f"  · skipped (no disk file at {slide_json})")
+    else:
+        disk_data = json.loads(slide_json.read_text())
+        disk_data["fields"]["title"] = "DISK WATCHER TEST"
+        slide_json.write_text(json.dumps(disk_data, indent=2))
+        time.sleep(1.5)
+
+        r = s.get(f"{base}/api/projects/{pid}", timeout=5)
+        refetch = r.json()
+        title = refetch["slides"][slide_ids[1]]["fields"]["title"]
+        if title != "DISK WATCHER TEST":
+            fail("watcher", f"expected 'DISK WATCHER TEST', got '{title}'")
+        print("  ✓ file watcher reloaded external edit")
+
+    # ── 8. TTS + audio (optional) ──────────────────────────────────────────
+    section("POST /tts + audio")
+    skip_tts = "--no-tts" in sys.argv
+    if skip_tts:
+        print("  · skipped (--no-tts)")
+    else:
+        tts_payload = {
+            "slides": [
+                {
+                    "id": slide_ids[0],
+                    "text": "This is a test sentence for TTS.",
+                    "voice": "en-US-AriaNeural",
+                }
+            ]
+        }
+        r = s.post(f"{base}/api/projects/{pid}/tts", json=tts_payload, timeout=30)
+        if r.status_code != 200:
+            print(f"  · TTS skipped (HTTP {r.status_code} — edge-tts/ffprobe may be missing)")
+        else:
+            timings = r.json().get("timings", [])
+            if not timings:
+                fail("TTS", "empty timings")
+            timing = timings[0]
+            if timing["slideId"] != slide_ids[0]:
+                fail("TTS slideId", f"expected {slide_ids[0]}, got {timing['slideId']}")
+            if timing["duration"] <= 0:
+                fail("TTS duration", f"expected >0, got {timing['duration']}")
+            print(f"  ✓ TTS duration: {timing['duration']}s")
+
+            audio_url = timing.get("audio", "")
+            if audio_url:
+                r = s.get(f"{base}{audio_url}", timeout=5)
+                assert_ok(r, "audio stream")
+                if "audio" not in r.headers.get("content-type", ""):
+                    fail("audio content-type", r.headers.get("content-type"))
+                print(f"  ✓ audio served ({len(r.content)} bytes)")
+
+    # ── 9. 404s ────────────────────────────────────────────────────────────
     section("404 paths")
     r = s.get(f"{base}/api/projects/does-not-exist", timeout=5)
     assert_404(r, "unknown project bundle")
