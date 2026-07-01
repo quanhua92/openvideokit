@@ -116,7 +116,14 @@ export function useProjectSync(projectId: string) {
           slides: updated.slides,
           slideHtml: updated.slideHtml,
         });
-        queryClient.setQueryData(["project", projectId], updated);
+        // Only update the rev — preserve any local edits that may have
+        // happened while the PUT was in-flight (avoids silently wiping
+        // the user's next edit).
+        queryClient.setQueryData(
+          ["project", projectId],
+          (old: ProjectBundle | undefined) =>
+            old ? { ...old, rev: updated.rev } : updated,
+        );
         bumpVersion();
       } catch (e) {
         if (e instanceof ConflictError && baseRef.current) {
@@ -134,7 +141,11 @@ export function useProjectSync(projectId: string) {
               slides: updated.slides,
               slideHtml: updated.slideHtml,
             });
-            queryClient.setQueryData(["project", projectId], updated);
+            queryClient.setQueryData(
+              ["project", projectId],
+              (old: ProjectBundle | undefined) =>
+                old ? { ...old, rev: updated.rev } : updated,
+            );
             bumpVersion();
             toast.success("Edit re-applied after sync conflict");
           } catch {

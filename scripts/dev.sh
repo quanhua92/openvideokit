@@ -21,7 +21,7 @@ API_PORT="${API_PORT:-8000}"
 DEV_PORT="${DEV_PORT:-3000}"
 MODE="${1:-}"
 
-API_LOG="/tmp/ovk-api.log"
+API_LOG="/tmp/ovk-server.log"
 VITE_LOG="/tmp/ovk-vite.log"
 
 # ── Stop ─────────────────────────────────────────────────────────────────
