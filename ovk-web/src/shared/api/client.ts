@@ -6,6 +6,8 @@
  */
 
 import { apiBaseUrl } from "@/shared/config";
+import type { RenderJob } from "./schemas/renderJob";
+import { RenderJobSchema } from "./schemas/renderJob";
 import type { RootIndex } from "./schemas/rootIndex";
 import { RootIndexSchema } from "./schemas/rootIndex";
 import type { SlideIndex } from "./schemas/slideIndex";
@@ -106,5 +108,70 @@ export const client = {
       throw new Error(`saveProject ${projectId}: ${res.status}`);
     }
     return parseProjectBundle(await parseJson(res, `saveProject ${projectId}`));
+  },
+
+  async listExportJobs(projectId: string): Promise<RenderJob[]> {
+    const res = await fetch(
+      `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/export/jobs`,
+    );
+    if (!res.ok) {
+      throw new Error(`listExportJobs ${projectId}: ${res.status}`);
+    }
+    const data = await parseJson(res, `listExportJobs ${projectId}`);
+    return (data as unknown[]).map((d) => RenderJobSchema.parse(d));
+  },
+
+  async startExport(
+    projectId: string,
+  ): Promise<{ jobId: string; status: string }> {
+    const res = await fetch(
+      `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/export`,
+      { method: "POST" },
+    );
+    if (!res.ok) {
+      throw new Error(`startExport ${projectId}: ${res.status}`);
+    }
+    const data = await parseJson(res, `startExport ${projectId}`);
+    const obj = data as Record<string, string>;
+    return { jobId: obj.job_id, status: obj.status };
+  },
+
+  async getExportJob(projectId: string, jobId: string): Promise<RenderJob> {
+    const res = await fetch(
+      `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/export/jobs/${encodeURIComponent(jobId)}`,
+    );
+    if (!res.ok) {
+      throw new Error(`getExportJob ${jobId}: ${res.status}`);
+    }
+    return RenderJobSchema.parse(await parseJson(res, `getExportJob ${jobId}`));
+  },
+
+  async cancelExport(projectId: string, jobId: string): Promise<RenderJob> {
+    const res = await fetch(
+      `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/export/jobs/${encodeURIComponent(jobId)}/cancel`,
+      { method: "POST" },
+    );
+    if (!res.ok) {
+      throw new Error(`cancelExport ${jobId}: ${res.status}`);
+    }
+    return RenderJobSchema.parse(await parseJson(res, `cancelExport ${jobId}`));
+  },
+
+  exportDownloadUrl(projectId: string, jobId: string): string {
+    return `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/export/jobs/${encodeURIComponent(jobId)}/download`;
+  },
+
+  async getExportLog(projectId: string, jobId: string): Promise<string> {
+    const res = await fetch(
+      `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/export/jobs/${encodeURIComponent(jobId)}/log`,
+    );
+    if (!res.ok) {
+      throw new Error(`getExportLog ${jobId}: ${res.status}`);
+    }
+    const data = (await parseJson(res, `getExportLog ${jobId}`)) as Record<
+      string,
+      string
+    >;
+    return data.log ?? "";
   },
 };

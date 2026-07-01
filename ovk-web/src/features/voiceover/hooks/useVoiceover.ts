@@ -74,10 +74,23 @@ export function useVoiceover(projectId: string, project: ProjectBundle): void {
     if (regenerateNonce === 0 || !regenerateSlideId) return;
     const slide = projectRef.current.slides[regenerateSlideId];
     if (!slide) return;
-    postTtsSlide(projectId, regenerateSlideId, slide, dispatch, setAudioUrls).finally(() => {
+    postTtsSlide(
+      projectId,
+      regenerateSlideId,
+      slide,
+      dispatch,
+      setAudioUrls,
+    ).finally(() => {
       setGenerating(null);
     });
-  }, [regenerateNonce, regenerateSlideId, projectId, dispatch, setAudioUrls, setGenerating]);
+  }, [
+    regenerateNonce,
+    regenerateSlideId,
+    projectId,
+    dispatch,
+    setAudioUrls,
+    setGenerating,
+  ]);
 }
 
 /** POST /tts for a single slide only. */

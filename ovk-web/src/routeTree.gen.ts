@@ -14,6 +14,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects.$projectId.index'
+import { Route as ProjectsProjectIdExportsRouteImport } from './routes/projects.$projectId.exports'
 import { Route as ProjectsProjectIdEditorRouteImport } from './routes/projects.$projectId.editor'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -41,6 +42,12 @@ const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProjectsProjectIdRoute,
 } as any)
+const ProjectsProjectIdExportsRoute =
+  ProjectsProjectIdExportsRouteImport.update({
+    id: '/exports',
+    path: '/exports',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
 const ProjectsProjectIdEditorRoute = ProjectsProjectIdEditorRouteImport.update({
   id: '/editor',
   path: '/editor',
@@ -53,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/editor': typeof ProjectsProjectIdEditorRoute
+  '/projects/$projectId/exports': typeof ProjectsProjectIdExportsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -60,6 +68,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/projects/$projectId/editor': typeof ProjectsProjectIdEditorRoute
+  '/projects/$projectId/exports': typeof ProjectsProjectIdExportsRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
@@ -69,6 +78,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/editor': typeof ProjectsProjectIdEditorRoute
+  '/projects/$projectId/exports': typeof ProjectsProjectIdExportsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -79,6 +89,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/projects/$projectId'
     | '/projects/$projectId/editor'
+    | '/projects/$projectId/exports'
     | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -86,6 +97,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/projects/$projectId/editor'
+    | '/projects/$projectId/exports'
     | '/projects/$projectId'
   id:
     | '__root__'
@@ -94,6 +106,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/projects/$projectId'
     | '/projects/$projectId/editor'
+    | '/projects/$projectId/exports'
     | '/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
@@ -140,6 +153,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
     }
+    '/projects/$projectId/exports': {
+      id: '/projects/$projectId/exports'
+      path: '/exports'
+      fullPath: '/projects/$projectId/exports'
+      preLoaderRoute: typeof ProjectsProjectIdExportsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
     '/projects/$projectId/editor': {
       id: '/projects/$projectId/editor'
       path: '/editor'
@@ -152,11 +172,13 @@ declare module '@tanstack/react-router' {
 
 interface ProjectsProjectIdRouteChildren {
   ProjectsProjectIdEditorRoute: typeof ProjectsProjectIdEditorRoute
+  ProjectsProjectIdExportsRoute: typeof ProjectsProjectIdExportsRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
 }
 
 const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
   ProjectsProjectIdEditorRoute: ProjectsProjectIdEditorRoute,
+  ProjectsProjectIdExportsRoute: ProjectsProjectIdExportsRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
 }
 
