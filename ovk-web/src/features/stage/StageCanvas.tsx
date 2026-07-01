@@ -50,29 +50,7 @@ export function StageCanvas({
   const audioRef = useRef<HTMLAudioElement>(null);
   const { custom: captionCustom } = useCaptionSettings();
 
-  // Sync voiceover audio to the playhead.
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const unsub = usePlayhead.subscribe((state) => {
-      if (!slide || state.playing) return;
-      el.pause();
-    });
-    return unsub;
-  }, [slide]);
-
-  // Play/pause audio with the playhead.
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !slide) return;
-    const url = audioUrls[slide.id];
-    if (!url) return;
-    if (el.src !== url) el.src = url;
-
-    const playing = usePlayhead.getState().playing;
-    if (playing) el.play().catch(() => {});
-    else el.pause();
-  }, [audioUrls, slide]);
+  // (audio sync is handled by <AudioSync> below)
 
   // Measure container → compute caption overlay scale (matches the player's
   // internal scale-to-fit of the 1920×1080 composition).
@@ -112,6 +90,7 @@ export function StageCanvas({
   }, []);
 
   const showCaptions = !!slide?.voiceover.text.trim();
+  const audioUrl = slide ? audioUrls[slide.id] : undefined;
 
   return (
     <div
@@ -125,9 +104,20 @@ export function StageCanvas({
         style={{ width: "100%", height: "100%" }}
       />
 
-      {/* Voiceover audio — synced to playhead */}
-      {/* biome-ignore lint/a11y/useMediaCaption: captions rendered separately by CaptionLayer */}
-      <audio ref={audioRef} className="hidden" />
+      {/* Voiceover audio — recreated (key=url) on TTS change for clean load */}
+      {audioUrl && (
+        <>
+          {/* biome-ignore lint/a11y/useMediaCaption: captions rendered separately */}
+          <audio
+            key={audioUrl}
+            ref={audioRef}
+            className="hidden"
+            src={audioUrl}
+            preload="auto"
+          />
+          <AudioSync audioRef={audioRef} activeStart={activeStart} />
+        </>
+      )}
 
       {/* Caption overlay — transparent, scaled to 1080p coords */}
       {showCaptions && slide && (
@@ -165,4 +155,49 @@ export function StageCanvas({
       )}
     </div>
   );
+}
+
+/**
+ * AudioSync — mounts inside the same key={audioUrl} block as the <audio>
+ * element, so it gets a fresh subscription every time the URL changes.
+ * Drives play/pause/seek from the playhead store.
+ */
+function AudioSync({
+  audioRef,
+  activeStart,
+}: {
+  audioRef: React.RefObject<HTMLAudioElement | null>;
+  activeStart: number;
+}) {
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+
+    const unsub = usePlayhead.subscribe((state) => {
+      if (!el || !el.src) return;
+      const localT = state.t - activeStart;
+      if (Math.abs(el.currentTime - localT) > 0.3) {
+        el.currentTime = Math.max(0, localT);
+      }
+      if (state.playing && el.paused) {
+        el.play().catch(() => {});
+      }
+      if (!state.playing && !el.paused) {
+        el.pause();
+      }
+    });
+
+    if (usePlayhead.getState().playing) {
+      el.play().catch(() => {});
+    }
+
+    return () => {
+      unsub();
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
+    };
+  }, [audioRef, activeStart]);
+
+  return null;
 }
