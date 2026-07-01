@@ -5,12 +5,12 @@
 The project can be mutated by multiple sources:
 
 - The frontend editor (user typing, dragging, AI accept)
-- A server-side AI agent (future)
-- An external process editing the project file on disk (future)
+- A server-side AI agent editing `project.json` on disk
+- An external process editing the project file directly
 
-Without coordination, writes race and updates are lost.
+All are handled. Without coordination, writes race and updates are lost.
 
-## Solution: content-hash rev + SSE
+## Solution: content-hash rev + flock + file watcher + SSE
 
 Every project bundle carries a `rev` — a SHA-256 hash of its contents
 (`root`, `slides`, `slideHtml`). The rev is **derived**, never stored:
@@ -129,3 +129,15 @@ When both sides edit the **same field**, the user's version wins
 SSE is unidirectional (server → client), which is all we need for push
 notifications. It's simpler, works through proxies, and auto-reconnects.
 The client → server path uses normal HTTP PUT.
+
+## Disk + file watcher
+
+The store is disk-backed (`project.json` on disk + write-through cache).
+A `watchdog` file watcher monitors `OVK_DATA_DIR` — when an external
+process (AI agent, manual edit) modifies `project.json`, the watcher
+reloads it into the cache and broadcasts SSE. Clients see the change
+in real time without polling.
+
+Writes are coordinated with `fcntl.flock` (advisory exclusive lock on
+`project.lock`) so two processes can't interleave a read-rev-check with
+a write. See [api.md](./api.md) § Disk-backed store for details.

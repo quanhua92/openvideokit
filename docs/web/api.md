@@ -75,9 +75,38 @@ Every bundle carries a `rev` — SHA-256 hash of `{root, slides, slideHtml}` (fi
 
 ```
 {OVK_DATA_DIR}/
-└── {project_id}/
-    └── audio/
-        ├── slide-0.mp3    ← edge-tts output
-        ├── slide-1.mp3
-        └── slide-2.mp3
+├── {project_id}/
+│   ├── project.json       ← bundle {root, slides, slideHtml} (no rev — derived)
+│   ├── project.lock       ← flock sidecar (cross-process write coordination)
+│   └── audio/
+│       ├── slide-0.mp3    ← edge-tts output
+│       ├── slide-0.json   ← TTS metadata {textHash, duration, voice, rate, ...}
+│       └── ...
 ```
+
+## Disk-backed store
+
+Project bundles are persisted to `project.json` on disk with a write-through
+in-memory cache:
+
+- **Startup**: `init_store()` scans `OVK_DATA_DIR` for `*/project.json` and
+  loads them. If empty, seeds the fixture project to disk.
+- **Write**: `update_project()` acquires an exclusive `fcntl.flock` on
+  `project.lock`, re-reads from **disk** (not cache) for the rev check, writes
+  atomically (temp file + rename), then releases the lock.
+- **External edit**: a `watchdog` file watcher monitors `OVK_DATA_DIR`. When
+  an external process (AI agent, manual edit) modifies `project.json`, the
+  watcher calls `reload_from_disk()` → updates cache → broadcasts SSE →
+  connected clients refetch and the HF player reloads.
+
+### Cross-process safety
+
+| Scenario | Mechanism |
+|---|---|
+| Two HTTP PUTs from different clients | rev check (409) + flock |
+| HTTP PUT vs external file edit | flock coordinates read-check-write; watcher reloads on external change |
+| Server restart | loads from disk — no data loss |
+
+`fcntl.flock` is advisory on POSIX — both the server and any external writer
+must use it for full safety. The atomic temp-file + rename ensures no
+corruption even if one side ignores the lock.
