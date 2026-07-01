@@ -6,16 +6,19 @@
  *   1. SSE listener (`EventSource` on /events) — server pushes when a
  *      background agent or another client mutates the project → refetch.
  *   2. Debounced autosave — 800ms after the last local edit (EditBus) →
- *      PUT the full bundle with `rev`.  On 409, refetch (server won).
+ *      PUT the full bundle with `rev`.  On 409, re-apply local edits onto
+ *      the server's version (3-way merge) and retry once.  If the retry
+ *      also fails, show the server's version + a clear error toast.
  *
  * After any successful PUT or SSE push, bumps `compositionVersion` so the
  * HF player reloads its iframe with the re-stamped composition.
  */
-
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
+import type { ProjectBundle } from "@/shared/api/client";
 import { ConflictError, client } from "@/shared/api/client";
+import { reapplyLocalEdits } from "@/shared/api/queries/reapply";
 import { useProject } from "@/shared/api/queries/useProject";
 import { apiBaseUrl } from "@/shared/config";
 import { useCompositionVersion } from "@/shared/store/compositionVersion";
@@ -26,6 +29,7 @@ export function useProjectSync(projectId: string) {
   const queryClient = useQueryClient();
   const query = useProject(projectId);
   const bumpVersion = useCompositionVersion((s) => s.bump);
+  const baseRef = useRef<ProjectBundle | null>(null);
   const lastSerialized = useRef("");
   const isFetching = useRef(false);
 
@@ -60,15 +64,28 @@ export function useProjectSync(projectId: string) {
       slideHtml: query.data.slideHtml,
     });
 
-    // Skip if nothing actually changed (e.g. server response after refetch).
-    if (serialized === lastSerialized.current || isFetching.current) {
-      isFetching.current = false;
+    // First load — capture server state, don't autosave.
+    if (!baseRef.current) {
+      baseRef.current = query.data;
+      lastSerialized.current = serialized;
       return;
     }
 
+    // Server-originated data (SSE refetch or PUT success echo) — update
+    // baseRef, don't autosave.
+    if (isFetching.current || serialized === lastSerialized.current) {
+      isFetching.current = false;
+      baseRef.current = query.data;
+      lastSerialized.current = serialized;
+      return;
+    }
+
+    // ── Local edit — debounced PUT ──────────────────────────────────────
     const timer = setTimeout(async () => {
+      const local = query.data;
       try {
-        const updated = await client.saveProject(projectId, query.data);
+        const updated = await client.saveProject(projectId, local);
+        baseRef.current = updated;
         lastSerialized.current = JSON.stringify({
           root: updated.root,
           slides: updated.slides,
@@ -77,9 +94,39 @@ export function useProjectSync(projectId: string) {
         queryClient.setQueryData(["project", projectId], updated);
         bumpVersion();
       } catch (e) {
-        if (e instanceof ConflictError) {
-          queryClient.setQueryData(["project", projectId], e.serverBundle);
-          toast.error("Project updated by another agent — changes reloaded");
+        if (e instanceof ConflictError && baseRef.current) {
+          // 3-way merge: re-apply user's local edits onto server's version.
+          const merged = reapplyLocalEdits(
+            baseRef.current,
+            local,
+            e.serverBundle,
+          );
+          try {
+            const updated = await client.saveProject(projectId, merged);
+            baseRef.current = updated;
+            lastSerialized.current = JSON.stringify({
+              root: updated.root,
+              slides: updated.slides,
+              slideHtml: updated.slideHtml,
+            });
+            queryClient.setQueryData(["project", projectId], updated);
+            bumpVersion();
+            toast.success("Edit re-applied after sync conflict");
+          } catch {
+            // Retry also failed — server version wins, user must re-apply.
+            baseRef.current = e.serverBundle;
+            lastSerialized.current = JSON.stringify({
+              root: e.serverBundle.root,
+              slides: e.serverBundle.slides,
+              slideHtml: e.serverBundle.slideHtml,
+            });
+            queryClient.setQueryData(["project", projectId], e.serverBundle);
+            bumpVersion();
+            toast.error(
+              "Could not auto-merge — server version loaded. Please re-apply your edit.",
+              { duration: 8000 },
+            );
+          }
         } else {
           toast.error("Failed to save project");
         }
