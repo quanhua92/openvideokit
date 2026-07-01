@@ -77,6 +77,9 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
         slideId: op.slideId,
         text: prev.text,
         voice: prev.voice,
+        rate: prev.rate,
+        pitch: prev.pitch,
+        volume: prev.volume,
       };
     }
 

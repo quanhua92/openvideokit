@@ -138,6 +138,7 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
     case "setVoiceover": {
       const slide = project.slides[op.slideId];
       if (!slide) return project;
+      const vo = slide.voiceover;
       return {
         ...project,
         slides: {
@@ -145,8 +146,11 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
           [op.slideId]: {
             ...slide,
             voiceover: {
-              text: op.text !== undefined ? op.text : slide.voiceover.text,
-              voice: op.voice ?? slide.voiceover.voice,
+              text: op.text !== undefined ? op.text : vo.text,
+              voice: op.voice ?? vo.voice,
+              rate: op.rate ?? vo.rate,
+              pitch: op.pitch ?? vo.pitch,
+              volume: op.volume ?? vo.volume,
             },
           },
         },

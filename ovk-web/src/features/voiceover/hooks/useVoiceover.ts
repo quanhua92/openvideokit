@@ -39,7 +39,9 @@ export function useVoiceover(projectId: string, project: ProjectBundle): void {
     const prev = prevTextsRef.current;
     const changed =
       Object.entries(texts).some(([id, t]) => prev[id] !== t) ||
-      Object.entries(voices).some(([id, v]) => prevVoicesRef.current[id] !== v) ||
+      Object.entries(voices).some(
+        ([id, v]) => prevVoicesRef.current[id] !== v,
+      ) ||
       Object.keys(prev).length === 0;
 
     if (!changed || inflight.current) return;

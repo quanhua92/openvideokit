@@ -4,14 +4,7 @@
  * Text fields use local state + 200ms debounced dispatch to avoid
  * re-rendering the studio per keystroke.
  */
-import {
-  Image as ImageIcon,
-  Mic,
-  Palette,
-  Trash2,
-  Type,
-  X,
-} from "lucide-react";
+import { Image as ImageIcon, Palette, Trash2, Type, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,12 +15,7 @@ import { cn } from "@/lib/utils";
 import fieldsSchema from "@/shared/api/schemas/fields.json";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
-import {
-  removeSlide,
-  setAsset,
-  setField,
-  setVoiceover,
-} from "@/shared/edit/ops";
+import { removeSlide, setAsset, setField } from "@/shared/edit/ops";
 
 function fieldLabel(id: string): string {
   const entry = (fieldsSchema as Record<string, { label?: string }>)[id];
@@ -114,10 +102,6 @@ export function PropertiesPanel({
           ) : (
             <AssetFieldPreview slideId={slideId} fieldId="img" />
           )}
-        </Section>
-
-        <Section icon={Mic} title="Voiceover">
-          <VoiceoverInput slideId={slideId} slide={slide} />
         </Section>
       </div>
     </div>
@@ -240,43 +224,6 @@ function FieldInput({
           !isMultiline && "py-1",
         )}
       />
-    </div>
-  );
-}
-
-function VoiceoverInput({
-  slideId,
-  slide,
-}: {
-  slideId: string;
-  slide: SlideIndex;
-}) {
-  const { dispatch } = useEditBus();
-  const [text, setText] = useState(slide.voiceover.text);
-
-  useEffect(() => {
-    setText(slide.voiceover.text);
-  }, [slide.voiceover.text]);
-
-  useEffect(() => {
-    if (text === slide.voiceover.text) return;
-    const t = setTimeout(() => {
-      dispatch(setVoiceover(slideId, text));
-    }, 200);
-    return () => clearTimeout(t);
-  }, [text, slide.voiceover.text, slideId, dispatch]);
-
-  return (
-    <div className="space-y-1">
-      <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={3}
-        className="resize-none bg-background text-xs"
-      />
-      <p className="font-mono text-[10px] text-muted-foreground">
-        {slide.voiceover.voice}
-      </p>
     </div>
   );
 }

@@ -69,10 +69,15 @@ export function setAsset(
 
 export function setVoiceover(
   slideId: string,
-  text?: string,
-  voice?: string,
+  overrides: {
+    text?: string;
+    voice?: string;
+    rate?: string;
+    pitch?: string;
+    volume?: string;
+  },
 ): Extract<EditOp, { kind: "setVoiceover" }> {
-  return { kind: "setVoiceover", slideId, text, voice };
+  return { kind: "setVoiceover", slideId, ...overrides };
 }
 
 export function setDuration(
