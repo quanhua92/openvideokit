@@ -193,6 +193,7 @@ No hand-rolled Button/Dialog/Tooltip/etc. Add via `pnpm dlx shadcn@latest add <n
 
 | Convention | Detail |
 |---|---|
+| **Indentation** | **Always spaces, never tabs — 2 spaces** for TS/TSX. Biome enforces (`indentStyle: "space"`, `indentWidth: 2`). |
 | **`__FIELD__` stamping** | `stampSafe(html, id, value)` uses function-form `replaceAll` — never the string form (corrupts on `$&`) |
 | **Caption rules** | Never use `transform`, `scale()`, `font-size`, or `text-shadow` on `.word--active`. GSAP `className:` tweens banned. `lintCaptionCSS` enforces. |
 | **Bare `<template>`** | Slide HTML must be a bare `<template>` — no `<html>`/`<head>`/`<body>` wrapper. `lintHtml` R1–R4 enforces. |

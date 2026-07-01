@@ -28,6 +28,17 @@ uv run openvideokit          # serve on http://0.0.0.0:8765
 | Render a template | `npx hyperframes render templates/eco-bottle --output out.mp4` |
 | Validate a template | `npx hyperframes lint templates/eco-bottle` |
 
+## Code style (indentation — critical)
+
+**Always use spaces, never tabs, in every file in this repo.**
+
+| Area | Indent | Enforced by |
+|---|---|---|
+| Python (`src/`, `scripts/`) | **4 spaces** | `ruff format` (`W191` rejects tabs; mixed tabs/spaces → `SyntaxError`) |
+| ovk-web (TS/TSX) | **2 spaces** | Biome (`indentStyle: "space"`, `indentWidth: 2`) |
+
+Tabs in Python break the build immediately (`W191` / `unindent does not match any outer indentation level`). When creating or editing a file, write every indented line with the correct number of spaces. Run the formatter before committing (`uv run ruff format` / `pnpm exec biome format --write`).
+
 ## Module responsibilities
 
 | Module | Owns | Key functions |

@@ -11,20 +11,20 @@
  */
 
 export interface LintResult {
-	ok: boolean;
-	firedRule?: string;
-	message?: string;
+  ok: boolean;
+  firedRule?: string;
+  message?: string;
 }
 
 const BANNED_PROPERTIES: ReadonlyArray<{
-	re: RegExp;
-	rule: string;
-	label: string;
+  re: RegExp;
+  rule: string;
+  label: string;
 }> = [
-	{ re: /transform\s*:/, rule: "no-transform", label: "transform" },
-	{ re: /scale\s*\(/, rule: "no-scale", label: "scale()" },
-	{ re: /font-size\s*:/, rule: "no-font-size", label: "font-size" },
-	{ re: /text-shadow\s*:/, rule: "no-text-shadow", label: "text-shadow" },
+  { re: /transform\s*:/, rule: "no-transform", label: "transform" },
+  { re: /scale\s*\(/, rule: "no-scale", label: "scale()" },
+  { re: /font-size\s*:/, rule: "no-font-size", label: "font-size" },
+  { re: /text-shadow\s*:/, rule: "no-text-shadow", label: "text-shadow" },
 ];
 
 /**
@@ -34,25 +34,25 @@ const BANNED_PROPERTIES: ReadonlyArray<{
  * allowed.
  */
 export function lintCaptionCSS(css: string): LintResult {
-	const blockRegex = /\.word--active\s*\{([^}]*)\}/g;
-	const blocks: string[] = [];
-	let m: RegExpExecArray | null = blockRegex.exec(css);
-	while (m !== null) {
-		blocks.push(m[1]);
-		m = blockRegex.exec(css);
-	}
-	for (const body of blocks) {
-		for (const b of BANNED_PROPERTIES) {
-			if (b.re.test(body)) {
-				return {
-					ok: false,
-					firedRule: b.rule,
-					message: `banned '${b.label}' inside .word--active`,
-				};
-			}
-		}
-	}
-	return { ok: true };
+  const blockRegex = /\.word--active\s*\{([^}]*)\}/g;
+  const blocks: string[] = [];
+  let m: RegExpExecArray | null = blockRegex.exec(css);
+  while (m !== null) {
+    blocks.push(m[1]);
+    m = blockRegex.exec(css);
+  }
+  for (const body of blocks) {
+    for (const b of BANNED_PROPERTIES) {
+      if (b.re.test(body)) {
+        return {
+          ok: false,
+          firedRule: b.rule,
+          message: `banned '${b.label}' inside .word--active`,
+        };
+      }
+    }
+  }
+  return { ok: true };
 }
 
 /**
@@ -61,14 +61,14 @@ export function lintCaptionCSS(css: string): LintResult {
  * transitions. Banned inside caption timeline builders.
  */
 export function lintCaptionJS(js: string): LintResult {
-	const regex = /\.(?:to|from|fromTo|set)\s*\([^)]*className\s*:/s;
-	if (regex.test(js)) {
-		return {
-			ok: false,
-			firedRule: "no-classname-tween",
-			message:
-				"GSAP className tween found — use direct property tweens (color, opacity) instead",
-		};
-	}
-	return { ok: true };
+  const regex = /\.(?:to|from|fromTo|set)\s*\([^)]*className\s*:/s;
+  if (regex.test(js)) {
+    return {
+      ok: false,
+      firedRule: "no-classname-tween",
+      message:
+        "GSAP className tween found — use direct property tweens (color, opacity) instead",
+    };
+  }
+  return { ok: true };
 }

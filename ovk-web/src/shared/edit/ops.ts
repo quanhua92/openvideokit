@@ -11,86 +11,86 @@ import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import type { EditOp } from "./EditBus";
 
 export function setField(
-	slideId: string,
-	fieldId: string,
-	value: string,
+  slideId: string,
+  fieldId: string,
+  value: string,
 ): Extract<EditOp, { kind: "setField" }> {
-	return { kind: "setField", slideId, fieldId, value };
+  return { kind: "setField", slideId, fieldId, value };
 }
 
 export function reorderSlides(
-	order: string[],
+  order: string[],
 ): Extract<EditOp, { kind: "reorderSlides" }> {
-	return { kind: "reorderSlides", order };
+  return { kind: "reorderSlides", order };
 }
 
 export function addSlide(
-	newId: string,
-	layoutId: string,
-	afterId?: string,
+  newId: string,
+  layoutId: string,
+  afterId?: string,
 ): Extract<EditOp, { kind: "addSlide" }> {
-	return { kind: "addSlide", newId, layoutId, afterId };
+  return { kind: "addSlide", newId, layoutId, afterId };
 }
 
 export function removeSlide(
-	slideId: string,
+  slideId: string,
 ): Extract<EditOp, { kind: "removeSlide" }> {
-	return { kind: "removeSlide", slideId };
+  return { kind: "removeSlide", slideId };
 }
 
 export function duplicateSlide(
-	slideId: string,
-	newId: string,
+  slideId: string,
+  newId: string,
 ): Extract<EditOp, { kind: "duplicateSlide" }> {
-	return { kind: "duplicateSlide", slideId, newId };
+  return { kind: "duplicateSlide", slideId, newId };
 }
 
 export function restoreSlide(
-	slide: SlideIndex,
-	at: number,
+  slide: SlideIndex,
+  at: number,
 ): Extract<EditOp, { kind: "restoreSlide" }> {
-	return { kind: "restoreSlide", slide, at };
+  return { kind: "restoreSlide", slide, at };
 }
 
 export function setTransition(
-	slideId: string,
-	transition: Record<string, unknown> | null,
+  slideId: string,
+  transition: Record<string, unknown> | null,
 ): Extract<EditOp, { kind: "setTransition" }> {
-	return { kind: "setTransition", slideId, transition };
+  return { kind: "setTransition", slideId, transition };
 }
 
 export function setAsset(
-	slideId: string,
-	fieldId: string,
-	ref: string,
+  slideId: string,
+  fieldId: string,
+  ref: string,
 ): Extract<EditOp, { kind: "setAsset" }> {
-	return { kind: "setAsset", slideId, fieldId, ref };
+  return { kind: "setAsset", slideId, fieldId, ref };
 }
 
 export function setVoiceover(
-	slideId: string,
-	text?: string,
-	voice?: string,
+  slideId: string,
+  text?: string,
+  voice?: string,
 ): Extract<EditOp, { kind: "setVoiceover" }> {
-	return { kind: "setVoiceover", slideId, text, voice };
+  return { kind: "setVoiceover", slideId, text, voice };
 }
 
 export function setDuration(
-	slideId: string,
-	duration: number,
+  slideId: string,
+  duration: number,
 ): Extract<EditOp, { kind: "setDuration" }> {
-	return { kind: "setDuration", slideId, duration };
+  return { kind: "setDuration", slideId, duration };
 }
 
 export function setCaptionStyle(
-	style: string,
+  style: string,
 ): Extract<EditOp, { kind: "setCaptionStyle" }> {
-	return { kind: "setCaptionStyle", style };
+  return { kind: "setCaptionStyle", style };
 }
 
 export function setSlideHtml(
-	slideId: string,
-	html: string,
+  slideId: string,
+  html: string,
 ): Extract<EditOp, { kind: "setSlideHtml" }> {
-	return { kind: "setSlideHtml", slideId, html };
+  return { kind: "setSlideHtml", slideId, html };
 }

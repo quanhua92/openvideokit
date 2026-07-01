@@ -16,31 +16,31 @@ export type ResolvedTheme = "light" | "dark";
 const STORAGE_KEY = "ovk:theme";
 
 export function getStoredTheme(): Theme {
-	if (typeof localStorage === "undefined") return "system";
-	return (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "system";
+  if (typeof localStorage === "undefined") return "system";
+  return (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "system";
 }
 
 export function resolveTheme(theme: Theme): ResolvedTheme {
-	if (theme !== "system") return theme;
-	if (typeof window === "undefined" || !window.matchMedia) return "light";
-	return window.matchMedia("(prefers-color-scheme: dark)").matches
-		? "dark"
-		: "light";
+  if (theme !== "system") return theme;
+  if (typeof window === "undefined" || !window.matchMedia) return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 /** Set the .dark class on <html> from a theme choice. Returns what it resolved to. */
 export function applyTheme(theme: Theme): ResolvedTheme {
-	const resolved = resolveTheme(theme);
-	if (typeof document !== "undefined") {
-		document.documentElement.classList.toggle("dark", resolved === "dark");
-	}
-	return resolved;
+  const resolved = resolveTheme(theme);
+  if (typeof document !== "undefined") {
+    document.documentElement.classList.toggle("dark", resolved === "dark");
+  }
+  return resolved;
 }
 
 /** Persist + apply. */
 export function setTheme(theme: Theme): void {
-	if (typeof localStorage !== "undefined") {
-		localStorage.setItem(STORAGE_KEY, theme);
-	}
-	applyTheme(theme);
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, theme);
+  }
+  applyTheme(theme);
 }

@@ -7,19 +7,19 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const config = defineConfig({
-	resolve: { tsconfigPaths: true },
-	plugins: [
-		// devtools(),  // auto-injects the floating TanStack devtools button — re-enable when needed
-		tailwindcss(),
-		tanstackRouter({ target: "react", autoCodeSplitting: true }),
-		viteReact(),
-	],
-	server: {
-		port: 3000,
-		proxy: {
-			"/api": "http://localhost:8000",
-		},
-	},
+  resolve: { tsconfigPaths: true },
+  plugins: [
+    // devtools(),  // auto-injects the floating TanStack devtools button — re-enable when needed
+    tailwindcss(),
+    tanstackRouter({ target: "react", autoCodeSplitting: true }),
+    viteReact(),
+  ],
+  server: {
+    port: 3000,
+    proxy: {
+      "/api": "http://localhost:8000",
+    },
+  },
 });
 
 export default config;

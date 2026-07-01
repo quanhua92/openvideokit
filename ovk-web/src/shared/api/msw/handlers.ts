@@ -10,44 +10,44 @@ import { ttsHandler } from "./handlers.tts";
 export const API_BASE = "/api";
 
 export const handlers = [
-	http.get(`${API_BASE}/projects`, () => {
-		return HttpResponse.json({
-			projects: [{ id: FIXTURE_PROJECT_ID, name: "Eco Bottle Campaign" }],
-		});
-	}),
+  http.get(`${API_BASE}/projects`, () => {
+    return HttpResponse.json({
+      projects: [{ id: FIXTURE_PROJECT_ID, name: "Eco Bottle Campaign" }],
+    });
+  }),
 
-	http.get(`${API_BASE}/projects/:projectId`, ({ params }) => {
-		const { projectId } = params;
-		if (projectId !== FIXTURE_PROJECT_ID) {
-			return HttpResponse.json(
-				{ message: `project ${projectId} not found` },
-				{ status: 404 },
-			);
-		}
-		return HttpResponse.json(fixtureBundle);
-	}),
+  http.get(`${API_BASE}/projects/:projectId`, ({ params }) => {
+    const { projectId } = params;
+    if (projectId !== FIXTURE_PROJECT_ID) {
+      return HttpResponse.json(
+        { message: `project ${projectId} not found` },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json(fixtureBundle);
+  }),
 
-	http.get(`${API_BASE}/projects/:projectId/slides/:slideId`, ({ params }) => {
-		const { projectId, slideId } = params as {
-			projectId: string;
-			slideId: string;
-		};
-		if (projectId !== FIXTURE_PROJECT_ID) {
-			return HttpResponse.json(
-				{ message: `project ${projectId} not found` },
-				{ status: 404 },
-			);
-		}
-		const slide = fixtureSlides[slideId];
-		if (!slide) {
-			return HttpResponse.json(
-				{ message: `slide ${slideId} not found` },
-				{ status: 404 },
-			);
-		}
-		return HttpResponse.json(slide);
-	}),
+  http.get(`${API_BASE}/projects/:projectId/slides/:slideId`, ({ params }) => {
+    const { projectId, slideId } = params as {
+      projectId: string;
+      slideId: string;
+    };
+    if (projectId !== FIXTURE_PROJECT_ID) {
+      return HttpResponse.json(
+        { message: `project ${projectId} not found` },
+        { status: 404 },
+      );
+    }
+    const slide = fixtureSlides[slideId];
+    if (!slide) {
+      return HttpResponse.json(
+        { message: `slide ${slideId} not found` },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json(slide);
+  }),
 
-	// Mock TTS pipeline — POST /api/tts returns per-slide measured durations.
-	ttsHandler,
+  // Mock TTS pipeline — POST /api/tts returns per-slide measured durations.
+  ttsHandler,
 ];

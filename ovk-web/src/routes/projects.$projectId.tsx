@@ -5,9 +5,9 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
  * No AppShell here — it lives in __root.tsx.
  */
 export const Route = createFileRoute("/projects/$projectId")({
-	component: ProjectLayout,
+  component: ProjectLayout,
 });
 
 function ProjectLayout() {
-	return <Outlet />;
+  return <Outlet />;
 }

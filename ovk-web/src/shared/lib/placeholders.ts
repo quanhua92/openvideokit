@@ -11,7 +11,7 @@
 
 /** Field id → __OVK_FIELD__ (uppercased, namespaced). e.g. title → __OVK_TITLE__ */
 export function placeholderFor(id: string): string {
-	return `__OVK_${id.toUpperCase()}__`;
+  return `__OVK_${id.toUpperCase()}__`;
 }
 
 /**
@@ -19,7 +19,7 @@ export function placeholderFor(id: string): string {
  * like `$$ $& $` $'`. Kept here ONLY so Vitest can pin the bug.
  */
 export function stampNaive(html: string, id: string, value: string): string {
-	return html.replaceAll(placeholderFor(id), value);
+  return html.replaceAll(placeholderFor(id), value);
 }
 
 /**
@@ -27,23 +27,23 @@ export function stampNaive(html: string, id: string, value: string): string {
  * in the value are inserted literally. Use this everywhere.
  */
 export function stampSafe(html: string, id: string, value: string): string {
-	// The replacer function returns the value verbatim — replaceAll does NOT
-	// interpret `$$`, `$&`, etc. when a function is provided.
-	return html.replaceAll(placeholderFor(id), () => value);
+  // The replacer function returns the value verbatim — replaceAll does NOT
+  // interpret `$$`, `$&`, etc. when a function is provided.
+  return html.replaceAll(placeholderFor(id), () => value);
 }
 
 /** Extract all `__FIELD__` placeholders from a string, deduped, in order. */
 export function extractPlaceholders(src: string): string[] {
-	// Must contain at least one alphanumeric between the outer `__` delimiters
-	// so that pure-underscore runs (`___`, `____`, …) aren't matched.
-	const re = /__[A-Z0-9_]*[A-Z0-9][A-Z0-9_]*__/g;
-	const seen = new Set<string>();
-	const out: string[] = [];
-	for (const m of src.matchAll(re)) {
-		if (!seen.has(m[0])) {
-			seen.add(m[0]);
-			out.push(m[0]);
-		}
-	}
-	return out;
+  // Must contain at least one alphanumeric between the outer `__` delimiters
+  // so that pure-underscore runs (`___`, `____`, …) aren't matched.
+  const re = /__[A-Z0-9_]*[A-Z0-9][A-Z0-9_]*__/g;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of src.matchAll(re)) {
+    if (!seen.has(m[0])) {
+      seen.add(m[0]);
+      out.push(m[0]);
+    }
+  }
+  return out;
 }

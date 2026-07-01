@@ -13,18 +13,18 @@ import type { SlideRenderer } from "@/shared/renderer/types";
 const SlideRendererContext = createContext<SlideRenderer | null>(null);
 
 export function RendererProvider({ children }: { children: ReactNode }) {
-	const renderer = useMemo(() => new MockRenderer(), []);
-	return (
-		<SlideRendererContext.Provider value={renderer}>
-			{children}
-		</SlideRendererContext.Provider>
-	);
+  const renderer = useMemo(() => new MockRenderer(), []);
+  return (
+    <SlideRendererContext.Provider value={renderer}>
+      {children}
+    </SlideRendererContext.Provider>
+  );
 }
 
 export function useSlideRenderer(): SlideRenderer {
-	const renderer = useContext(SlideRendererContext);
-	if (!renderer) {
-		throw new Error("useSlideRenderer must be used inside <RendererProvider>");
-	}
-	return renderer;
+  const renderer = useContext(SlideRendererContext);
+  if (!renderer) {
+    throw new Error("useSlideRenderer must be used inside <RendererProvider>");
+  }
+  return renderer;
 }

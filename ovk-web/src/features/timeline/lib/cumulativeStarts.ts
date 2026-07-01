@@ -7,20 +7,20 @@
  * total 12.
  */
 export interface Timings {
-	/** Start time of each slide, same length as input durations. */
-	starts: number[];
-	/** Total timeline duration including gaps. */
-	total: number;
+  /** Start time of each slide, same length as input durations. */
+  starts: number[];
+  /** Total timeline duration including gaps. */
+  total: number;
 }
 
 export function cumulativeStarts(durations: number[], gap = 0): Timings {
-	const starts: number[] = [];
-	let acc = 0;
-	for (let i = 0; i < durations.length; i++) {
-		starts.push(acc);
-		acc += durations[i] + (i < durations.length - 1 ? gap : 0);
-	}
-	return { starts, total: acc };
+  const starts: number[] = [];
+  let acc = 0;
+  for (let i = 0; i < durations.length; i++) {
+    starts.push(acc);
+    acc += durations[i] + (i < durations.length - 1 ? gap : 0);
+  }
+  return { starts, total: acc };
 }
 
 /**
@@ -28,17 +28,17 @@ export function cumulativeStarts(durations: number[], gap = 0): Timings {
  * the first slide or after the last (clamped behavior is up to the caller).
  */
 export function slideIndexAt(
-	t: number,
-	durations: number[],
-	starts: number[],
+  t: number,
+  durations: number[],
+  starts: number[],
 ): number {
-	for (let i = 0; i < starts.length; i++) {
-		const end = starts[i] + durations[i];
-		if (t >= starts[i] && t < end) return i;
-	}
-	// After the end → clamp to last slide
-	if (starts.length > 0 && t >= starts[starts.length - 1]) {
-		return starts.length - 1;
-	}
-	return -1;
+  for (let i = 0; i < starts.length; i++) {
+    const end = starts[i] + durations[i];
+    if (t >= starts[i] && t < end) return i;
+  }
+  // After the end → clamp to last slide
+  if (starts.length > 0 && t >= starts[starts.length - 1]) {
+    return starts.length - 1;
+  }
+  return -1;
 }

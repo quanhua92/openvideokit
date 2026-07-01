@@ -5,5 +5,5 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
  * renders exactly once across the whole route tree.
  */
 export const Route = createFileRoute("/projects")({
-	component: () => <Outlet />,
+  component: () => <Outlet />,
 });

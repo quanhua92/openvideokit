@@ -18,60 +18,60 @@ import { useEditBus } from "@/shared/edit/EditBusProvider";
 import { setDuration } from "@/shared/edit/ops";
 
 interface TtsResponse {
-	timings: ReadonlyArray<{ slideId: string; duration: number }>;
+  timings: ReadonlyArray<{ slideId: string; duration: number }>;
 }
 
 export function useVoiceover(project: ProjectBundle): {
-	isRegenerating: boolean;
+  isRegenerating: boolean;
 } {
-	const { dispatch } = useEditBus();
-	const prevTextsRef = useRef<Record<string, string>>({});
-	const inflight = useRef(false);
-	const [isRegenerating, setIsRegenerating] = useState(false);
+  const { dispatch } = useEditBus();
+  const prevTextsRef = useRef<Record<string, string>>({});
+  const inflight = useRef(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
-	useEffect(() => {
-		const texts: Record<string, string> = {};
-		for (const id of project.root.slides) {
-			texts[id] = project.slides[id]?.voiceover.text ?? "";
-		}
+  useEffect(() => {
+    const texts: Record<string, string> = {};
+    for (const id of project.root.slides) {
+      texts[id] = project.slides[id]?.voiceover.text ?? "";
+    }
 
-		const prev = prevTextsRef.current;
-		const changed =
-			Object.entries(texts).some(([id, t]) => prev[id] !== t) ||
-			Object.keys(prev).length === 0;
+    const prev = prevTextsRef.current;
+    const changed =
+      Object.entries(texts).some(([id, t]) => prev[id] !== t) ||
+      Object.keys(prev).length === 0;
 
-		if (!changed || inflight.current) return;
+    if (!changed || inflight.current) return;
 
-		const t = setTimeout(async () => {
-			inflight.current = true;
-			setIsRegenerating(true);
-			try {
-				const payload = {
-					slides: Object.entries(texts).map(([id, text]) => ({
-						id,
-						text,
-						voice: project.slides[id]?.voiceover.voice ?? "en-US-AriaNeural",
-					})),
-				};
-				const res = await fetch("/api/tts", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(payload),
-				});
-				if (!res.ok) return;
-				const data = (await res.json()) as TtsResponse;
-				for (const timing of data.timings) {
-					dispatch(setDuration(timing.slideId, timing.duration));
-				}
-				prevTextsRef.current = texts;
-			} finally {
-				inflight.current = false;
-				setIsRegenerating(false);
-			}
-		}, 500);
+    const t = setTimeout(async () => {
+      inflight.current = true;
+      setIsRegenerating(true);
+      try {
+        const payload = {
+          slides: Object.entries(texts).map(([id, text]) => ({
+            id,
+            text,
+            voice: project.slides[id]?.voiceover.voice ?? "en-US-AriaNeural",
+          })),
+        };
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as TtsResponse;
+        for (const timing of data.timings) {
+          dispatch(setDuration(timing.slideId, timing.duration));
+        }
+        prevTextsRef.current = texts;
+      } finally {
+        inflight.current = false;
+        setIsRegenerating(false);
+      }
+    }, 500);
 
-		return () => clearTimeout(t);
-	}, [project, dispatch]);
+    return () => clearTimeout(t);
+  }, [project, dispatch]);
 
-	return { isRegenerating };
+  return { isRegenerating };
 }

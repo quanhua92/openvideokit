@@ -12,21 +12,21 @@
 import { create } from "zustand";
 
 export interface PlayheadState {
-	t: number;
-	playing: boolean;
-	duration: number;
-	seek: (t: number) => void;
-	togglePlay: () => void;
-	setPlaying: (playing: boolean) => void;
-	setDuration: (duration: number) => void;
+  t: number;
+  playing: boolean;
+  duration: number;
+  seek: (t: number) => void;
+  togglePlay: () => void;
+  setPlaying: (playing: boolean) => void;
+  setDuration: (duration: number) => void;
 }
 
 export const usePlayhead = create<PlayheadState>((set) => ({
-	t: 0,
-	playing: false,
-	duration: 12,
-	seek: (t) => set({ t }),
-	togglePlay: () => set((s) => ({ playing: !s.playing })),
-	setPlaying: (playing) => set({ playing }),
-	setDuration: (duration) => set({ duration }),
+  t: 0,
+  playing: false,
+  duration: 12,
+  seek: (t) => set({ t }),
+  togglePlay: () => set((s) => ({ playing: !s.playing })),
+  setPlaying: (playing) => set({ playing }),
+  setDuration: (duration) => set({ duration }),
 }));

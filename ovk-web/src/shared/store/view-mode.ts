@@ -14,31 +14,31 @@ export type ViewMode = "default" | "desktop" | "mobile";
 const STORAGE_KEY = "ovk:view-mode";
 
 function getInitial(): ViewMode {
-	if (typeof localStorage === "undefined") return "default";
-	return (localStorage.getItem(STORAGE_KEY) as ViewMode | null) ?? "default";
+  if (typeof localStorage === "undefined") return "default";
+  return (localStorage.getItem(STORAGE_KEY) as ViewMode | null) ?? "default";
 }
 
 interface ViewModeStore {
-	mode: ViewMode;
-	setMode: (mode: ViewMode) => void;
+  mode: ViewMode;
+  setMode: (mode: ViewMode) => void;
 }
 
 export const useViewMode = create<ViewModeStore>((set) => ({
-	mode: getInitial(),
-	setMode: (mode) => {
-		if (typeof localStorage !== "undefined") {
-			localStorage.setItem(STORAGE_KEY, mode);
-		}
-		set({ mode });
-	},
+  mode: getInitial(),
+  setMode: (mode) => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, mode);
+    }
+    set({ mode });
+  },
 }));
 
 const LABELS: Record<ViewMode, string> = {
-	default: "Default",
-	desktop: "Desktop",
-	mobile: "Mobile",
+  default: "Default",
+  desktop: "Desktop",
+  mobile: "Mobile",
 };
 
 export function viewModeLabel(mode: ViewMode): string {
-	return LABELS[mode];
+  return LABELS[mode];
 }

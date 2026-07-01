@@ -14,31 +14,31 @@ export type EditActor = "human" | `ai:${string}`;
 
 /** Discriminated union of every slide/root mutation. P3/P4/P5/P7 extend this. */
 export type EditOp =
-	| { kind: "setField"; slideId: string; fieldId: string; value: string }
-	| { kind: "reorderSlides"; order: string[] }
-	| {
-			kind: "addSlide";
-			afterId?: string;
-			layoutId: string;
-			newId: string;
-	  }
-	| { kind: "removeSlide"; slideId: string }
-	| { kind: "duplicateSlide"; slideId: string; newId: string }
-	| {
-			kind: "restoreSlide";
-			slide: import("@/shared/api/schemas/slideIndex").SlideIndex;
-			at: number;
-	  }
-	| {
-			kind: "setTransition";
-			slideId: string;
-			transition: Record<string, unknown> | null;
-	  }
-	| { kind: "setAsset"; slideId: string; fieldId: string; ref: string }
-	| { kind: "setVoiceover"; slideId: string; text?: string; voice?: string }
-	| { kind: "setDuration"; slideId: string; duration: number }
-	| { kind: "setCaptionStyle"; style: string }
-	| { kind: "setSlideHtml"; slideId: string; html: string };
+  | { kind: "setField"; slideId: string; fieldId: string; value: string }
+  | { kind: "reorderSlides"; order: string[] }
+  | {
+      kind: "addSlide";
+      afterId?: string;
+      layoutId: string;
+      newId: string;
+    }
+  | { kind: "removeSlide"; slideId: string }
+  | { kind: "duplicateSlide"; slideId: string; newId: string }
+  | {
+      kind: "restoreSlide";
+      slide: import("@/shared/api/schemas/slideIndex").SlideIndex;
+      at: number;
+    }
+  | {
+      kind: "setTransition";
+      slideId: string;
+      transition: Record<string, unknown> | null;
+    }
+  | { kind: "setAsset"; slideId: string; fieldId: string; ref: string }
+  | { kind: "setVoiceover"; slideId: string; text?: string; voice?: string }
+  | { kind: "setDuration"; slideId: string; duration: number }
+  | { kind: "setCaptionStyle"; style: string }
+  | { kind: "setSlideHtml"; slideId: string; html: string };
 
 /** An op + metadata about who/when. Emitted on every dispatch.
  *
@@ -48,11 +48,11 @@ export type EditOp =
  *  the previous value out of the project bundle — deriving it lazily at undo
  *  time would read the post-edit value and be a no-op. */
 export interface EditEvent {
-	id: string;
-	at: number;
-	actor: EditActor;
-	op: EditOp;
-	inverse: EditOp | null;
+  id: string;
+  at: number;
+  actor: EditActor;
+  op: EditOp;
+  inverse: EditOp | null;
 }
 
 /** Subscriber callback. */
@@ -63,6 +63,6 @@ export type EditBusSubscriber = (event: EditEvent) => void;
  * Exported here so other modules can reference the shape before P3 ships.
  */
 export interface EditBus {
-	dispatch(op: EditOp, actor?: EditActor): void;
-	subscribe(fn: EditBusSubscriber): () => void;
+  dispatch(op: EditOp, actor?: EditActor): void;
+  subscribe(fn: EditBusSubscriber): () => void;
 }

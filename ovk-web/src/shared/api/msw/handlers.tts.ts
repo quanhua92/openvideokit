@@ -16,57 +16,57 @@ import type { RootIndex, VoiceoverTrack } from "@/shared/api/schemas/rootIndex";
 const API_BASE = "/api";
 
 interface TtsRequest {
-	slides: ReadonlyArray<{
-		id: string;
-		text: string;
-		voice: string;
-	}>;
+  slides: ReadonlyArray<{
+    id: string;
+    text: string;
+    voice: string;
+  }>;
 }
 
 interface TtsResponse {
-	timings: ReadonlyArray<{
-		slideId: string;
-		duration: number;
-	}>;
+  timings: ReadonlyArray<{
+    slideId: string;
+    duration: number;
+  }>;
 }
 
 /** Re-export so handlers.ts can include this in the worker setup. */
 export const ttsHandler = http.post(`${API_BASE}/tts`, async ({ request }) => {
-	let body: TtsRequest;
-	try {
-		body = (await request.json()) as TtsRequest;
-	} catch {
-		return HttpResponse.json({ message: "invalid JSON body" }, { status: 400 });
-	}
+  let body: TtsRequest;
+  try {
+    body = (await request.json()) as TtsRequest;
+  } catch {
+    return HttpResponse.json({ message: "invalid JSON body" }, { status: 400 });
+  }
 
-	if (!body.slides || !Array.isArray(body.slides)) {
-		return HttpResponse.json(
-			{ message: "missing `slides` array" },
-			{ status: 400 },
-		);
-	}
+  if (!body.slides || !Array.isArray(body.slides)) {
+    return HttpResponse.json(
+      { message: "missing `slides` array" },
+      { status: 400 },
+    );
+  }
 
-	// Simulate the network + edge-tts + ffprobe + ffmpeg concat latency.
-	// Realistic enough to exercise loading states; deterministic for tests.
-	const artificialDelay = 150 + Math.random() * 300;
-	await new Promise((r) => setTimeout(r, artificialDelay));
+  // Simulate the network + edge-tts + ffprobe + ffmpeg concat latency.
+  // Realistic enough to exercise loading states; deterministic for tests.
+  const artificialDelay = 150 + Math.random() * 300;
+  await new Promise((r) => setTimeout(r, artificialDelay));
 
-	const timings: TtsResponse["timings"] = body.slides.map((s) => ({
-		slideId: s.id,
-		duration: mockSlideDuration(s.text),
-	}));
+  const timings: TtsResponse["timings"] = body.slides.map((s) => ({
+    slideId: s.id,
+    duration: mockSlideDuration(s.text),
+  }));
 
-	return HttpResponse.json({ timings });
+  return HttpResponse.json({ timings });
 });
 
 // Used by fixtures to satisfy the schema where a VoiceoverTrack asset is
 // required. Kept here so all TTS concerns live together.
 export function synthVoiceoverTrack(): VoiceoverTrack {
-	const root: Pick<RootIndex, "audio"> = {
-		audio: {
-			music: { asset: "", volume: 0, loop: false },
-			voiceover: { asset: "voiceover.mp3", auto_generated: true },
-		},
-	};
-	return root.audio.voiceover;
+  const root: Pick<RootIndex, "audio"> = {
+    audio: {
+      music: { asset: "", volume: 0, loop: false },
+      voiceover: { asset: "voiceover.mp3", auto_generated: true },
+    },
+  };
+  return root.audio.voiceover;
 }

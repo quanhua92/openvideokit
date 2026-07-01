@@ -11,22 +11,22 @@ import { useMediaQuery } from "./useMediaQuery";
 export type EffectiveLayout = "desktop" | "mobile";
 
 export function useStudioLayout(): {
-	layout: EffectiveLayout;
-	mode: ViewMode;
-	setMode: (m: ViewMode) => void;
+  layout: EffectiveLayout;
+  mode: ViewMode;
+  setMode: (m: ViewMode) => void;
 } {
-	const mode = useViewMode((s) => s.mode);
-	const setMode = useViewMode((s) => s.setMode);
-	const isDesktopViewport = useMediaQuery("(min-width: 1024px)");
+  const mode = useViewMode((s) => s.mode);
+  const setMode = useViewMode((s) => s.setMode);
+  const isDesktopViewport = useMediaQuery("(min-width: 1024px)");
 
-	const layout: EffectiveLayout =
-		mode === "desktop"
-			? "desktop"
-			: mode === "mobile"
-				? "mobile"
-				: isDesktopViewport
-					? "desktop"
-					: "mobile";
+  const layout: EffectiveLayout =
+    mode === "desktop"
+      ? "desktop"
+      : mode === "mobile"
+        ? "mobile"
+        : isDesktopViewport
+          ? "desktop"
+          : "mobile";
 
-	return { layout, mode, setMode };
+  return { layout, mode, setMode };
 }
