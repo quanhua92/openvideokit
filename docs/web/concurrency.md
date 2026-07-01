@@ -41,15 +41,27 @@ Client                          Server
 ```
 
 If another agent mutated the store between the client's GET and PUT,
-the hash won't match:
+the hash won't match — **the user's edits are never lost**:
 
 ```
   │  PUT /projects/proj-1         │
   │  body.rev = "abc123"          │  hash(store) == "xyz789"? ✗
   │ <─────────────────────────────│  409 {current: {rev: "xyz789", ...}}
   │                               │
-  │  (refetch, re-apply edit)     │
+  │  3-way merge:                 │
+  │    base (last server state)   │
+  │    local (user's edits)       │
+  │    server (conflict winner)   │
+  │                               │
+  │  Re-apply user's changed      │
+  │  fields onto server version   │
+  │  → retry PUT rev="xyz789"     │
+  │ ─────────────────────────────>│  hash(store) == "xyz789"? ✓
+  │ <─────────────────────────────│  200 {rev: "def456", ...}
 ```
+
+If the retry also 409s (extremely rare double-conflict), the server version
+wins and a long-duration toast tells the user to re-apply manually.
 
 ### Read flow (SSE)
 
@@ -80,9 +92,37 @@ Client A (editing)              Server               Client B (or AI agent)
 
 - `useProjectSync(projectId)` — mounted in `Studio.tsx`
   - Opens `EventSource` on `/events` → on push: invalidate query + bump `compositionVersion`
-  - Debounced 800ms after each local edit → `client.saveProject()` → on 200: update cache + bump version; on 409: reload server's bundle + toast
+  - Debounced 800ms after each local edit → `client.saveProject()` → on 200: update cache + bump version; on 409: **3-way merge** (see below) + retry
+- `reapplyLocalEdits(base, local, server)` — pure function in `reapply.ts`, tested with 11 cases
 - `useCompositionVersion` — Zustand store; StageCanvas appends `?v=N` to the HF player `src`
 - **Only the HF player's iframe reloads — not the page.** When `compositionVersion` bumps, the `src` attribute on `<hyperframes-player>` changes, triggering the player's `attributeChangedCallback("src")` which sets `iframe.src` internally. The React SPA, all panels, the timeline, edit state, and undo/redo stacks stay mounted and intact. Only the 1920×1080 preview iframe inside the player's Shadow DOM refreshes to fetch the re-stamped composition.
+
+## 3-way merge on 409 conflict
+
+When a PUT returns 409, the user's edits are **rebased** onto the server's
+version instead of being discarded. This prevents data loss — a user typing
+a long paragraph never loses it to a concurrent edit.
+
+```
+base   = last known server state (captured at GET / PUT-success / SSE refetch)
+local  = user's edited version (in TanStack cache, including unsaved edits)
+server = server's current version (from the 409 response body)
+```
+
+`reapplyLocalEdits(base, local, server)` works at the **field level**:
+
+| What changed locally | How it's re-applied |
+|---|---|
+| Slide field (`title`, `body`, …) | If `base[field] !== local[field]`, overwrite `server[field]` |
+| Slide HTML | If `base.html[id] !== local.html[id]`, overwrite `server.html[id]` |
+| Duration / voiceover / assets / transition | Same per-field diff |
+| Slide add | Copy entire slide into server version |
+| Slide remove | Delete from server version + root.slides |
+| Slide reorder | Overwrite `server.root.slides` with local ordering |
+| Theme / audio / transition_default | Deep-compare base vs local, overwrite if different |
+
+When both sides edit the **same field**, the user's version wins
+(last-write-wins on the retry PUT).
 
 ## Why not WebSocket?
 
