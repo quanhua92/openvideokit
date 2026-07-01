@@ -81,7 +81,8 @@ Client A (editing)              Server               Client B (or AI agent)
 - `useProjectSync(projectId)` — mounted in `Studio.tsx`
   - Opens `EventSource` on `/events` → on push: invalidate query + bump `compositionVersion`
   - Debounced 800ms after each local edit → `client.saveProject()` → on 200: update cache + bump version; on 409: reload server's bundle + toast
-- `useCompositionVersion` — Zustand store; StageCanvas appends `?v=N` to the HF player `src` so the iframe reloads with the re-stamped composition
+- `useCompositionVersion` — Zustand store; StageCanvas appends `?v=N` to the HF player `src`
+- **Only the HF player's iframe reloads — not the page.** When `compositionVersion` bumps, the `src` attribute on `<hyperframes-player>` changes, triggering the player's `attributeChangedCallback("src")` which sets `iframe.src` internally. The React SPA, all panels, the timeline, edit state, and undo/redo stacks stay mounted and intact. Only the 1920×1080 preview iframe inside the player's Shadow DOM refreshes to fetch the re-stamped composition.
 
 ## Why not WebSocket?
 
