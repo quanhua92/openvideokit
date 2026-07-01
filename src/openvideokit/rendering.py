@@ -20,9 +20,11 @@ the GSAP root timeline. If no slide has audio, the render is video-only.
 from __future__ import annotations
 
 import contextlib
+import copy
 import json
 import logging
 import re
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -213,8 +215,8 @@ def enqueue_render(project: dict, project_id: str) -> str:
     if _executor is None:
         raise RuntimeError("render executor not initialised — call init_executor() first")
 
-    # Pass project snapshot to worker — materialization happens on the worker thread
-    _executor.submit(_run_render_job, job_id, project)
+    # Pass an immutable project snapshot to worker
+    _executor.submit(_run_render_job, job_id, copy.deepcopy(project))
     log.info("enqueued render job %s for project %s", job_id, project_id)
     return job_id
 
@@ -259,6 +261,8 @@ def _run_render_job(job_id: str, project: dict) -> None:
             html = _inject_voiceover_audio(html, total)
         index_path.write_text(html, encoding="utf-8")
     except Exception as exc:
+        with contextlib.suppress(Exception):
+            shutil.rmtree(jdir, ignore_errors=True)
         _finish(job_id, FAILED, error=f"Materialization failed: {exc}")
         return
 
