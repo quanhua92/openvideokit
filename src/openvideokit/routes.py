@@ -115,14 +115,12 @@ def measure_tts(project_id: str, body: dict) -> dict:
     return {"timings": timings}
 
 
-@router.get("/projects/{project_id}/audio/{slide_id}")
-def get_audio(project_id: str, slide_id: str) -> FileResponse:
+@router.get("/projects/{project_id}/slides/{slide_id}/audio")
+def get_slide_audio(project_id: str, slide_id: str) -> FileResponse:
     """Stream a slide's generated mp3."""
-    from pathlib import Path
+    from .store import audio_path
 
-    from .config import DATA_DIR
-
-    mp3 = Path(DATA_DIR) / project_id / "audio" / f"{slide_id}.mp3"
+    mp3 = audio_path(project_id, slide_id)
     if not mp3.is_file():
         raise HTTPException(status_code=404, detail=f"no audio for '{slide_id}'")
     return FileResponse(str(mp3), media_type="audio/mpeg")

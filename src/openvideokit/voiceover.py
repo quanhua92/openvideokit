@@ -1,13 +1,18 @@
 """edge-tts pipeline with content-addressed cache.
 
 For each slide:
-  1. Hash ``text + voice`` → cache key.
-  2. If ``{slide_id}.json`` sidecar exists with matching ``textHash`` →
+  1. Hash ``text + voice + rate + pitch + volume`` → cache key.
+  2. If ``audio.json`` sidecar exists with matching ``textHash`` →
      read duration from json (instant, skip TTS).
   3. Otherwise: edge-tts → mp3 → ffprobe → save both + json sidecar.
 
-Any source that changes the text (frontend edit, background AI agent,
-disk swap) produces a different hash → automatic cache miss → regenerate.
+Audio + metadata live inside the slide's own folder::
+
+    slides/{slide_id}/
+    ├── index.json
+    ├── index.html
+    ├── audio.mp3     ← edge-tts output
+    └── audio.json    ← {textHash, duration, voice, rate, ...}
 """
 
 from __future__ import annotations
@@ -19,13 +24,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from .config import DATA_DIR
-
-
-def _audio_dir(project_id: str) -> Path:
-    d = Path(DATA_DIR) / project_id / "audio"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+from .store import _slide_dir
 
 
 def _text_hash(text: str, voice: str, rate: str = "", pitch: str = "", volume: str = "") -> str:
@@ -59,9 +58,8 @@ def _probe_duration(path: Path) -> float:
     return float(json.loads(result.stdout)["format"]["duration"])
 
 
-def _try_cache(audio_dir: Path, slide_id: str, text_hash: str) -> float | None:
-    """Return cached duration if the sidecar json matches text_hash."""
-    meta = audio_dir / f"{slide_id}.json"
+def _try_cache(slide_dir: Path, text_hash: str) -> float | None:
+    meta = slide_dir / "audio.json"
     if not meta.is_file():
         return None
     try:
@@ -74,8 +72,7 @@ def _try_cache(audio_dir: Path, slide_id: str, text_hash: str) -> float | None:
 
 
 def _save_meta(
-    audio_dir: Path,
-    slide_id: str,
+    slide_dir: Path,
     text_hash: str,
     text: str,
     voice: str,
@@ -84,7 +81,7 @@ def _save_meta(
     pitch: str = "",
     volume: str = "",
 ) -> None:
-    meta = audio_dir / f"{slide_id}.json"
+    meta = slide_dir / "audio.json"
     meta.write_text(
         json.dumps(
             {
@@ -103,16 +100,8 @@ def _save_meta(
     )
 
 
-def generate_audio(
-    project_id: str,
-    slides: list[dict],
-) -> list[dict]:
-    """TTS each slide → save mp3 + json sidecar → return durations.
-
-    Content-addressed: slides whose ``text+voice`` hash matches the cached
-    sidecar are skipped (instant).  Changed slides regenerate.
-    """
-    audio_dir = _audio_dir(project_id)
+def generate_audio(project_id: str, slides: list[dict]) -> list[dict]:
+    """TTS each slide → save mp3 + json into the slide folder → return durations."""
     timings: list[dict] = []
 
     for slide in slides:
@@ -127,18 +116,20 @@ def generate_audio(
             timings.append({"slideId": sid, "duration": 0.0, "audio": ""})
             continue
 
+        sdir = _slide_dir(project_id, sid)
+        sdir.mkdir(parents=True, exist_ok=True)
         thash = _text_hash(text, voice, rate, pitch, volume)
-        audio_path = f"/api/projects/{project_id}/audio/{sid}"
+        audio_url = f"/api/projects/{project_id}/slides/{sid}/audio"
 
-        cached = _try_cache(audio_dir, sid, thash)
+        cached = _try_cache(sdir, thash)
         if cached is not None:
-            timings.append({"slideId": sid, "duration": cached, "audio": audio_path})
+            timings.append({"slideId": sid, "duration": cached, "audio": audio_url})
             continue
 
-        mp3_path = audio_dir / f"{sid}.mp3"
+        mp3_path = sdir / "audio.mp3"
         _tts_sentence(text, voice, mp3_path, rate=rate, pitch=pitch, volume=volume)
         dur = _probe_duration(mp3_path)
-        _save_meta(audio_dir, sid, thash, text, voice, dur, rate, pitch, volume)
-        timings.append({"slideId": sid, "duration": round(dur, 3), "audio": audio_path})
+        _save_meta(sdir, thash, text, voice, dur, rate, pitch, volume)
+        timings.append({"slideId": sid, "duration": round(dur, 3), "audio": audio_url})
 
     return timings

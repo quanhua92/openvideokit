@@ -200,8 +200,8 @@ The **binding mechanism** (stamping), the **schema-first model**, and the
 **`__OVK_*__` convention** are durable long-term contracts.
 
 The **FastAPI Python backend** (`src/openvideokit/`) is the current
-implementation. It may be rewritten (e.g. to read/write from disk instead of
-in-memory), but the stamping mechanism and token convention remain unchanged.
+implementation. It may be rewritten, but the stamping mechanism and token
+convention remain unchanged.
 
 ---
 

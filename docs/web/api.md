@@ -40,7 +40,7 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/projects/{id}/tts` | Generate per-slide mp3s via edge-tts + measure durations via ffprobe |
-| `GET` | `/api/projects/{id}/audio/{slideId}` | Stream a slide's generated mp3 |
+| `GET` | `/api/projects/{id}/slides/{slideId}/audio` | Stream a slide's generated mp3 |
 
 #### POST `/api/projects/{id}/tts`
 
@@ -76,18 +76,25 @@ Every bundle carries a `rev` — SHA-256 hash of `{root, slides, slideHtml}` (fi
 ```
 {OVK_DATA_DIR}/
 ├── {project_id}/
-│   ├── project.json       ← bundle {root, slides, slideHtml} (no rev — derived)
-│   ├── project.lock       ← flock sidecar (cross-process write coordination)
-│   └── audio/
-│       ├── slide-0.mp3    ← edge-tts output
-│       ├── slide-0.json   ← TTS metadata {textHash, duration, voice, rate, ...}
+│   ├── project.json          ← root (canvas, theme, audio, slides[])
+│   ├── .lock                 ← flock sidecar (cross-process write coordination)
+│   └── slides/
+│       ├── slide-0/
+│       │   ├── index.json    ← {duration, fields, voiceover, assets, ...}
+│       │   ├── index.html    ← bare <template> HTML
+│       │   ├── audio.mp3     ← edge-tts output (optional)
+│       │   └── audio.json    ← TTS metadata {textHash, duration, ...}
+│       ├── slide-1/
+│       │   ├── index.json
+│       │   ├── index.html
+│       │   └── audio.mp3
 │       └── ...
 ```
 
 ## Disk-backed store
 
-Project bundles are persisted to `project.json` on disk with a write-through
-in-memory cache:
+Project bundles are persisted to per-slide folders on disk with a write-through
+cache:
 
 - **Startup**: `init_store()` scans `OVK_DATA_DIR` for `*/project.json` and
   loads them. If empty, seeds the fixture project to disk.

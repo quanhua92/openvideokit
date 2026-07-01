@@ -32,7 +32,7 @@ Two servers run in dev (launched by `./scripts/dev.sh`):
 Browser (:3000)                Vite dev (:3000)              Python API (:8000)
   │                               │                               │
   │  SPA (React 19 + TanStack)    │  proxy /api → :8000           │  FastAPI + uvicorn
-  │  <hyperframes-player>         │                               │  in-memory store
+  │  <hyperframes-player>         │                               │  disk-backed store
   │    └─ iframe ← src=/api/...   │                               │  SHA-256 rev
   │                               │                               │  SSE pub/sub
 ```
@@ -70,7 +70,7 @@ graph TD
 
     subgraph Server [Python SSR]
         API[FastAPI /api]
-        Store[(In-memory Store + rev hash)]
+        Store[(Disk Store + rev hash)]
         Comp[Composition Builder]
         SSE[SSE /events]
     end
