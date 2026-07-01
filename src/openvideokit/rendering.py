@@ -178,28 +178,18 @@ def _load_disk_jobs(project_id: str) -> list[dict[str, Any]]:
 
 
 def enqueue_render(project: dict, project_id: str) -> str:
-    """Materialise composition + audio, create a queued job, submit to executor."""
+    """Create a queued job and submit to executor immediately.
+
+    The heavy materialization (composition build + voiceover ffmpeg) runs
+    INSIDE the worker, not in this function — so POST /export returns
+    instantly with 202.
+    """
     job_id = uuid.uuid4().hex[:12]
     jdir = _job_dir(job_id)
     jdir.mkdir(parents=True, exist_ok=True)
 
     output_path = jdir / "output.mp4"
     log_path = jdir / "render.log"
-    index_path = jdir / "index.html"
-
-    # 1. Build composition HTML
-    html = build_root_composition(project, name=f"export-{job_id}")
-
-    # 2. Build voiceover track (concatenated per-slide audio + silence)
-    voiceover_path = jdir / "voiceover.mp3"
-    has_vo = _build_voiceover_track(project, project_id, voiceover_path)
-
-    # 3. Inject <audio> element if voiceover exists
-    if has_vo:
-        total = _total_duration(project)
-        html = _inject_voiceover_audio(html, total)
-
-    index_path.write_text(html, encoding="utf-8")
 
     job: dict[str, Any] = {
         "id": job_id,
@@ -223,16 +213,21 @@ def enqueue_render(project: dict, project_id: str) -> str:
     if _executor is None:
         raise RuntimeError("render executor not initialised — call init_executor() first")
 
-    _executor.submit(_run_render_job, job_id)
-    log.info("enqueued render job %s for project %s (voiceover=%s)", job_id, project_id, has_vo)
+    # Pass project snapshot to worker — materialization happens on the worker thread
+    _executor.submit(_run_render_job, job_id, project)
+    log.info("enqueued render job %s for project %s", job_id, project_id)
     return job_id
 
 
 # ── Worker ───────────────────────────────────────────────────────────────
 
 
-def _run_render_job(job_id: str) -> None:
-    """Worker function — runs on a dedicated thread. Blocks until subprocess exits."""
+def _run_render_job(job_id: str, project: dict) -> None:
+    """Worker function — runs on a dedicated thread.
+
+    Phase 1 (queued): materialise composition HTML + voiceover track + audio.
+    Phase 2 (running): spawn npx hyperframes render, wait for exit.
+    """
     from .config import RENDER_HF_WORKERS
 
     with _lock:
@@ -251,7 +246,30 @@ def _run_render_job(job_id: str) -> None:
     jdir = _job_dir(job_id)
     output_path = Path(job["output"])
     log_path = Path(job["log"])
+    index_path = jdir / "index.html"
 
+    # ── Phase 1: Materialise ────────────────────────────────────────────
+    log.info("render %s materializing composition + voiceover", job_id)
+    try:
+        html = build_root_composition(project, name=f"export-{job_id}")
+        voiceover_path = jdir / "voiceover.mp3"
+        has_vo = _build_voiceover_track(project, job["project_id"], voiceover_path)
+        if has_vo:
+            total = _total_duration(project)
+            html = _inject_voiceover_audio(html, total)
+        index_path.write_text(html, encoding="utf-8")
+    except Exception as exc:
+        _finish(job_id, FAILED, error=f"Materialization failed: {exc}")
+        return
+
+    # Check cancel after materialization
+    with _lock:
+        cancel_requested = job["_cancel_requested"]
+    if cancel_requested:
+        _finish(job_id, CANCELLED)
+        return
+
+    # ── Phase 2: Render ─────────────────────────────────────────────────
     _set_status(job_id, RUNNING)
 
     cmd = [
