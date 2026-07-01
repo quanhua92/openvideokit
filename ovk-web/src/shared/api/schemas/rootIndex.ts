@@ -21,15 +21,17 @@ export const CanvasSchema = z.object({
 });
 export type Canvas = z.infer<typeof CanvasSchema>;
 
+const Sha256Ref = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+
 export const MusicSchema = z.object({
-  asset: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  asset: z.union([Sha256Ref, z.literal("")]),
   volume: z.number().min(0).max(1),
   loop: z.boolean(),
 });
 export type Music = z.infer<typeof MusicSchema>;
 
 export const VoiceoverTrackSchema = z.object({
-  asset: z.string().min(1),
+  asset: z.string(),
   auto_generated: z.boolean(),
 });
 export type VoiceoverTrack = z.infer<typeof VoiceoverTrackSchema>;
