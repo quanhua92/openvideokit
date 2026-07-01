@@ -39,6 +39,22 @@ uv run openvideokit          # serve on http://0.0.0.0:8765
 
 Tabs in Python break the build immediately (`W191` / `unindent does not match any outer indentation level`). When creating or editing a file, write every indented line with the correct number of spaces. Run the formatter before committing (`uv run ruff format` / `pnpm exec biome format --write`).
 
+### File writes — ALWAYS atomic
+
+**Never use `Path.write_text()` or `open().write()` directly for data files.** Use `store._atomic_write(path, data)` instead:
+
+```python
+from .store import _atomic_write
+
+# CORRECT — temp file + rename, crash-safe
+_atomic_write(path, json.dumps(data))
+
+# WRONG — half-written file on crash
+path.write_text(data)
+```
+
+`_atomic_write` writes to a `.tmp` file first, then `rename()`s it over the target. On POSIX, `rename` is atomic — readers either see the old or new file, never a partial write. This prevents corruption when the server crashes mid-write or when the file watcher reads a half-written file.
+
 ## Module responsibilities
 
 | Module | Owns | Key functions |

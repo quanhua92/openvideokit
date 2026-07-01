@@ -8,7 +8,7 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 |---|---|---|
 | `OVK_HOST` | `127.0.0.1` | Bind address |
 | `OVK_PORT` | `8000` | Bind port |
-| `OVK_DATA_DIR` | `data` | Where generated audio + assets are written |
+| `OVK_DATA_DIR` | `data` | Where project data + generated audio is written |
 
 `dev.sh` sets `OVK_DATA_DIR=$PROJECT_DIR/data` (gitignored).
 
@@ -20,7 +20,7 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 |---|---|---|
 | `GET` | `/api/projects` | List all projects `[{id, name}]` |
 | `GET` | `/api/projects/{id}` | Full bundle `{rev, root, slides, slideHtml}` |
-| `PUT` | `/api/projects/{id}` | Replace bundle (requires `rev` in body). 200 on match, 409 on stale |
+| `PUT` | `/api/projects/{id}` | Replace bundle (requires `rev`). 200 on match, 409 on stale. **Voiceover excluded from rev** |
 
 ### Compositions
 
@@ -40,15 +40,19 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/projects/{id}/tts` | Generate per-slide mp3s via edge-tts + measure durations via ffprobe |
-| `GET` | `/api/projects/{id}/slides/{slideId}/audio` | Stream a slide's generated mp3 |
+| `GET` | `/api/projects/{id}/slides/{slideId}/audio` | Stream the latest cached mp3 (reads `audio.json` pointer) |
+| `GET` | `/api/projects/{id}/slides/{slideId}/audio/{hash}` | Stream a content-addressed mp3 (`audio-{hash}.mp3`) |
 
 #### POST `/api/projects/{id}/tts`
+
+Sends only the slides that need (re)generation. The frontend fires this
+when the user clicks **Generate Audio** — no auto-fire on text edit.
 
 Request:
 ```json
 {
   "slides": [
-    {"id": "slide-0", "text": "Meet the Eco Bottle.", "voice": "en-US-AriaNeural"}
+    {"id": "slide-0", "text": "Meet the Eco Bottle.", "voice": "en-US-AriaNeural", "rate": "", "pitch": "", "volume": ""}
   ]
 }
 ```
@@ -57,16 +61,20 @@ Response:
 ```json
 {
   "timings": [
-    {"slideId": "slide-0", "duration": 2.34, "audio": "/api/projects/proj-1/audio/slide-0"}
+    {"slideId": "slide-0", "duration": 2.34, "audio": "/api/projects/proj-1/slides/slide-0/audio/a1b2c3d4e5f6g7h8", "audioHash": "a1b2c3d4e5f6g7h8"}
   ]
 }
 ```
 
-Audio files are saved to `{OVK_DATA_DIR}/{project_id}/audio/{slide_id}.mp3`.
+The TTS endpoint also writes the voiceover text/voice/params into
+`audio.json` — this is the authoritative source for voiceover data.
+`index.json` does NOT store voiceover.
 
 ## Optimistic locking
 
-Every bundle carries a `rev` — SHA-256 hash of `{root, slides, slideHtml}` (first 16 hex chars). Derived on every read, never stored.
+Every bundle carries a `rev` — SHA-256 hash of `{root, slides (without voiceover), slideHtml}` (first 16 hex chars). Derived on every read, never stored.
+
+**Voiceover is excluded from the rev** — it lives in `audio.json`, managed by the TTS endpoint. This means PUT (structural edits) and TTS (voiceover) can never conflict.
 
 - `PUT` must include the current `rev`. If the server's hash differs → 409 with the server's current bundle.
 - The frontend does a 3-way merge on 409 (re-applies local edits onto the server version) and retries once. See [concurrency.md](./concurrency.md).
@@ -76,44 +84,43 @@ Every bundle carries a `rev` — SHA-256 hash of `{root, slides, slideHtml}` (fi
 ```
 {OVK_DATA_DIR}/
 ├── {project_id}/
-│   ├── project.json          ← root (canvas, theme, audio, slides[])
-│   ├── .lock                 ← flock sidecar (cross-process write coordination)
+│   ├── project.json              ← root (canvas, theme, slides[])
+│   ├── .lock                     ← flock sidecar (cross-process write coordination)
 │   └── slides/
 │       ├── slide-0/
-│       │   ├── index.json    ← {duration, fields, voiceover, assets, ...}
-│       │   ├── index.html    ← bare <template> HTML
-│       │   ├── audio.mp3     ← edge-tts output (optional)
-│       │   └── audio.json    ← TTS metadata {textHash, duration, ...}
-│       ├── slide-1/
-│       │   ├── index.json
-│       │   ├── index.html
-│       │   └── audio.mp3
+│       │   ├── index.json        ← {duration, fields, assets} — NO voiceover
+│       │   ├── index.html        ← bare <template> HTML
+│       │   ├── audio.json        ← voiceover + audio metadata (latest pointer)
+│       │   ├── audio-{hash}.mp3  ← content-addressed mp3 (one per variant)
+│       │   ├── audio-{hash}.json ← companion metadata (self-contained)
+│       │   └── ...               ← max 3 variants (current + 2 history)
 │       └── ...
 ```
 
+### Voiceover data flow
+
+```
+User edits text → local state only (no dispatch)
+User clicks Generate → dispatch(setVoiceover) + POST /tts
+  → TTS writes audio-{hash}.mp3 + audio-{hash}.json + audio.json
+  → audio.json = latest pointer {textHash, text, voice, duration, history}
+  → Frontend stores audio URL → <audio> plays
+
+User edits voice/params → dispatch immediately → PUT saves to audio.json
+  (text/voice/params only — preserves audio metadata)
+```
+
+### Audio cache (content-addressed)
+
+- `audio-{hash}.mp3` — one file per unique text+voice+rate+pitch+volume
+- `audio-{hash}.json` — companion metadata (self-contained with the mp3)
+- `audio.json` — latest pointer (copied from the companion on each generation)
+- `history` array in `audio.json` — max 2 previous hashes; older variants auto-deleted
+- Toggling back to a previous text → cache hit (no edge-tts), `audio.json` pointer updated
+
 ## Disk-backed store
 
-Project bundles are persisted to per-slide folders on disk with a write-through
-cache:
-
-- **Startup**: `init_store()` scans `OVK_DATA_DIR` for `*/project.json` and
-  loads them. If empty, seeds the fixture project to disk.
-- **Write**: `update_project()` acquires an exclusive `fcntl.flock` on
-  `project.lock`, re-reads from **disk** (not cache) for the rev check, writes
-  atomically (temp file + rename), then releases the lock.
-- **External edit**: a `watchdog` file watcher monitors `OVK_DATA_DIR`. When
-  an external process (AI agent, manual edit) modifies `project.json`, the
-  watcher calls `reload_from_disk()` → updates cache → broadcasts SSE →
-  connected clients refetch and the HF player reloads.
-
-### Cross-process safety
-
-| Scenario | Mechanism |
-|---|---|
-| Two HTTP PUTs from different clients | rev check (409) + flock |
-| HTTP PUT vs external file edit | flock coordinates read-check-write; watcher reloads on external change |
-| Server restart | loads from disk — no data loss |
-
-`fcntl.flock` is advisory on POSIX — both the server and any external writer
-must use it for full safety. The atomic temp-file + rename ensures no
-corruption even if one side ignores the lock.
+- **Startup**: `init_store()` scans `OVK_DATA_DIR` for `*/project.json`. If empty, seeds the fixture.
+- **Write (PUT)**: `update_project()` acquires `fcntl.flock`, re-reads from disk for rev check, writes atomically (temp + rename).
+- **Voiceover load**: `_load_from_disk` merges voiceover from `audio.json` into slides (if it exists).
+- **File watcher**: monitors `project.json`, `index.json`, `index.html` only (NOT audio files — they'd cause stale reloads). On change → `reload_from_disk()` → SSE push.
