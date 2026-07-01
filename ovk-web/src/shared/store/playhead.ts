@@ -26,7 +26,12 @@ export const usePlayhead = create<PlayheadState>((set) => ({
   playing: false,
   duration: 12,
   seek: (t) => set({ t }),
-  togglePlay: () => set((s) => ({ playing: !s.playing })),
+  togglePlay: () =>
+    set((s) =>
+      !s.playing && s.t >= s.duration
+        ? { playing: true, t: 0 }
+        : { playing: !s.playing },
+    ),
   setPlaying: (playing) => set({ playing }),
   setDuration: (duration) => set({ duration }),
 }));
