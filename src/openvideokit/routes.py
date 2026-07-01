@@ -9,11 +9,12 @@ import asyncio
 import json
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
 from . import events, store
 from .composition import build_root_composition, build_slide_composition
 from .store import ConflictError, compute_rev
+from .voiceover import generate_audio
 
 router = APIRouter(prefix="/api")
 
@@ -102,3 +103,26 @@ async def project_events(project_id: str) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/projects/{project_id}/tts")
+def measure_tts(project_id: str, body: dict) -> dict:
+    """Generate per-slide mp3s via edge-tts + measure durations via ffprobe."""
+    if store.get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail=f"project '{project_id}' not found")
+    slides = body.get("slides", [])
+    timings = generate_audio(project_id, slides)
+    return {"timings": timings}
+
+
+@router.get("/projects/{project_id}/audio/{slide_id}")
+def get_audio(project_id: str, slide_id: str) -> FileResponse:
+    """Stream a slide's generated mp3."""
+    from pathlib import Path
+
+    from .config import DATA_DIR
+
+    mp3 = Path(DATA_DIR) / project_id / "audio" / f"{slide_id}.mp3"
+    if not mp3.is_file():
+        raise HTTPException(status_code=404, detail=f"no audio for '{slide_id}'")
+    return FileResponse(str(mp3), media_type="audio/mpeg")

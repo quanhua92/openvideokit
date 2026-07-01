@@ -61,7 +61,7 @@ export function Studio({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = query;
 
   // Re-measure slide durations whenever voiceover text changes (debounced).
-  useVoiceover(data ?? EMPTY_PROJECT);
+  useVoiceover(projectId, data ?? EMPTY_PROJECT);
 
   const active = useActiveSlide(data ?? EMPTY_PROJECT);
 

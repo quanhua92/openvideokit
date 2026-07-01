@@ -2,32 +2,30 @@
  * useVoiceover — batch TTS pipeline trigger.
  *
  * Watches every slide's voiceover.text. When ANY text changes, debounce
- * 500ms then POST the whole batch to /api/tts. On response, dispatch
- * `setDuration` per slide so the timeline reflects measured lengths.
- *
- * Per AGENTS.md: durations are MEASURED from TTS, never authored. This hook
- * is the only path that updates durations after the initial fixture load.
- *
- * To avoid an infinite loop (setDuration mutates project → effect re-runs),
- * the comparison checks voiceover.text only, not the whole project. A
- * duration update never trips the text comparator.
+ * 500ms then POST the whole batch to /api/projects/{id}/tts. On response,
+ * dispatch `setDuration` per slide so the timeline reflects measured lengths,
+ * and store audio URLs for playback.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { ProjectBundle } from "@/shared/api/client";
+import { apiBaseUrl } from "@/shared/config";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
 import { setDuration } from "@/shared/edit/ops";
+import { useAudioUrls } from "@/shared/store/audioUrls";
 
 interface TtsResponse {
-  timings: ReadonlyArray<{ slideId: string; duration: number }>;
+  timings: ReadonlyArray<{
+    slideId: string;
+    duration: number;
+    audio: string;
+  }>;
 }
 
-export function useVoiceover(project: ProjectBundle): {
-  isRegenerating: boolean;
-} {
+export function useVoiceover(projectId: string, project: ProjectBundle): void {
   const { dispatch } = useEditBus();
   const prevTextsRef = useRef<Record<string, string>>({});
   const inflight = useRef(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
+  const setAudioUrls = useAudioUrls((s) => s.setUrls);
 
   useEffect(() => {
     const texts: Record<string, string> = {};
@@ -44,7 +42,6 @@ export function useVoiceover(project: ProjectBundle): {
 
     const t = setTimeout(async () => {
       inflight.current = true;
-      setIsRegenerating(true);
       try {
         const payload = {
           slides: Object.entries(texts).map(([id, text]) => ({
@@ -53,25 +50,30 @@ export function useVoiceover(project: ProjectBundle): {
             voice: project.slides[id]?.voiceover.voice ?? "en-US-AriaNeural",
           })),
         };
-        const res = await fetch("/api/tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const res = await fetch(
+          `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/tts`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
         if (!res.ok) return;
         const data = (await res.json()) as TtsResponse;
+        const audioUrls: Record<string, string> = {};
         for (const timing of data.timings) {
           dispatch(setDuration(timing.slideId, timing.duration));
+          if (timing.audio) audioUrls[timing.slideId] = timing.audio;
+        }
+        if (Object.keys(audioUrls).length > 0) {
+          setAudioUrls(audioUrls);
         }
         prevTextsRef.current = texts;
       } finally {
         inflight.current = false;
-        setIsRegenerating(false);
       }
     }, 500);
 
     return () => clearTimeout(t);
-  }, [project, dispatch]);
-
-  return { isRegenerating };
+  }, [projectId, project, dispatch, setAudioUrls]);
 }

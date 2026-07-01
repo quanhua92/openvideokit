@@ -40,7 +40,8 @@ LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || echo '192.168.1.x')"
 
 # ── Start Python API (nohup, background) ─────────────────────────────────
 cd "$PROJECT_DIR"
-OVK_PORT="$API_PORT" nohup uv run python -m uvicorn openvideokit.app:app \
+mkdir -p "$PROJECT_DIR/data"
+OVK_PORT="$API_PORT" OVK_DATA_DIR="$PROJECT_DIR/data" nohup uv run python -m uvicorn openvideokit.app:app \
   --host 127.0.0.1 \
   --port "$API_PORT" \
   >"$API_LOG" 2>&1 &

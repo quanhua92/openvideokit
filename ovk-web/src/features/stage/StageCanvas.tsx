@@ -21,6 +21,7 @@ import { CaptionLayer } from "@/features/captions/components/CaptionLayer";
 import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
 import type { SlideIndex } from "@/shared/api/schemas/slideIndex";
 import { compositionUrl } from "@/shared/config";
+import { useAudioUrls } from "@/shared/store/audioUrls";
 import { useCaptionSettings } from "@/shared/store/captionSettings";
 import { useCompositionVersion } from "@/shared/store/compositionVersion";
 import { usePlayhead } from "@/shared/store/playhead";
@@ -45,7 +46,33 @@ export function StageCanvas({
   const [scale, setScale] = useState(0.2);
   const [ready, setReady] = useState(false);
   const version = useCompositionVersion((s) => s.version);
+  const audioUrls = useAudioUrls((s) => s.urls);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const { custom: captionCustom } = useCaptionSettings();
+
+  // Sync voiceover audio to the playhead.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const unsub = usePlayhead.subscribe((state) => {
+      if (!slide || state.playing) return;
+      el.pause();
+    });
+    return unsub;
+  }, [slide]);
+
+  // Play/pause audio with the playhead.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el || !slide) return;
+    const url = audioUrls[slide.id];
+    if (!url) return;
+    if (el.src !== url) el.src = url;
+
+    const playing = usePlayhead.getState().playing;
+    if (playing) el.play().catch(() => {});
+    else el.pause();
+  }, [audioUrls, slide]);
 
   // Measure container → compute caption overlay scale (matches the player's
   // internal scale-to-fit of the 1920×1080 composition).
@@ -97,6 +124,10 @@ export function StageCanvas({
         src={`${compositionUrl(projectId)}?v=${version}`}
         style={{ width: "100%", height: "100%" }}
       />
+
+      {/* Voiceover audio — synced to playhead */}
+      {/* biome-ignore lint/a11y/useMediaCaption: captions rendered separately by CaptionLayer */}
+      <audio ref={audioRef} className="hidden" />
 
       {/* Caption overlay — transparent, scaled to 1080p coords */}
       {showCaptions && slide && (

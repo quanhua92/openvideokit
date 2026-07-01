@@ -96,7 +96,9 @@ export const client = {
       const error = await parseJson(res, "saveProject conflict");
       const current = (error as Record<string, unknown>).current;
       if (!current) {
-        throw new Error(`saveProject ${projectId}: 409 with no 'current' bundle`);
+        throw new Error(
+          `saveProject ${projectId}: 409 with no 'current' bundle`,
+        );
       }
       throw new ConflictError(parseProjectBundle(current));
     }
