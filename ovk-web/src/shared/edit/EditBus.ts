@@ -46,6 +46,7 @@ export type EditOp =
     }
   | { kind: "setDuration"; slideId: string; duration: number }
   | { kind: "setCaptionStyle"; style: string }
+  | { kind: "setCaptionSettings"; settings: Record<string, unknown> }
   | { kind: "setSlideHtml"; slideId: string; html: string };
 
 /** An op + metadata about who/when. Emitted on every dispatch.

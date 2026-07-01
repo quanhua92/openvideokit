@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 
+from .captions import build_caption_layer
 from .stamp import stamp_many
 
 GSAP_CDN = "https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
@@ -26,11 +27,12 @@ _ROOT_SHELL = """<!doctype html>
   <meta name="viewport" content="width=1920, height=1080" />
   <title>{name}</title>
   <script src="{gsap}"></script>
-  <style>
+    <style>
     * {{ margin: 0; box-sizing: border-box; }}
     html, body {{ width: 1920px; height: 1080px; overflow: hidden;
                   background: #000; font-family: system-ui, sans-serif; }}
     #stage {{ position: relative; width: 1920px; height: 1080px; overflow: hidden; }}
+{caption_css}
   </style>
 </head>
 <body>
@@ -38,12 +40,14 @@ _ROOT_SHELL = """<!doctype html>
        data-composition-id="root" data-start="0"
        data-width="1920" data-height="1080" data-duration="{total:.1f}">
 {inlined_slides}
+{caption_layer}
   </div>
   <script>
     window.__timelines = window.__timelines || {{}};
     (function () {{
       var tl = gsap.timeline({{ paused: true }});
 {timeline}
+{caption_timeline}
       tl.to({{}}, {{ duration: {total:.1f} }}, 0);
       window.__timelines['root'] = tl;
     }})();
@@ -111,10 +115,16 @@ def build_root_composition(project: dict, name: str = "Preview") -> str:
             f" ease: 'power3.out' }}, {st:.1f});"
         )
 
+    # Build caption layer (HTML + CSS + GSAP timeline)
+    caption_html, caption_css, caption_js = build_caption_layer(project)
+
     return _ROOT_SHELL.format(
         gsap=GSAP_CDN,
         name=name,
         total=total,
         inlined_slides=inlined,
         timeline="\n".join(timeline_lines),
+        caption_layer=caption_html,
+        caption_css=caption_css,
+        caption_timeline=caption_js,
     )

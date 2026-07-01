@@ -182,6 +182,16 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
       };
     }
 
+    case "setCaptionSettings": {
+      return {
+        ...project,
+        root: {
+          ...project.root,
+          captions: { ...op.settings },
+        } as typeof project.root,
+      };
+    }
+
     case "setSlideHtml": {
       return {
         ...project,

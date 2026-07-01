@@ -93,6 +93,12 @@ export function setCaptionStyle(
   return { kind: "setCaptionStyle", style };
 }
 
+export function setCaptionSettings(
+  settings: Record<string, unknown>,
+): Extract<EditOp, { kind: "setCaptionSettings" }> {
+  return { kind: "setCaptionSettings", settings };
+}
+
 export function setSlideHtml(
   slideId: string,
   html: string,

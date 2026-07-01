@@ -1,54 +1,45 @@
 /**
- * Caption display settings — presets + per-property overrides.
+ * Caption display settings — local cache synced to the project bundle.
  *
- * The 4 built-in styles (highlight / neon / editorial / eco-green) are just
- * starting points. Picking one loads its values into `custom`; the user can
- * then tweak any property below the picker. Everything is persisted to
- * localStorage and applied to the stage via CSS custom properties.
+ * The source of truth is ``root.captions`` in the project bundle (persisted
+ * to the server via EditBus). This store provides instant local updates for
+ * the CaptionControls UI and is synced FROM the bundle on project load/SSE.
+ *
+ * Changes are dispatched via ``setCaptionSettings`` EditBus op by the
+ * component layer (CaptionControls), NOT by the store itself.
  */
 import { create } from "zustand";
-
-import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
-
-const STORAGE_KEY = "ovk:caption-settings-v2";
+import type {
+  CaptionSettings,
+  CaptionStyle,
+} from "@/shared/api/schemas/rootIndex";
 
 export interface CaptionCustomSettings {
-  /** Active word text color (hex). */
   activeColor: string;
-  /** Pill background color (hex) — only used when pill is on. */
   pillColor: string;
-  /** Non-active word text color (hex). */
   dimColor: string;
-  /** Inactive word opacity (0–1). */
   dimOpacity: number;
-  /** Font weight 400–900. */
   fontWeight: number;
-  /** Drop-shadow glow on active word (0 = off, 1 = max). */
   glow: number;
-  /** Background pill behind active word. */
   pill: boolean;
-  /** Text-shadow on base word for legibility against busy video. */
   shadow: boolean;
-  /** Bottom gradient scrim for caption legibility. */
   scrim: boolean;
-  /** Letter-spacing in em. */
   letterSpacing: number;
-  /** Font scale multiplier (0.5–1.5). */
   fontScale: number;
 }
 
 export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
   highlight: {
-    activeColor: "#0a0a14",
-    pillColor: "#ffea00",
+    activeColor: "#ffea00",
+    pillColor: "#0a0a14",
     dimColor: "#ffffff",
     dimOpacity: 0.5,
     fontWeight: 900,
     glow: 0,
     pill: true,
     shadow: false,
-    letterSpacing: -0.02,
     scrim: false,
+    letterSpacing: -0.02,
     fontScale: 1,
   },
   neon: {
@@ -60,8 +51,8 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
     glow: 0.8,
     pill: true,
     shadow: true,
-    letterSpacing: 0.01,
     scrim: false,
+    letterSpacing: 0.01,
     fontScale: 1,
   },
   editorial: {
@@ -73,8 +64,8 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
     glow: 0,
     pill: true,
     shadow: true,
-    letterSpacing: -0.01,
     scrim: false,
+    letterSpacing: -0.01,
     fontScale: 1,
   },
   "eco-green": {
@@ -86,8 +77,8 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
     glow: 0.5,
     pill: true,
     shadow: true,
-    letterSpacing: -0.01,
     scrim: false,
+    letterSpacing: -0.01,
     fontScale: 1,
   },
 };
@@ -95,59 +86,48 @@ export const PRESETS: Record<CaptionStyle, CaptionCustomSettings> = {
 interface CaptionSettingsStore {
   preset: CaptionStyle;
   custom: CaptionCustomSettings;
-  /** Load a preset into custom. */
+  /** Sync from project bundle (called on load + SSE). */
+  syncFromBundle: (caps?: CaptionSettings) => void;
+  /** Load a preset into custom (local only — caller dispatches EditBus). */
   applyPreset: (preset: CaptionStyle) => void;
-  /** Patch one or more custom properties. */
+  /** Patch one or more custom properties (local only). */
   patch: (partial: Partial<CaptionCustomSettings>) => void;
-  /** Reset custom back to the current preset. */
+  /** Reset custom back to the current preset (local only). */
   reset: () => void;
 }
 
-function readStored(): { preset: CaptionStyle; custom: CaptionCustomSettings } {
-  const fallback = PRESETS.highlight;
-  if (typeof localStorage === "undefined") {
-    return { preset: "highlight", custom: fallback };
-  }
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { preset: "highlight", custom: fallback };
-    const parsed = JSON.parse(raw) as {
-      preset: CaptionStyle;
-      custom: CaptionCustomSettings;
-    };
-    return {
-      preset: parsed.preset ?? "highlight",
-      custom: { ...fallback, ...parsed.custom },
-    };
-  } catch {
-    return { preset: "highlight", custom: fallback };
-  }
-}
-
-function writeStored(preset: CaptionStyle, custom: CaptionCustomSettings) {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ preset, custom }));
-}
-
-const initial = readStored();
-
 export const useCaptionSettings = create<CaptionSettingsStore>((set, get) => ({
-  preset: initial.preset,
-  custom: initial.custom,
+  preset: "highlight",
+  custom: { ...PRESETS.highlight },
+  syncFromBundle: (caps) => {
+    if (!caps) return;
+    set({
+      preset: caps.preset ?? "highlight",
+      custom: {
+        activeColor: caps.activeColor,
+        pillColor: caps.pillColor,
+        dimColor: caps.dimColor,
+        dimOpacity: caps.dimOpacity,
+        fontWeight: caps.fontWeight,
+        glow: caps.glow,
+        pill: caps.pill,
+        shadow: caps.shadow,
+        scrim: caps.scrim,
+        letterSpacing: caps.letterSpacing,
+        fontScale: caps.fontScale,
+      },
+    });
+  },
   applyPreset: (preset) => {
     const base = { ...PRESETS[preset], fontScale: get().custom.fontScale };
-    writeStored(preset, base);
     set({ preset, custom: base });
   },
   patch: (partial) => {
-    const next = { ...get().custom, ...partial };
-    writeStored(get().preset, next);
-    set({ custom: next });
+    set({ custom: { ...get().custom, ...partial } });
   },
   reset: () => {
     const preset = get().preset;
     const base = { ...PRESETS[preset], fontScale: get().custom.fontScale };
-    writeStored(preset, base);
     set({ custom: base });
   },
 }));

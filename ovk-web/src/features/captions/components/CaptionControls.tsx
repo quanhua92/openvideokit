@@ -1,9 +1,9 @@
 /**
  * CaptionControls — preset picker + per-property adjustments.
  *
- * The preset Select loads a starting point; the controls below let the user
- * tweak individual properties (color, glow, weight, pill, shadow). All
- * changes apply live to the stage via CSS custom properties.
+ * All changes dispatch via EditBus → project bundle → server → composition
+ * reload. The local Zustand store provides instant UI feedback for the
+ * control values themselves.
  */
 import { RotateCcw } from "lucide-react";
 
@@ -18,6 +18,8 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { CaptionStyle } from "@/shared/api/schemas/rootIndex";
+import { useEditBus } from "@/shared/edit/EditBusProvider";
+import { setCaptionSettings } from "@/shared/edit/ops";
 import { useCaptionSettings } from "@/shared/store/captionSettings";
 
 const PRESET_OPTIONS: ReadonlyArray<{ value: CaptionStyle; label: string }> = [
@@ -40,6 +42,27 @@ const COLOR_SWATCHES = [
 
 export function CaptionControls() {
   const { preset, custom, applyPreset, patch, reset } = useCaptionSettings();
+  const { dispatch } = useEditBus();
+
+  /** Dispatch full settings to EditBus (persists to project bundle). */
+  const persist = (next: typeof custom, p: CaptionStyle = preset) => {
+    dispatch(setCaptionSettings({ preset: p, ...next }));
+  };
+
+  const handlePreset = (p: CaptionStyle) => {
+    applyPreset(p);
+    persist(useCaptionSettings.getState().custom, p);
+  };
+
+  const handlePatch = (partial: Partial<typeof custom>) => {
+    patch(partial);
+    persist(useCaptionSettings.getState().custom);
+  };
+
+  const handleReset = () => {
+    reset();
+    persist(useCaptionSettings.getState().custom);
+  };
 
   return (
     <div className="space-y-4">
@@ -53,7 +76,7 @@ export function CaptionControls() {
             variant="ghost"
             size="sm"
             className="h-5 gap-1 px-1.5 text-[10px] text-muted-foreground"
-            onClick={reset}
+            onClick={handleReset}
           >
             <RotateCcw className="size-2.5" />
             Reset
@@ -61,7 +84,7 @@ export function CaptionControls() {
         </div>
         <Select
           value={preset}
-          onValueChange={(v) => applyPreset(v as CaptionStyle)}
+          onValueChange={(v) => handlePreset(v as CaptionStyle)}
         >
           <SelectTrigger className="h-7 w-full text-xs">
             <SelectValue />
@@ -80,14 +103,14 @@ export function CaptionControls() {
       <ColorRow
         label="Text color"
         value={custom.activeColor}
-        onChange={(c) => patch({ activeColor: c })}
+        onChange={(c) => handlePatch({ activeColor: c })}
       />
 
       {/* Non-active text color */}
       <ColorRow
         label="Dim text color"
         value={custom.dimColor}
-        onChange={(c) => patch({ dimColor: c })}
+        onChange={(c) => handlePatch({ dimColor: c })}
       />
 
       {/* Pill background color (only when pill is on) */}
@@ -95,7 +118,7 @@ export function CaptionControls() {
         <ColorRow
           label="Pill color"
           value={custom.pillColor}
-          onChange={(c) => patch({ pillColor: c })}
+          onChange={(c) => handlePatch({ pillColor: c })}
         />
       )}
 
@@ -107,7 +130,7 @@ export function CaptionControls() {
         max={900}
         step={100}
         display={String(custom.fontWeight)}
-        onChange={(v) => patch({ fontWeight: v })}
+        onChange={(v) => handlePatch({ fontWeight: v })}
       />
 
       {/* Glow */}
@@ -118,7 +141,7 @@ export function CaptionControls() {
         max={1}
         step={0.05}
         display={`${Math.round(custom.glow * 100)}%`}
-        onChange={(v) => patch({ glow: v })}
+        onChange={(v) => handlePatch({ glow: v })}
       />
 
       {/* Dim opacity */}
@@ -129,7 +152,7 @@ export function CaptionControls() {
         max={1}
         step={0.05}
         display={`${Math.round(custom.dimOpacity * 100)}%`}
-        onChange={(v) => patch({ dimOpacity: v })}
+        onChange={(v) => handlePatch({ dimOpacity: v })}
       />
 
       {/* Font scale */}
@@ -140,7 +163,7 @@ export function CaptionControls() {
         max={3.0}
         step={0.05}
         display={`${Math.round(custom.fontScale * 100)}%`}
-        onChange={(v) => patch({ fontScale: v })}
+        onChange={(v) => handlePatch({ fontScale: v })}
       />
 
       {/* Toggles */}
@@ -148,17 +171,17 @@ export function CaptionControls() {
         <Toggle
           label="Pill"
           checked={custom.pill}
-          onChange={(v) => patch({ pill: v })}
+          onChange={(v) => handlePatch({ pill: v })}
         />
         <Toggle
           label="Shadow"
           checked={custom.shadow}
-          onChange={(v) => patch({ shadow: v })}
+          onChange={(v) => handlePatch({ shadow: v })}
         />
         <Toggle
           label="Scrim"
           checked={custom.scrim}
-          onChange={(v) => patch({ scrim: v })}
+          onChange={(v) => handlePatch({ scrim: v })}
         />
       </div>
     </div>

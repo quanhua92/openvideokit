@@ -18,6 +18,7 @@ import { useActiveSlide } from "@/shared/api/queries/useActiveSlide";
 import { useProject } from "@/shared/api/queries/useProject";
 import { useProjectSync } from "@/shared/api/queries/useProjectSync";
 import { useStudioLayout } from "@/shared/lib/useStudioLayout";
+import { useCaptionSettings } from "@/shared/store/captionSettings";
 import { usePlayhead } from "@/shared/store/playhead";
 import { usePlaybackClock } from "@/shared/store/usePlaybackClock";
 
@@ -62,6 +63,12 @@ export function Studio({ projectId }: { projectId: string }) {
 
   // Re-measure slide durations whenever voiceover text changes (debounced).
   useVoiceover(projectId, data ?? EMPTY_PROJECT);
+
+  // Sync caption settings from project bundle → local store.
+  const syncCaptions = useCaptionSettings((s) => s.syncFromBundle);
+  useEffect(() => {
+    if (data?.root.captions) syncCaptions(data.root.captions);
+  }, [data?.root.captions, syncCaptions]);
 
   const active = useActiveSlide(data ?? EMPTY_PROJECT);
 
