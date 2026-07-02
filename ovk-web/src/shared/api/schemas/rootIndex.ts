@@ -49,6 +49,22 @@ export const ThemeSchema = z.object({
 });
 export type Theme = z.infer<typeof ThemeSchema>;
 
+export const CaptionSettingsSchema = z.object({
+  preset: CaptionStyleSchema,
+  activeColor: z.string(),
+  pillColor: z.string(),
+  dimColor: z.string(),
+  dimOpacity: z.number(),
+  fontWeight: z.number(),
+  glow: z.number(),
+  pill: z.boolean(),
+  shadow: z.boolean(),
+  scrim: z.boolean(),
+  letterSpacing: z.number(),
+  fontScale: z.number(),
+});
+export type CaptionSettings = z.infer<typeof CaptionSettingsSchema>;
+
 export const TransitionDefaultSchema = z.object({
   type: z.string().min(1),
   duration: z.number().nonnegative(),
@@ -60,6 +76,7 @@ export const RootIndexSchema = z.object({
   canvas: CanvasSchema,
   theme: ThemeSchema,
   audio: AudioSchema,
+  captions: CaptionSettingsSchema.optional(),
   transition_default: TransitionDefaultSchema,
   slides: z
     .array(z.string().min(1))

@@ -67,6 +67,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </div>
         <OverflowMenu
           onExport={() => setExportOpen(true)}
+          projectId={projectId ?? FIXTURE_PROJECT_ID}
           showHistory={Boolean(projectId)}
           canUndo={undoRedo.canUndo}
           canRedo={undoRedo.canRedo}
@@ -75,13 +76,18 @@ export function AppShell({ children }: { children?: ReactNode }) {
         />
       </header>
       <main className="flex-1 overflow-hidden">{children ?? <Outlet />}</main>
-      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        projectId={projectId ?? FIXTURE_PROJECT_ID}
+      />
     </div>
   );
 }
 
 interface OverflowMenuProps {
   onExport: () => void;
+  projectId: string;
   showHistory: boolean;
   canUndo: boolean;
   canRedo: boolean;
@@ -91,6 +97,7 @@ interface OverflowMenuProps {
 
 function OverflowMenu({
   onExport,
+  projectId,
   showHistory,
   canUndo,
   canRedo,
@@ -138,8 +145,15 @@ function OverflowMenu({
           </>
         )}
         <DropdownMenuSeparator />
+        {showHistory && (
+          <DropdownMenuItem asChild>
+            <Link to="/projects/$projectId/exports" params={{ projectId }}>
+              View Exports
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={onExport} className="cursor-pointer">
-          Export
+          Export as MP4
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuSub>

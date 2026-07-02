@@ -95,6 +95,15 @@ export function inverseOp(op: EditOp, before: ProjectBundle): EditOp | null {
       };
     }
 
+    case "setCaptionSettings": {
+      return {
+        kind: "setCaptionSettings",
+        settings: (before.root as Record<string, unknown>).captions
+          ? { ...((before.root as Record<string, unknown>).captions as object) }
+          : {},
+      };
+    }
+
     case "setSlideHtml": {
       const prev = before.slideHtml?.[op.slideId] ?? "";
       return { kind: "setSlideHtml", slideId: op.slideId, html: prev };

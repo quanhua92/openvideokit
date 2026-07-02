@@ -9,6 +9,9 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 | `OVK_HOST` | `127.0.0.1` | Bind address |
 | `OVK_PORT` | `8000` | Bind port |
 | `OVK_DATA_DIR` | `data` | Where project data + generated audio is written |
+| `OVK_JOBS_DIR` | `{OVK_DATA_DIR}/jobs` | Where render job directories + output MP4s are written |
+| `OVK_MAX_CONCURRENT_RENDERS` | `1` | Max parallel render subprocesses (ThreadPoolExecutor workers) |
+| `OVK_RENDER_HF_WORKERS` | `3` | Chrome workers per render (passed to `hyperframes render --workers`) |
 
 `dev.sh` sets `OVK_DATA_DIR=$PROJECT_DIR/data` (gitignored).
 
@@ -26,8 +29,21 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/projects/{id}/composition` | Self-contained root HTML (all slides inlined, single GSAP timeline) |
+| `GET` | `/api/projects/{id}/composition` | Self-contained root HTML (all slides inlined, caption layer, single GSAP timeline) |
 | `GET` | `/api/projects/{id}/composition/compositions/{slideId}` | Single slide sub-composition (bare `<template>`) |
+
+### Export / Render
+
+| Method | Path | Status | Purpose |
+|---|---|---|---|
+| `POST` | `/api/projects/{id}/export` | 202 | Enqueue an MP4 render job |
+| `GET` | `/api/projects/{id}/export/jobs` | 200 | List all jobs (memory + disk) |
+| `GET` | `/api/projects/{id}/export/jobs/{jobId}` | 200 | Job status dict |
+| `POST` | `/api/projects/{id}/export/jobs/{jobId}/cancel` | 200 | Cancel job (SIGTERM if running) |
+| `GET` | `/api/projects/{id}/export/jobs/{jobId}/download` | 200 | Stream MP4 (only when `done`) |
+| `GET` | `/api/projects/{id}/export/jobs/{jobId}/log` | 200 | Render log text (ANSI-stripped) |
+
+See [export.md](./export.md) for the full pipeline architecture.
 
 ### Real-time
 
@@ -84,8 +100,9 @@ Every bundle carries a `rev` — SHA-256 hash of `{root, slides (without voiceov
 ```
 {OVK_DATA_DIR}/
 ├── {project_id}/
-│   ├── project.json              ← root (canvas, theme, slides[])
+│   ├── project.json              ← root (canvas, theme, captions, slides[])
 │   ├── .lock                     ← flock sidecar (cross-process write coordination)
+│   ├── jobs.json                 ← export job metadata (max 50, survives restarts)
 │   └── slides/
 │       ├── slide-0/
 │       │   ├── index.json        ← {duration, fields, assets} — NO voiceover
@@ -95,6 +112,12 @@ Every bundle carries a `rev` — SHA-256 hash of `{root, slides (without voiceov
 │       │   ├── audio-{hash}.json ← companion metadata (self-contained)
 │       │   └── ...               ← max 3 variants (current + 2 history)
 │       └── ...
+├── jobs/                         ← render job directories
+│   └── {job_id}/
+│       ├── index.html            ← self-contained composition + captions + audio
+│       ├── voiceover.mp3         ← concatenated TTS track (if any slide has audio)
+│       ├── output.mp4            ← render output (on success)
+│       └── render.log            ← merged stdout+stderr from npx hyperframes render
 ```
 
 ### Voiceover data flow

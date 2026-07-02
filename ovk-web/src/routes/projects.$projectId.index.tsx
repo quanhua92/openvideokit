@@ -116,12 +116,11 @@ function ProjectDashboard() {
             disabled
           />
           <ActionCard
-            to={EDITOR_TO}
+            to="/projects/$projectId/exports"
             params={editorParams}
             icon={<Clapperboard className="size-5" />}
             title="Export"
-            desc="Assemble + stamp + render via the 6-step pipeline."
-            disabled
+            desc="Render MP4 with voiceover via HyperFrames."
           />
           <ActionCard
             to={EDITOR_TO}
@@ -195,7 +194,7 @@ function ActionCard({
   desc,
   disabled,
 }: {
-  to: typeof EDITOR_TO;
+  to: string;
   params: { projectId: string };
   icon: React.ReactNode;
   title: string;
