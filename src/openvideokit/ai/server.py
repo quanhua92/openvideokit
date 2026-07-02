@@ -23,7 +23,7 @@ import secrets
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from . import config
 from .events import (
@@ -87,7 +87,11 @@ async def run_agent(
     agent = build_agent(model, ctx)
     lc_messages = _to_lc_messages(messages)
 
+    # Trail of conversation messages, kept in sync with the live stream so we
+    # can feed them into a graceful closing round if the step limit is hit.
+    trail: list[BaseMessage] = list(lc_messages)
     step = 0
+    hit_limit = False
     try:
         async for ev in agent.astream_events(
             {"messages": lc_messages}, version="v2"
@@ -107,16 +111,18 @@ async def run_agent(
                 if text:
                     yield event_to_sse(TokenEvent(type="token", text=text))  # type: ignore[misc]
 
+            elif kind == "on_chat_model_end":
+                out = data.get("output")
+                if isinstance(out, BaseMessage):
+                    trail.append(out)
+
             elif kind == "on_tool_start":
                 step += 1
-                if step > config.OVK_AI_MAX_STEPS:
-                    yield event_to_sse(
-                        ErrorEvent(  # type: ignore[misc]
-                            type="error",
-                            message=f"agent exceeded {config.OVK_AI_MAX_STEPS} tool steps — stopping.",
-                        )
-                    )
-                    return
+                if step >= config.OVK_AI_MAX_STEPS:
+                    # Don't hard-kill — break out and run a final no-tools
+                    # round below so the user gets a real closing message.
+                    hit_limit = True
+                    break
                 yield event_to_sse(
                     ToolStartEvent(  # type: ignore[misc]
                         type="tool_start",
@@ -127,6 +133,8 @@ async def run_agent(
 
             elif kind == "on_tool_end":
                 output = data.get("output")
+                if isinstance(output, BaseMessage):
+                    trail.append(output)
                 # langchain wraps tool output in a ToolMessage; .content is the
                 # string our tool returned.
                 content = getattr(output, "content", output)
@@ -141,6 +149,47 @@ async def run_agent(
                         result=_truncate(content),
                     )
                 )
+
+        if hit_limit:
+            # Graceful close: one final model round with NO tools bound, so the
+            # model must produce a natural-language wrap-up instead of looping
+            # more tool calls. Tools are only bound inside the agent graph, so
+            # calling ``model`` directly here is unbound.
+            _logger.info("agent hit %d-step limit; running final no-tools round", step)
+            yield event_to_sse(
+                ToolStartEvent(  # type: ignore[misc]
+                    type="tool_start",
+                    tool="wrap_up",
+                    args={"reason": "step_limit"},
+                )
+            )
+            closer = SystemMessage(
+                content=(
+                    "You've reached the tool-call limit for this turn. Stop calling "
+                    "tools and give the user a brief final answer: summarize what you "
+                    "did, and if any change wasn't applied, say so. Do not propose "
+                    "further edits right now."
+                )
+            )
+            try:
+                async for chunk in model.astream(trail + [closer]):
+                    _t = getattr(chunk, "content", "")
+                    if isinstance(_t, list):
+                        _t = "".join(b.get("text", "") for b in _t if isinstance(b, dict))
+                    if _t:
+                        yield event_to_sse(TokenEvent(type="token", text=_t))  # type: ignore[misc]
+                yield event_to_sse(
+                    ToolEndEvent(  # type: ignore[misc]
+                        type="tool_end",
+                        tool="wrap_up",
+                        ok=True,
+                        result="final answer after step limit",
+                    )
+                )
+            except Exception as e:  # noqa: BLE001
+                _logger.warning("final round failed: %s: %s", type(e).__name__, e)
+            yield event_to_sse(DoneEvent(type="done"))  # type: ignore[misc]
+            return
 
         yield event_to_sse(DoneEvent(type="done"))  # type: ignore[misc]
     except Exception as e:  # noqa: BLE001 — surface any failure to the client
