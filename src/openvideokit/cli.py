@@ -66,6 +66,12 @@ def llm_test(
         "-p",
         help="Prompt to send for the connection test.",
     ),
+    model: str = typer.Option(
+        "",
+        "--model",
+        "-m",
+        help="Override OVK_AI_MODEL for this test (e.g. o3-mini, gpt-5).",
+    ),
 ) -> None:
     """Smoke-test the AI provider: send a tiny prompt and stream the reply.
 
@@ -74,9 +80,11 @@ def llm_test(
     """
     from .ai import config as ai_config
 
+    model_id = model or ai_config.OVK_AI_MODEL
+
     typer.secho("─ AI connection test ─", fg=typer.colors.CYAN, bold=True)
     typer.echo(f"  OPENAI_BASE_URL      : {ai_config.OPENAI_BASE_URL}")
-    typer.echo(f"  OVK_AI_MODEL         : {ai_config.OVK_AI_MODEL}")
+    typer.echo(f"  OVK_AI_MODEL         : {model_id}" + (" (overridden)" if model else ""))
     typer.echo(f"  OVK_AI_REASONING     : {ai_config.OVK_AI_REASONING_EFFORT or '(off)'}")
     typer.echo(f"  OPENAI_API_KEY       : {_mask(ai_config.OPENAI_API_KEY)}")
 
@@ -89,35 +97,54 @@ def llm_test(
         raise typer.Exit(code=1)
 
     typer.echo(f"\n  prompt: {prompt!r}")
-    typer.echo("  reply : ", nl=False)
 
     try:
         from langchain_core.messages import HumanMessage
 
         from .ai.llm import build_model
+        from .ai.server import _extract_text_and_thinking
 
-        model = build_model(streaming=True, timeout=60)
+        model_obj = build_model(model=model_id, streaming=True, timeout=60)
         start = time.perf_counter()
         chunks = 0
         text = ""
-        for chunk in model.stream([HumanMessage(content=prompt)]):
-            piece = getattr(chunk, "content", "") or ""
-            if isinstance(piece, list):  # content-block payloads
-                piece = "".join(b.get("text", "") for b in piece if isinstance(b, dict))
-            if piece:
-                typer.echo(piece, nl=False)
-                text += piece
-                chunks += 1
+        thinking = ""
+        thinking_started = False
+        reply_started = False
+        for chunk in model_obj.stream([HumanMessage(content=prompt)]):
+            piece_text, piece_thinking = _extract_text_and_thinking(chunk)
+            if piece_thinking:
+                if not thinking_started:
+                    typer.secho(
+                        "  thinking ▸ ",
+                        fg=typer.colors.MAGENTA,
+                        bold=True,
+                        nl=False,
+                    )
+                    thinking_started = True
+                typer.secho(piece_thinking, dim=True, nl=False)
+                thinking += piece_thinking
+            if piece_text:
+                if not reply_started:
+                    if thinking_started:
+                        typer.echo()  # newline after thinking line
+                    typer.echo("  reply   : ", nl=False)
+                    reply_started = True
+                typer.echo(piece_text, nl=False)
+                text += piece_text
+            chunks += 1
+        if thinking_started or reply_started:
+            typer.echo()  # final newline after streamed content
         elapsed = time.perf_counter() - start
         if not text.strip():
             typer.secho("(empty reply)", fg=typer.colors.YELLOW)
             raise typer.Exit(code=1)
-        typer.echo()  # newline after streamed reply
-        typer.secho(
-            f"\n✓ OK — {len(text)} chars in {elapsed:.2f}s ({chunks} chunk(s)).",
-            fg=typer.colors.GREEN,
-            bold=True,
+        summary = (
+            f"\n✓ OK — {len(text)} chars in {elapsed:.2f}s ({chunks} chunk(s))"
         )
+        if thinking:
+            summary += f", {len(thinking)} thinking chars"
+        typer.secho(summary + ".", fg=typer.colors.GREEN, bold=True)
     except typer.Exit:
         raise
     except ImportError as e:

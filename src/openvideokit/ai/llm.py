@@ -12,17 +12,24 @@ from langchain_openai import ChatOpenAI
 from . import config
 
 
-def build_model(*, streaming: bool = True, timeout: float | None = None) -> ChatOpenAI:
+def build_model(
+    *,
+    model: str = "",
+    streaming: bool = True,
+    timeout: float | None = None,
+) -> ChatOpenAI:
     """The default (Tier-1) chat model.
 
-    ``timeout`` bounds a single request (None = provider default); the CLI
-    diagnostic passes a finite timeout so it can't hang on unreachable hosts.
+    ``model`` overrides ``OVK_AI_MODEL`` when given (used by the CLI
+    ``--model`` flag). ``timeout`` bounds a single request (None = provider
+    default); the CLI diagnostic passes a finite timeout so it can't hang on
+    unreachable hosts.
 
     ``reasoning_effort`` is forwarded only when ``OVK_AI_REASONING_EFFORT`` is
     set — passing it to a non-reasoning model raises, so it's opt-in.
     """
     kwargs: dict = {
-        "model": config.OVK_AI_MODEL,
+        "model": model or config.OVK_AI_MODEL,
         "api_key": config.OPENAI_API_KEY,
         "base_url": config.OPENAI_BASE_URL,
         "temperature": config.OVK_AI_TEMPERATURE,
