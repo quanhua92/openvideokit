@@ -87,6 +87,35 @@ user clicks Accept/Reject on a proposal
 The user message is persisted **before** the slow LLM stream, so it survives a
 crash / closed tab mid-stream.
 
+### 4.1 Interrupted streams — no partial persistence
+
+If the SSE stream is interrupted (connection drop, mobile tab freeze,
+page discarded by the OS), the assistant message is **discarded
+entirely**. It is never POSTed to `/messages`.
+
+Rationale:
+- A partial text answer is useless — the user can't act on "Sure, I'll
+  change the title t…".
+- Even proposals from an interrupted turn may be incomplete (the agent
+  may have been about to emit more).
+- Re-sending gives a complete, coherent turn.
+
+What survives:
+- The **user** message is persisted before the stream (§4), so on reload
+  the user sees their question with no answer.
+- On reload, an orphaned user message (user msg with no following
+  assistant msg) is a signal that the previous turn failed.
+
+Future: a "retry" affordance next to orphaned user messages.
+
+### 4.2 AIDock mount lifecycle
+
+AIDock is **kept mounted** across panel switches (CSS `hidden`, not
+conditional render) in both `StudioMobile` and `StudioDesktop`. This
+prevents the SSE stream from being killed when the user switches panels
+in the editor. An unmount only occurs on route navigation (leaving
+`/editor`).
+
 ---
 
 ## 5. Proposal outcomes as context (Option B)
