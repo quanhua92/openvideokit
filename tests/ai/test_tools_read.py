@@ -91,3 +91,32 @@ class TestGrep:
         hits = json.loads(t.invoke({"pattern": "title", "slide_id": "slide-0"}))
         files = {h["file"] for h in hits}
         assert all(f.startswith("slide-0/") for f in files)
+
+
+class TestReadManyFiles:
+    def test_reads_multiple(self, ctx_on_disk):
+        t = _tool(ctx_on_disk, "read_many_files")
+        out = t.invoke(
+            {"paths": ["slide-0/index.json", "project.json"]}
+        )
+        assert "── slide-0/index.json ──" in out
+        assert "── project.json ──" in out
+        # both payloads present
+        assert '"id": "slide-0"' in out.replace(" ", "") or "Eco Bottle" in out
+        assert "slides" in out
+
+    def test_missing_reported_inline(self, ctx_on_disk):
+        t = _tool(ctx_on_disk, "read_many_files")
+        out = t.invoke({"paths": ["slide-0/index.json", "nope.txt"]})
+        assert "── slide-0/index.json ──" in out
+        assert "── nope.txt ──" in out
+        assert "ERROR: not a file" in out
+
+    def test_escape_rejected(self, ctx_on_disk):
+        t = _tool(ctx_on_disk, "read_many_files")
+        out = t.invoke({"paths": ["../../../etc/passwd"]})
+        assert "escapes the project directory" in out
+
+    def test_empty_list(self, ctx_on_disk):
+        t = _tool(ctx_on_disk, "read_many_files")
+        assert t.invoke({"paths": []}) == ""

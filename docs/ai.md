@@ -133,7 +133,7 @@ RFC §8's "editable markdown workspace files" is **deferred** — v1 uses `.py` 
 
 - **Model**: `ChatOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY, model=OVK_AI_MODEL, temperature=OVK_AI_TEMPERATURE, streaming=True)` from `llm.py`. OpenAI-compatible → works with OpenAI, OpenRouter, Ollama, vLLM, LM Studio by changing `OPENAI_BASE_URL`. This single surface covers RFC §7's two-path topology.
 - **Default model**: `gpt-5.4-nano` (configurable via `OVK_AI_MODEL`).
-- **Tools**: `build_tools(ctx)` returns the 14 tools (4 read + 10 OVK), each with `ctx` bound via closure so they can read the snapshot / run TTS without global state.
+- **Tools**: `build_tools(ctx)` returns the 15 tools (5 read + 10 OVK), each with `ctx` bound via closure so they can read the snapshot / run TTS without global state.
 - **State**: the default ReAct state (`messages`). Tool results carry an `_ovk_ops` marker when they want to emit a proposal; `server.py`'s `_maybe_proposal` decodes it. No custom `StateGraph` channel needed in v1.
 - **Streaming**: `server.py` uses langgraph's `astream_events(version="v2")` to capture (a) LLM token deltas → `token` events, (b) tool starts/ends → `tool_start`/`tool_end` events, (c) EditOp-returning tool results → `proposal` events. Loop bounded by `OVK_AI_MAX_STEPS`.
 
@@ -210,7 +210,7 @@ OPENAI_API_KEY         = os.environ.get("OPENAI_API_KEY", "")        # required 
 OVK_AI_MODEL           = os.environ.get("OVK_AI_MODEL", "gpt-5.4-nano")
 OVK_AI_TIER2_MODEL     = os.environ.get("OVK_AI_TIER2_MODEL", OVK_AI_MODEL)
 OVK_AI_TEMPERATURE     = float(os.environ.get("OVK_AI_TEMPERATURE", "0.3"))
-OVK_AI_MAX_STEPS       = int(os.environ.get("OVK_AI_MAX_STEPS", "8"))
+OVK_AI_MAX_STEPS       = int(os.environ.get("OVK_AI_MAX_STEPS", "10"))
 OVK_AI_REASONING_EFFORT = os.environ.get("OVK_AI_REASONING_EFFORT", "")  # low/medium/high; reasoning models only
 ```
 
@@ -280,7 +280,7 @@ Tests live in `tests/ai/` (pytest; mirrors the existing `tests/test_*.py` conven
 | `test_tools_read.py` | Read-only tools against a `tmp_path` fixture project: `read_file` happy path + sandbox escape rejection (`../x`, absolute paths); `list_slides` field keys + has-voiceover flag; `list_files` root vs slide; `grep_slides` returns `file:line:match`. | no | no |
 | `test_tools_ovk.py` | Each of the 9 non-voiceover OVK tools: gate **rejects** bad input (unknown slide, non-permutation reorder, banned caption key, duration ≤ 0, last-slide removal) and **emits** the correct `EditOp` JSON on good input. `set_slide_html` rejects lint-failing HTML. No LLM, no TTS. | no | no |
 | `test_tools_voiceover.py` | `set_voiceover` with `voiceover.generate_audio` **monkeypatched** to a fake that writes a stub mp3 + returns a fixed duration: validates `Neural` voice, emits BOTH `setVoiceover` + `setDuration`, leaves a rev-neutral cache file. | no | mocked |
-| `test_graph.py` | `build_tools(ctx)` returns 14 tools; the compiled graph builds without calling the API; tool names/docstrings match the registry. | no | no |
+| `test_graph.py` | `build_tools(ctx)` returns 15 tools; the compiled graph builds without calling the API; tool names/docstrings match the registry. | no | no |
 | `test_server.py` | End-to-end agent run with a **FakeListChatModel** (langchain) scripted to emit one tool call (`set_field slide-0 title Hello`); assert the streamed events are `tool_start` → `tool_end` → `proposal(setField)` → `done`, in order, no real API call. A second case scripts a multi-step run (read → propose). | fake | no |
 | `test_route.py` | FastAPI `TestClient` against the `/api/projects/{id}/ai/chat` route with the agent monkeypatched to a fake async generator: asserts `text/event-stream` content-type, SSE framing, and that a missing `OPENAI_API_KEY` yields a graceful `error` event (not a crash). | fake | no |
 

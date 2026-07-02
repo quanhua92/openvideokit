@@ -28,7 +28,7 @@ class TestBuildSystemPrompt:
         prompt = build_system_prompt(ctx)
         # every real tool name appears in the prompt
         for name in (
-            "read_file", "list_slides", "list_files", "grep_slides",
+            "read_file", "read_many_files", "list_slides", "list_files", "grep_slides",
             "set_field", "set_voiceover", "set_duration", "add_slide",
             "remove_slide", "duplicate_slide", "reorder_slides",
             "set_slide_html", "set_caption_style", "set_caption_settings",

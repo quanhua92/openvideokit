@@ -28,6 +28,7 @@ def build_tools(ctx: OVKContext):
         list_files,
         list_slides,
         read_file,
+        read_many_files,
         remove_slide,
         reorder_slides,
         set_caption_settings,
@@ -40,6 +41,7 @@ def build_tools(ctx: OVKContext):
 
     read_tools = [
         read_file.build(ctx),
+        read_many_files.build(ctx),
         list_slides.build(ctx),
         list_files.build(ctx),
         grep_slides.build(ctx),

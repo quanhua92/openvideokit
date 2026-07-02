@@ -9,14 +9,14 @@ from openvideokit.ai.tools import build_tools
 
 
 class TestBuildTools:
-    def test_returns_14_tools(self, ctx):
+    def test_returns_15_tools(self, ctx):
         tools = build_tools(ctx)
-        assert len(tools) == 14
+        assert len(tools) == 15
 
     def test_tool_names(self, ctx):
         names = {t.name for t in build_tools(ctx)}
         expected = {
-            "read_file", "list_slides", "list_files", "grep_slides",
+            "read_file", "read_many_files", "list_slides", "list_files", "grep_slides",
             "set_field", "set_voiceover", "set_duration", "add_slide",
             "remove_slide", "duplicate_slide", "reorder_slides",
             "set_slide_html", "set_caption_style", "set_caption_settings",

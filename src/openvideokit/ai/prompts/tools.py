@@ -30,7 +30,28 @@ def render(ctx: OVKContext) -> str:
     lines.append(
         "Tools whose name starts with `set_`/`add_`/`remove_`/`duplicate_`/"
         "`reorder_` produce EditOp proposals the user must accept. The "
-        "read-only tools (read_file, list_slides, list_files, grep_slides) "
-        "return data immediately."
+        "read-only tools (read_file, read_many_files, list_slides, "
+        "list_files, grep_slides) return data immediately."
+    )
+    lines.append("")
+    lines.append("## Tool usage tips (important)")
+    lines.append("")
+    lines.append(
+        "- **Batch your reads.** To read 2+ files, call `read_many_files` ONCE "
+        "with the full path list — never call `read_file` multiple times in a "
+        "row for files you already know you need."
+    )
+    lines.append(
+        "- **Discover before editing.** When you don't know the slide ids / "
+        "fields, call `list_slides` first (one call), not several `read_file`s."
+    )
+    lines.append(
+        "- **One tool call per intent.** Don't fan out parallel reads of the "
+        "same file or call read_file on a slide you already saw via list_slides."
+    )
+    lines.append(
+        "- **Content vs. visual.** Use `set_field` for text/color values, "
+        "`set_voiceover` for narration (it runs TTS), and reach for "
+        "`set_slide_html` only for genuine layout/animation changes."
     )
     return "\n".join(lines)
