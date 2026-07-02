@@ -614,6 +614,23 @@ function Composer({
 }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow: fit content up to a max, then scroll.
+  // Re-run on every text change to re-measure scrollHeight.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: text drives the resize
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [text]);
+
+  const submit = () => {
+    if (disabled || !text.trim()) return;
+    onSend(text);
+    setText("");
+  };
 
   return (
     <div className="flex shrink-0 items-center gap-1.5 border-t border-border p-2">
@@ -624,6 +641,7 @@ function Composer({
             size="icon"
             disabled={disabled}
             aria-label="Quick prompts"
+            className="shrink-0"
           >
             <Plus className="size-4" />
           </Button>
@@ -650,28 +668,28 @@ function Composer({
           </div>
         </PopoverContent>
       </Popover>
-      <input
+      <textarea
+        ref={taRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !disabled) {
+          // Enter to send, Shift+Enter for a newline.
+          if (e.key === "Enter" && !e.shiftKey && !disabled) {
             e.preventDefault();
-            onSend(text);
-            setText("");
+            submit();
           }
         }}
+        rows={2}
         placeholder="Ask AI to edit…"
-        className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="max-h-40 min-h-[60px] flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       <Button
         variant="ghost"
         size="icon"
         disabled={disabled || !text.trim()}
-        onClick={() => {
-          onSend(text);
-          setText("");
-        }}
+        onClick={submit}
         aria-label="Send"
+        className="shrink-0"
       >
         <Send className="size-4" />
       </Button>
