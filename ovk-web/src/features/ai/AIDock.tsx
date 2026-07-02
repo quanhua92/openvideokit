@@ -141,18 +141,31 @@ export function AIDock({
       setItems((prev) => [...prev, userMsg, assistantMsg]);
       setStreaming(true);
 
+      // The agent is stateless per request — send the full conversation
+      // history each turn so it has context. Read the latest items straight
+      // from the store (the useCallback closure would otherwise be stale).
+      const priorItems = useAIStore.getState().items;
+      const history = priorItems
+        .filter(
+          (m): m is ChatMessage =>
+            (m.role === "user" || m.role === "assistant") && m.id !== "welcome",
+        )
+        .filter((m) => m.content?.trim())
+        .map((m) => ({ id: m.id, role: m.role, content: m.content }));
+      const outgoing = [
+        ...history,
+        { id: userMsg.id, role: "user" as const, content: text },
+      ];
+
       // Stream from the backend LangGraph agent via the provider.
       let content = "";
       try {
-        const events = provider.stream(
-          [{ id: userMsg.id, role: "user", content: text }],
-          {
-            projectId,
-            activeSlideId: slideId,
-            pins: [],
-            project: { rootSlides: slideIds, slides },
-          },
-        );
+        const events = provider.stream(outgoing, {
+          projectId,
+          activeSlideId: slideId,
+          pins: [],
+          project: { rootSlides: slideIds, slides },
+        });
         for await (const evt of events) {
           if (evt.type === "token") {
             content += evt.text;
