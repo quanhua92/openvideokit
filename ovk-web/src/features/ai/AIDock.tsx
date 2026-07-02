@@ -24,6 +24,7 @@ import {
 import { useAIProvider } from "@/shared/ai/AIProviderContext";
 import type { EditProposal } from "@/shared/ai/types";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
+import { useAudioUrls } from "@/shared/store/audioUrls";
 import { Markdown } from "./components/Markdown";
 
 /** One tool invocation tracked on an assistant message (activity log). */
@@ -37,6 +38,12 @@ interface ToolCallEntry {
   done: boolean;
 }
 
+/** One proposal attached to a message, with its own accept/reject state. */
+interface ProposalEntry {
+  proposal: EditProposal;
+  state: "pending" | "accepted" | "rejected" | "auto-rejected";
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -45,8 +52,8 @@ interface ChatMessage {
   thinking?: string;
   /** Tool invocations, in order — shown as activity chips. */
   toolCalls?: ToolCallEntry[];
-  proposal?: EditProposal;
-  proposalState?: "pending" | "accepted" | "rejected" | "auto-rejected";
+  /** One or more proposals (a single agent turn can emit several). */
+  proposals?: ProposalEntry[];
 }
 
 interface SystemPing {
@@ -221,17 +228,20 @@ export function AIDock({
               }),
             );
           } else if (evt.type === "proposal") {
+            // Append — a turn can emit several proposals; each gets its own card.
             setItems((prev) =>
-              prev.map((m) =>
-                m.id === assistantId
-                  ? {
-                      ...m,
-                      content,
-                      proposal: evt.edit,
-                      proposalState: "pending",
-                    }
-                  : m,
-              ),
+              prev.map((m) => {
+                if (m.id !== assistantId) return m;
+                const am = m as ChatMessage;
+                return {
+                  ...am,
+                  content,
+                  proposals: [
+                    ...(am.proposals ?? []),
+                    { proposal: evt.edit, state: "pending" as const },
+                  ],
+                };
+              }),
             );
           } else if (evt.type === "error") {
             content = evt.message;
@@ -259,12 +269,29 @@ export function AIDock({
       for (const op of proposal.ops) {
         dispatch(op, "ai:langgraph");
       }
+      // Bridge: any setVoiceover op needs TTS to actually run. Proposal tools
+      // never touch the filesystem, so trigger the existing voiceover pipeline
+      // (the same path CaptionTextEditor uses) for each affected slide. Audio
+      // + duration generate here, after the user accepted.
+      const regenSlides = proposal.ops
+        .filter((op) => op.kind === "setVoiceover")
+        .map((op) => op.slideId);
+      if (regenSlides.length) {
+        const requestRegenerate = useAudioUrls.getState().requestRegenerate;
+        for (const sid of regenSlides) requestRegenerate(sid);
+      }
       setItems((prev) =>
-        prev.map((m) =>
-          "proposal" in m && m.proposal?.id === proposal.id
-            ? { ...m, proposalState: "accepted" }
-            : m,
-        ),
+        prev.map((m) => {
+          if (m.role === "system") return m;
+          if (!(m as ChatMessage).proposals) return m;
+          const am = m as ChatMessage;
+          return {
+            ...am,
+            proposals: am.proposals!.map((p) =>
+              p.proposal.id === proposal.id ? { ...p, state: "accepted" } : p,
+            ),
+          };
+        }),
       );
       toast.success(`Applied ${proposal.ops.length} edit(s)`);
     },
@@ -274,11 +301,17 @@ export function AIDock({
   const handleReject = useCallback(
     (proposalId: string) => {
       setItems((prev) =>
-        prev.map((m) =>
-          "proposal" in m && m.proposal?.id === proposalId
-            ? { ...m, proposalState: "rejected" }
-            : m,
-        ),
+        prev.map((m) => {
+          if (m.role === "system") return m;
+          const am = m as ChatMessage;
+          if (!am.proposals) return m;
+          return {
+            ...am,
+            proposals: am.proposals.map((p) =>
+              p.proposal.id === proposalId ? { ...p, state: "rejected" } : p,
+            ),
+          };
+        }),
       );
     },
     [setItems],
@@ -359,13 +392,20 @@ function MessageBubble({
             <span className="text-xs text-muted-foreground">…</span>
           )}
         </div>
-        {message.proposal && (
-          <ProposalCard
-            proposal={message.proposal}
-            state={message.proposalState ?? "pending"}
-            onAccept={() => onAccept(message.proposal as EditProposal)}
-            onReject={() => onReject((message.proposal as EditProposal).id)}
-          />
+        {message.proposals && message.proposals.length > 0 && (
+          <div className="space-y-2">
+            {message.proposals.map((p, i) => (
+              <ProposalCard
+                key={p.proposal.id}
+                index={i + 1}
+                total={message.proposals!.length}
+                proposal={p.proposal}
+                state={p.state}
+                onAccept={() => onAccept(p.proposal)}
+                onReject={() => onReject(p.proposal.id)}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -470,11 +510,16 @@ function SystemPingBubble({ text }: { text: string }) {
 function ProposalCard({
   proposal,
   state,
+  index,
+  total,
   onAccept,
   onReject,
 }: {
   proposal: EditProposal;
   state: "pending" | "accepted" | "rejected" | "auto-rejected";
+  /** 1-based position within the turn's proposals (omitted when only one). */
+  index?: number;
+  total?: number;
   onAccept: () => void;
   onReject: () => void;
 }) {
@@ -484,9 +529,16 @@ function ProposalCard({
         <Badge variant="outline" className="text-[10px]">
           {proposal.ops.length} op{proposal.ops.length === 1 ? "" : "s"}
         </Badge>
-        <Badge variant="secondary" className="text-[10px]">
-          {proposal.slideId ?? "project"}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          {total && total > 1 && (
+            <Badge variant="outline" className="text-[10px]">
+              {index} / {total}
+            </Badge>
+          )}
+          <Badge variant="secondary" className="text-[10px]">
+            {proposal.slideId ?? "project"}
+          </Badge>
+        </div>
       </div>
       <p className="mb-2 text-[11px] text-foreground/80">
         {proposal.rationale}
