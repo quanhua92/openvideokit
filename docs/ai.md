@@ -45,7 +45,7 @@ src/openvideokit/ai/
 │   ├── tools.py           # render(ctx): auto-generated from the tool registry (name + docstring) — zero drift
 │   ├── caption_rules.py   # SECTION: CRITICAL caption rules
 │   ├── html_contract.py   # SECTION: bare-<template> R1–R4 contract
-│   ├── voice_rules.py     # SECTION: Neural voice ids + TTS-at-proposal-time coupling
+│   ├── voice_rules.py     # SECTION: Neural voice ids; TTS runs at accept, not proposal time
 │   ├── safety.py          # SECTION: prompt-injection data-wrapping, always-propose-never-apply
 │   └── project_context.py # render(ctx): DYNAMIC — current snapshot (slide list, fields, active slide, pins)
 │
@@ -63,7 +63,7 @@ src/openvideokit/ai/
     │
     │  ── OVK EditOp emitters (mirror PropertiesPanel / CaptionLayer / ops.ts) ──
     ├── set_field.py            # → setField
-    ├── set_voiceover.py        # → setVoiceover + setDuration (runs TTS server-side; see §6)
+    ├── set_voiceover.py        # → setVoiceover only (no TTS at proposal time; see §6)
     ├── set_duration.py         # → setDuration
     ├── add_slide.py            # → addSlide (+ optional html, lint-gated)
     ├── remove_slide.py         # → removeSlide
@@ -99,7 +99,7 @@ Each returns a typed `EditOpResult`. The graph's tool execution wrapper appends 
 | Tool | Args | EditOp emitted | Safety gate |
 |---|---|---|---|
 | `set_field` | `slide_id`, `field_id`, `value` | `setField` | slide_id exists; field_id non-empty. |
-| `set_voiceover` | `slide_id`, `text`, `voice?`, `rate?`, `pitch?`, `volume?` | `setVoiceover` + `setDuration` | voice ends in `Neural`; **runs TTS** (§6). |
+| `set_voiceover` | `slide_id`, `text`, `voice?`, `rate?`, `pitch?`, `volume?` | `setVoiceover` | voice ends in `Neural`; no TTS at proposal time (§6). |
 | `set_duration` | `slide_id`, `duration` | `setDuration` | duration > 0. |
 | `add_slide` | `after_id?`, `layout_id`, `html?`, `fields?` | `addSlide` (+ `setSlideHtml` if html) | if html → `_lint` must pass. |
 | `remove_slide` | `slide_id` | `removeSlide` | slide exists; refuse if it's the last slide. |
@@ -133,25 +133,27 @@ RFC §8's "editable markdown workspace files" is **deferred** — v1 uses `.py` 
 
 - **Model**: `ChatOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY, model=OVK_AI_MODEL, temperature=OVK_AI_TEMPERATURE, streaming=True)` from `llm.py`. OpenAI-compatible → works with OpenAI, OpenRouter, Ollama, vLLM, LM Studio by changing `OPENAI_BASE_URL`. This single surface covers RFC §7's two-path topology.
 - **Default model**: `gpt-5.4-nano` (configurable via `OVK_AI_MODEL`).
-- **Tools**: `build_tools(ctx)` returns the 15 tools (5 read + 10 OVK), each with `ctx` bound via closure so they can read the snapshot / run TTS without global state.
+- **Tools**: `build_tools(ctx)` returns the 15 tools (5 read + 10 OVK), each with `ctx` bound via closure so they can read the snapshot. None of them write to disk — all mutations are EditOp proposals.
 - **State**: the default ReAct state (`messages`). Tool results carry an `_ovk_ops` marker when they want to emit a proposal; `server.py`'s `_maybe_proposal` decodes it. No custom `StateGraph` channel needed in v1.
 - **Streaming**: `server.py` uses langgraph's `astream_events(version="v2")` to capture (a) LLM token deltas → `token` events, (b) tool starts/ends → `tool_start`/`tool_end` events, (c) EditOp-returning tool results → `proposal` events. Loop bounded by `OVK_AI_MAX_STEPS`.
 
 ---
 
-## 6. Voiceover–TTS Coupling
+## 6. Voiceover (no TTS at proposal time)
 
-Decision: *"set text and TTS at the same time, because human can't save without generating anyway. But must approve."*
+> **Hard rule:** proposal tools NEVER touch the filesystem — no TTS, no audio
+> writes, nothing. A voiceover proposal carries only a `setVoiceover` op. The
+> audio is generated AFTER the user accepts, by the editor's own voiceover
+> pipeline (the identical path a human edit takes). This keeps the
+> accept/reject gate clean: rejecting wastes no TTS cost and leaves zero
+> orphan files.
 
-`set_voiceover(slide_id, text, voice?, ...)`:
+`set_voiceover(slide_id, text, voice?, ...)` and `add_slide(voiceover=…)`:
 1. Validate `voice` ends in `Neural` (mirrors the zod rule in ovk-web).
-2. Call `voiceover.generate_audio(project_id, [{id, text, voice, ...}])` — the existing backend pipeline (`src/openvideokit/voiceover.py:136`). This writes content-addressed cache files (`audio-{hash}.mp3`, `audio-{hash}.json`) to the slide folder. These are **rev-neutral**: `compute_rev` (`store.py:159`) explicitly strips voiceover, and audio files are side-effect cache exactly like the human `/tts` flow (`routes.py:108`).
-3. Emit a proposal carrying **two** ops: `setVoiceover` (new text/voice) + `setDuration` (measured audio length).
-4. On **Accept** → frontend dispatches both through `EditBus`; on **Reject** → the orphan audio stays cached (content-addressed, reused harmlessly if the same text is ever approved later). Undo restores old text + old duration.
+2. Emit a proposal with a **single** `setVoiceover` op (text + voice + optional rate/pitch/volume). No `setDuration` — the duration is derived from the generated audio after accept.
+3. On **Accept** → the frontend dispatches `setVoiceover` through `EditBus`. The existing `useVoiceover` hook (the same one that fires when a human types in `CaptionTextEditor`) detects the text change → debounced `POST /tts` (`src/openvideokit/voiceover.py`) → real measured duration → `setDuration`. Undo reverts the text and the duration follows.
 
-True AI = human parity: a human editing `CaptionTextEditor` triggers the debounced `useVoiceover` hook → `/tts` → duration update → `setVoiceover`/`setDuration` dispatch. The AI proposes the **same** ops.
-
-TTS is slow (edge-tts network call + ffprobe) and blocks the agent step — acceptable per the explicit design decision.
+This is true AI = human parity: the AI proposes exactly what a human edit produces, and the generation pipeline is shared, not duplicated. The earlier "TTS at proposal time" design was rejected because it violated the read-only-proposal principle (it wrote `audio-{hash}.mp3` before the user approved).
 
 ---
 
@@ -173,7 +175,7 @@ Response: text/event-stream
 - `{type:"done"}` — turn complete.
 - `{type:"error", message}` — fatal error.
 
-A single tool call may emit multiple ops in one proposal (e.g. `set_voiceover` emits `setVoiceover` + `setDuration`). The frontend `handleAccept` loops over `proposal.edit.ops` and dispatches each.
+A single tool call may emit multiple ops in one proposal (e.g. `add_slide` with fields + voiceover emits `addSlide` + `setField` + `setVoiceover`). The frontend `handleAccept` loops over `proposal.edit.ops` and dispatches each.
 
 The agent runs **stateless per request** — the frontend sends full message history each turn (matches `EchoProvider.stream(messages, ctx)` signature).
 
@@ -279,7 +281,7 @@ Tests live in `tests/ai/` (pytest; mirrors the existing `tests/test_*.py` conven
 | `test_prompts.py` | Each section module renders a non-empty string; `build_system_prompt(ctx)` contains all 8 section markers; `tools.py` section is generated from the registry (add a dummy tool → it appears in the prompt); dynamic `project_context` includes the active slide. | no | no |
 | `test_tools_read.py` | Read-only tools against a `tmp_path` fixture project: `read_file` happy path + sandbox escape rejection (`../x`, absolute paths); `list_slides` field keys + has-voiceover flag; `list_files` root vs slide; `grep_slides` returns `file:line:match`. | no | no |
 | `test_tools_ovk.py` | Each of the 9 non-voiceover OVK tools: gate **rejects** bad input (unknown slide, non-permutation reorder, banned caption key, duration ≤ 0, last-slide removal) and **emits** the correct `EditOp` JSON on good input. `set_slide_html` rejects lint-failing HTML. No LLM, no TTS. | no | no |
-| `test_tools_voiceover.py` | `set_voiceover` with `voiceover.generate_audio` **monkeypatched** to a fake that writes a stub mp3 + returns a fixed duration: validates `Neural` voice, emits BOTH `setVoiceover` + `setDuration`, leaves a rev-neutral cache file. | no | mocked |
+| `test_tools_voiceover.py` | `set_voiceover` with `voiceover.generate_audio` replaced by a spy that **fails if called**: asserts the tool never touches the FS at proposal time, validates `Neural` voice, emits a single `setVoiceover` op (no `setDuration`). | no | n/a |
 | `test_graph.py` | `build_tools(ctx)` returns 15 tools; the compiled graph builds without calling the API; tool names/docstrings match the registry. | no | no |
 | `test_server.py` | End-to-end agent run with a **FakeListChatModel** (langchain) scripted to emit one tool call (`set_field slide-0 title Hello`); assert the streamed events are `tool_start` → `tool_end` → `proposal(setField)` → `done`, in order, no real API call. A second case scripts a multi-step run (read → propose). | fake | no |
 | `test_route.py` | FastAPI `TestClient` against the `/api/projects/{id}/ai/chat` route with the agent monkeypatched to a fake async generator: asserts `text/event-stream` content-type, SSE framing, and that a missing `OPENAI_API_KEY` yields a graceful `error` event (not a crash). | fake | no |

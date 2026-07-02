@@ -78,6 +78,45 @@ class TestAddSlide:
         kinds = [o["kind"] for o in decoded["_ovk_ops"]]
         assert "addSlide" in kinds and "setSlideHtml" in kinds and "setField" in kinds
 
+    def test_with_voiceover_emits_setvoiceover_only(self, ctx, monkeypatch):
+        # Proposal tools must NOT run TTS (docs/ai.md §6). Spy that fails if it does.
+        from openvideokit import voiceover
+
+        def _should_not_run(*a, **kw):
+            raise AssertionError("generate_audio must NOT run at proposal time")
+
+        monkeypatch.setattr(voiceover, "generate_audio", _should_not_run)
+        out = _tool(ctx, "add_slide").invoke(
+            {
+                "after_id": "slide-0",
+                "fields": {"title": "New"},
+                "voiceover": {"text": "Hello world.", "voice": "en-US-AriaNeural"},
+            }
+        )
+        decoded = is_ops_result(out)
+        assert decoded is not None
+        kinds = [o["kind"] for o in decoded["_ovk_ops"]]
+        # addSlide + setField + setVoiceover (NO setDuration, NO TTS)
+        assert "addSlide" in kinds
+        assert "setField" in kinds
+        assert "setVoiceover" in kinds
+        assert "setDuration" not in kinds
+        vo = [o for o in decoded["_ovk_ops"] if o["kind"] == "setVoiceover"][0]
+        assert vo["text"] == "Hello world."
+
+    def test_with_voiceover_bad_voice_rejected(self, ctx, monkeypatch):
+        from openvideokit import voiceover
+
+        called = []
+        monkeypatch.setattr(
+            voiceover, "generate_audio", lambda *a: called.append(1) or []
+        )
+        out = _tool(ctx, "add_slide").invoke(
+            {"voiceover": {"text": "hi", "voice": "vi-VN-HoaiMy"}}
+        )
+        assert out.startswith("ERROR:")
+        assert called == []  # TTS never ran
+
     def test_bad_html_rejected(self, ctx):
         out = _tool(ctx, "add_slide").invoke({"html": "<div>no template</div>"})
         assert out.startswith("ERROR:")

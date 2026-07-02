@@ -1,10 +1,12 @@
-"""Tests for set_voiceover — TTS path, with generate_audio monkeypatched.
+"""Tests for set_voiceover — pure proposal emitter (NO TTS at proposal time).
 
-No real edge-tts/ffprobe runs. We assert the tool:
+Per docs/ai.md §6, proposal tools never touch the filesystem. set_voiceover
+emits ONLY a setVoiceover op; the audio is generated after accept via the
+frontend voiceover hook. These tests assert the tool:
   - rejects non-Neural voices,
-  - runs the (faked) TTS pipeline,
-  - emits BOTH setVoiceover + setDuration (duration = measured),
-  - the proposal is an ops-result.
+  - does NOT call generate_audio,
+  - emits a single setVoiceover op (no setDuration),
+  - forwards rate/pitch/volume into the op.
 """
 
 from __future__ import annotations
@@ -24,65 +26,62 @@ def _tool(ctx, name="set_voiceover"):
 
 
 @pytest.fixture
-def fake_generate(monkeypatch):
-    """Replace voiceover.generate_audio with a deterministic fake."""
-    calls: list[dict] = []
+def tts_spy(monkeypatch):
+    """Fail the test if generate_audio is ever called by a proposal tool."""
+    calls: list = []
 
-    def _fake(project_id, slides):
-        calls.append({"project_id": project_id, "slides": list(slides)})
-        return [{"slideId": s["id"], "duration": 2.75, "audio": f"/x/{s['id']}", "audioHash": "deadbeef"} for s in slides]
+    def _should_not_run(*a, **kw):
+        calls.append(1)
+        raise AssertionError("generate_audio must NOT run at proposal time")
 
-    monkeypatch.setattr(voiceover, "generate_audio", _fake)
+    monkeypatch.setattr(voiceover, "generate_audio", _should_not_run)
     return calls
 
 
 class TestSetVoiceover:
-    def test_emits_voiceover_and_duration(self, ctx, fake_generate):
+    def test_emits_only_setvoiceover(self, ctx, tts_spy):
         out = _tool(ctx).invoke(
             {"slide_id": "slide-0", "text": "New narration.", "voice": "en-US-AriaNeural"}
         )
         decoded = is_ops_result(out)
         assert decoded is not None
         kinds = [o["kind"] for o in decoded["_ovk_ops"]]
-        assert "setVoiceover" in kinds and "setDuration" in kinds
-        vo = [o for o in decoded["_ovk_ops"] if o["kind"] == "setVoiceover"][0]
+        assert kinds == ["setVoiceover"]  # NO setDuration, NO TTS
+        vo = decoded["_ovk_ops"][0]
         assert vo["text"] == "New narration."
         assert vo["voice"] == "en-US-AriaNeural"
-        dur = [o for o in decoded["_ovk_ops"] if o["kind"] == "setDuration"][0]
-        assert dur["duration"] == 2.75  # measured from fake TTS
 
-    def test_runs_tts(self, ctx, fake_generate):
+    def test_does_not_run_tts(self, ctx, tts_spy):
         _tool(ctx).invoke(
             {"slide_id": "slide-0", "text": "hi", "voice": "vi-VN-HoaiMyNeural"}
         )
-        assert len(fake_generate) == 1
-        assert fake_generate[0]["slides"][0]["text"] == "hi"
-        assert fake_generate[0]["slides"][0]["voice"] == "vi-VN-HoaiMyNeural"
+        assert tts_spy == []  # generate_audio never called
 
-    def test_neural_required(self, ctx, fake_generate):
+    def test_neural_required(self, ctx, tts_spy):
         out = _tool(ctx).invoke(
             {"slide_id": "slide-0", "text": "hi", "voice": "vi-VN-HoaiMy"}  # legacy
         )
         assert out.startswith("ERROR:")
         assert "Neural" in out
-        assert fake_generate == []  # TTS never ran
+        assert tts_spy == []
 
-    def test_empty_text_rejected(self, ctx, fake_generate):
+    def test_empty_text_rejected(self, ctx, tts_spy):
         out = _tool(ctx).invoke({"slide_id": "slide-0", "text": "   "})
         assert out.startswith("ERROR:")
-        assert fake_generate == []
+        assert tts_spy == []
 
-    def test_unknown_slide(self, ctx, fake_generate):
+    def test_unknown_slide(self, ctx, tts_spy):
         out = _tool(ctx).invoke({"slide_id": "nope", "text": "hi"})
         assert out.startswith("ERROR:")
-        assert fake_generate == []
+        assert tts_spy == []
 
-    def test_voice_falls_back_to_current(self, ctx, fake_generate):
+    def test_voice_falls_back_to_current(self, ctx, tts_spy):
         # slide-0 already has voice en-US-AriaNeural; omit voice arg
-        _tool(ctx).invoke({"slide_id": "slide-0", "text": "hi"})
-        assert fake_generate[0]["slides"][0]["voice"] == "en-US-AriaNeural"
+        out = _tool(ctx).invoke({"slide_id": "slide-0", "text": "hi"})
+        vo = is_ops_result(out)["_ovk_ops"][0]
+        assert vo["voice"] == "en-US-AriaNeural"
 
-    def test_optional_params_forwarded(self, ctx, fake_generate):
+    def test_optional_params_forwarded_into_op(self, ctx, tts_spy):
         out = _tool(ctx).invoke(
             {
                 "slide_id": "slide-0",
@@ -92,15 +91,10 @@ class TestSetVoiceover:
                 "volume": "-20%",
             }
         )
-        # Forwarded to the TTS payload...
-        payload = fake_generate[0]["slides"][0]
-        assert payload["rate"] == "+10%"
-        assert payload["pitch"] == "+2Hz"
-        assert payload["volume"] == "-20%"
-        # ...and into the emitted setVoiceover op.
         vo = [
             o for o in is_ops_result(out)["_ovk_ops"] if o["kind"] == "setVoiceover"
         ][0]
         assert vo["rate"] == "+10%"
         assert vo["pitch"] == "+2Hz"
         assert vo["volume"] == "-20%"
+        assert tts_spy == []

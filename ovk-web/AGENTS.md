@@ -79,11 +79,12 @@ ovk-web/
 │   │   │   └── LintGate.tsx          # R1–R4 result + Accept/Revert
 │   │   │
 │   │   ├── ai/
-│   │   │   ├── AIDock.tsx            # Chat surface with real dispatch
-│   │   │   ├── lib/applyPatch.ts     # RFC 6902 → EditBus ops
+│   │   │   ├── AIDock.tsx            # Chat surface — streams from the backend agent, dispatches accepted ops via EditBus
+│   │   │   ├── components/
+│   │   │   │   └── Markdown.tsx      # react-markdown renderer for assistant content
 │   │   │   └── providers/
-│   │   │       ├── EchoProvider.ts   # Keyword-routed mock
-│   │   │       └── registry.ts       # Echo + OpenAI/Anthropic/Ollama stubs
+│   │   │       ├── HttpSseProvider.ts # Real provider — POST /api/projects/:id/ai/chat SSE
+│   │   │       └── registry.ts       # http provider factory + labels
 │   │   │
 │   │   ├── assets/
 │   │   │   ├── components/
@@ -224,14 +225,11 @@ ONE `<Studio>` component with internal breakpoint switch:
 
 ## Deployment
 
-Vercel deploys from `ovk-web/`. The `vercel.json` rewrites all non-asset paths to `index.html` for SPA routing. MSW runs in production so the app works without a backend.
+Vercel deploys from `ovk-web/`. The `vercel.json` rewrites all non-asset paths to `index.html` for SPA routing. The SPA requires the Python backend (`src/openvideokit/`) on `:8000`; `./scripts/dev.sh` starts both.
 
 ## What's deferred (post-MVP)
 
 - Real HyperFrames renderer (MockRenderer stub currently)
-- Real AI provider HTTP wiring (EchoProvider mock currently)
-- Real backend (FastAPI — swap MSW handlers for `fetch`)
-- Real TTS pipeline (edge-tts + ffprobe + ffmpeg)
 - Real `npx hyperframes render` subprocess for export
 - IndexedDB quota management / purge UI
 - Native shell (pywebview / Electron / Tauri)

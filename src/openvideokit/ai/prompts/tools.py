@@ -54,4 +54,9 @@ def render(ctx: OVKContext) -> str:
         "`set_voiceover` for narration (it runs TTS), and reach for "
         "`set_slide_html` only for genuine layout/animation changes."
     )
+    lines.append(
+        "- **One-step slide creation.** `add_slide` accepts `fields` AND an "
+        "optional `voiceover` — to add a slide with a title and narration in "
+        "one proposal, pass both instead of add_slide then set_voiceover."
+    )
     return "\n".join(lines)

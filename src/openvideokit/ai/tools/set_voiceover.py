@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from ..ops import set_duration, set_voiceover
+from ..ops import set_voiceover
 from ._registry import ops_result
 from ._voicelist import is_valid_voice
 
@@ -40,6 +40,48 @@ class _Args(BaseModel):
     volume: str | None = Field(default=None, description="Optional volume e.g. '-20%'.")
 
 
+def build_voiceover_ops(
+    ctx,
+    slide_id: str,
+    text: str,
+    voice: str | None = None,
+    rate: str | None = None,
+    pitch: str | None = None,
+    volume: str | None = None,
+) -> list[dict] | str:
+    """Build a setVoiceover op for a proposal — NO TTS, NO filesystem writes.
+
+    Per docs/ai.md the agent is a read-only proposal emitter; it must not touch
+    the disk before the user accepts. So this only validates the voice id and
+    returns a ``setVoiceover`` op. The actual audio is generated AFTER accept,
+    by the frontend's voiceover hook (the same path a human edit takes when it
+    notices the voiceover text changed and POSTs /tts). Returns an
+    ``"ERROR: ..."`` string on validation failure.
+    """
+    text = (text or "").strip()
+    if not text:
+        return "ERROR: voiceover text is required"
+
+    current = ctx.slides.get(slide_id, {}).get("voiceover") or {}
+    eff_voice = voice or current.get("voice") or "en-US-AriaNeural"
+    if not is_valid_voice(eff_voice):
+        return (
+            f"ERROR: voice '{eff_voice}' is invalid — must end in 'Neural' "
+            f"(e.g. en-US-AriaNeural)."
+        )
+
+    return [
+        set_voiceover(
+            slide_id,
+            text=text,
+            voice=eff_voice,
+            rate=rate,
+            pitch=pitch,
+            volume=volume,
+        )
+    ]
+
+
 def build(ctx):
     def run(
         slide_id: str,
@@ -51,46 +93,13 @@ def build(ctx):
     ) -> str:
         if not ctx.slide_exists(slide_id):
             return f"ERROR: unknown slide '{slide_id}'. Known: {ctx.slide_ids}"
-        text = (text or "").strip()
-        if not text:
-            return "ERROR: voiceover text is required"
 
-        # Resolve the effective voice (fall back to the slide's current one).
-        current = ctx.slides.get(slide_id, {}).get("voiceover") or {}
-        eff_voice = voice or current.get("voice") or "en-US-AriaNeural"
-        if not is_valid_voice(eff_voice):
-            return (
-                f"ERROR: voice '{eff_voice}' is invalid — must end in 'Neural' "
-                f"(e.g. en-US-AriaNeural)."
-            )
-
-        # Run TTS to measure the real duration. Lazy import to keep the module
-        # importable without the TTS deps loaded.
-        from ...voiceover import generate_audio
-
-        payload = [{"id": slide_id, "text": text, "voice": eff_voice}]
-        for k, v in (("rate", rate), ("pitch", pitch), ("volume", volume)):
-            if v:
-                payload[0][k] = v
-        timings = generate_audio(ctx.project_id, payload)
-        measured = 0.0
-        if timings:
-            measured = float(timings[0].get("duration") or 0.0)
-
-        ops = [
-            set_voiceover(
-                slide_id,
-                text=text,
-                voice=eff_voice,
-                rate=rate,
-                pitch=pitch,
-                volume=volume,
-            ),
-            set_duration(slide_id, round(measured, 3) if measured > 0 else 5.0),
-        ]
+        result = build_voiceover_ops(ctx, slide_id, text, voice, rate, pitch, volume)
+        if isinstance(result, str):
+            return result  # ERROR: ...
         return ops_result(
-            ops,
-            rationale=f"Updated narration on {slide_id} (TTS measured {measured:.2f}s).",
+            result,
+            rationale=f"Propose narration on {slide_id} (audio generates on accept).",
             slide_id=slide_id,
         )
 

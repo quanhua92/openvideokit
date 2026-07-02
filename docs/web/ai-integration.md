@@ -57,9 +57,13 @@ project dir) and **semantic OVK tools** that map 1:1 to `EditOp`s. There is no
 generic `write_file`/`edit_file` — that would be a backdoor around `EditBus` and
 break undo. See [`docs/ai.md` §3](../ai.md) for the full 14-tool catalog.
 
-`set_voiceover` is special: it runs TTS server-side at proposal time so the
-proposal carries the *measured* audio duration (a human can't save a voiceover
-edit without generating either). It emits both `setVoiceover` and `setDuration`.
+`set_voiceover` / `add_slide(voiceover=…)` only emit a `setVoiceover` op —
+they never run TTS or touch the filesystem at proposal time (the agent is a
+read-only proposal emitter). The audio is generated AFTER the user accepts,
+by the editor's own voiceover pipeline: on Accept, `handleAccept` dispatches
+`setVoiceover` through EditBus, then calls `requestRegenerate(slideId)`; the
+existing `useVoiceover` hook fires `POST /tts` and sets the measured duration.
+Rejecting wastes no TTS and leaves no orphan files.
 
 ## Configuration
 
