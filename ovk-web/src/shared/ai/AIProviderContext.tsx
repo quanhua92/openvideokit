@@ -1,8 +1,9 @@
 /**
  * AIProviderContext — DI seam for the AI subsystem.
  *
- * P6 ships EchoProvider (mock, keyword-routed) + stubs for real providers.
- * The provider is selected in Settings → AI and stored in localStorage.
+ * The provider is selected in Settings → AI and stored in localStorage. The
+ * only provider is HttpSseProvider (the server-side LangGraph agent); the
+ * EchoProvider mock was retired (docs/ai.md §10).
  */
 import {
   createContext,
@@ -32,12 +33,12 @@ export function AIProviderProvider({
   children: ReactNode;
 }) {
   const [providerId, setProviderIdState] = useState<ProviderId>(() => {
-    if (typeof localStorage === "undefined") return "echo";
-    return (localStorage.getItem(STORAGE_KEY) as ProviderId) ?? "echo";
+    if (typeof localStorage === "undefined") return "http";
+    return (localStorage.getItem(STORAGE_KEY) as ProviderId) ?? "http";
   });
 
   const provider = useMemo(() => {
-    const factory = registry.get(providerId) ?? registry.get("echo");
+    const factory = registry.get(providerId) ?? registry.get("http");
     if (!factory) throw new Error("no AI provider registered");
     return factory();
   }, [providerId, registry]);

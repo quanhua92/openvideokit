@@ -130,6 +130,7 @@ export function StudioMobile({ data }: { data: StudioData }) {
               )}
               {active === "ai" && (
                 <AIDock
+                  projectId={projectId}
                   slideId={activeSlide.slideId}
                   slideIds={project.root.slides}
                   slides={project.slides}

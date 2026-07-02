@@ -166,7 +166,7 @@ describe("dispatch → undo integration (setField restores previous value)", () 
     const event: EditEvent = {
       id: "evt-1",
       at: Date.now(),
-      actor: "ai:echo",
+      actor: "ai:langgraph",
       op,
       inverse: inverseOp(op, current), // captured from PRE-edit state
     };

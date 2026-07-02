@@ -87,6 +87,7 @@ export function StudioDesktop({ data }: { data: StudioData }) {
               )}
               {activeTab === "ai" && (
                 <AIDock
+                  projectId={projectId}
                   slideId={activeSlide.slideId}
                   slideIds={project.root.slides}
                   slides={project.slides}

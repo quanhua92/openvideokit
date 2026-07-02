@@ -166,7 +166,7 @@ function OptionChip({
   );
 }
 
-const PROVIDER_IDS: ProviderId[] = ["echo", "openai", "anthropic", "ollama"];
+const PROVIDER_IDS: ProviderId[] = ["http"];
 
 function AICard() {
   const [providerId, setProviderId] = useStateAIProvider();
@@ -192,8 +192,8 @@ function AICard() {
           ))}
         </OptionRow>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Echo is a mock provider (offline, keyword-routed). Real providers ship
-          in a later phase — switch here when wired.
+          The AI runs server-side as a LangGraph agent. Configure
+          OPENAI_BASE_URL / OPENAI_API_KEY on the server to use it.
         </p>
       </CardContent>
     </Card>
@@ -202,8 +202,8 @@ function AICard() {
 
 function useStateAIProvider(): [ProviderId, (id: ProviderId) => void] {
   const [id, setId] = useStateInternal<ProviderId>(() => {
-    if (typeof localStorage === "undefined") return "echo";
-    return (localStorage.getItem("ovk:ai:provider") as ProviderId) ?? "echo";
+    if (typeof localStorage === "undefined") return "http";
+    return (localStorage.getItem("ovk:ai:provider") as ProviderId) ?? "http";
   });
   const set = (next: ProviderId) => {
     if (typeof localStorage !== "undefined") {

@@ -1,15 +1,18 @@
 /**
- * AI subsystem types — RFC 0002 contract.
+ * AI subsystem types — the contract between the Python LangGraph agent and
+ * the frontend AIDock.
  *
- * These are EXPORTED TYPES ONLY in P0. Runtime impls land later:
- *   - P6 builds the provider that produces these (EchoProvider mock + stubs)
- *   - P3 builds the EditBus runtime that consumes EditProposal patches
- *
- * Locking the contract now prevents interface churn across phases.
+ * The agent streams ``AIStreamEvent``s over SSE. Proposal events carry
+ * ``edit.ops`` — a list of ``EditOp`` (the same union used by the frontend
+ * EditBus). The AIDock dispatches each op through EditBus on Accept, so an
+ * AI edit travels the exact same path as a human edit (AI flow == human flow;
+ * undo/redo preserved). See docs/ai.md.
  */
 
-/** Identifier for the active provider ( EchoProvider is the mock default ). */
-export type ProviderId = "echo" | "openai" | "anthropic" | "ollama";
+import type { EditOp } from "@/shared/edit/EditBus";
+
+/** Identifier for the active provider. */
+export type ProviderId = "http";
 
 /** A single message in a chat thread. */
 export interface AIMessage {
@@ -22,20 +25,23 @@ export interface AIMessage {
   proposal?: EditProposal;
 }
 
-/** Context pinned by the user — injected into the next system prompt. */
+/** Context pinned by the user — injected into the system prompt. */
 export type ContextPin =
-  | { kind: "slide"; slideId: string }
-  | { kind: "field"; slideId: string; fieldId: string }
-  | { kind: "asset"; ref: string };
+  | { kind: "slide"; value: string }
+  | { kind: "field"; value: string }
+  | { kind: "asset"; value: string };
 
-/** Streaming events emitted by an AIProvider. */
+/** Streaming events emitted by the backend agent (SSE) / a provider. */
 export type AIStreamEvent =
+  | { type: "open" }
   | { type: "token"; text: string }
+  | { type: "tool_start"; tool: string; args: Record<string, unknown> }
+  | { type: "tool_end"; tool: string; ok: boolean; result: string }
   | { type: "proposal"; edit: EditProposal }
   | { type: "done" }
   | { type: "error"; message: string };
 
-/** Provider interface — every impl (Echo, OpenAI, Anthropic, Ollama) satisfies this. */
+/** Provider interface — every impl satisfies this. */
 export interface AIProvider {
   readonly id: ProviderId;
   readonly label: string;
@@ -44,6 +50,7 @@ export interface AIProvider {
 
 /** Request-scoped context: pinned refs + project snapshot bits the provider needs. */
 export interface AIContext {
+  projectId: string;
   activeSlideId: string | null;
   pins: ContextPin[];
   /** Snapshots the provider may consult to ground responses. */
@@ -54,48 +61,15 @@ export interface AIContext {
 }
 
 /**
- * Target a proposal points at.
+ * EditProposal — one or more EditOps the AI proposes for human verification.
  *
- * The `{ kind: "root" }` variant is reserved for future use — current Tier-1
- * and Tier-2 proposals only target slides. Root-level edits (canvas, theme,
- * audio) will land as a new Tier variant in a later phase.
+ * ``ops`` are the exact same EditOp shapes the frontend EditBus dispatches
+ * (camelCase, matching EditBus.ts). Accept loops over them and dispatches
+ * each via ``editBus.dispatch(op, "ai:langgraph")``.
  */
-export type EditTarget = { kind: "root" } | { kind: "slide"; slideId: string };
-
-/** RFC 6902 JSON Patch op (subset). Tier-1 AI proposals produce these. */
-export type JsonPatchOp =
-  | { op: "replace"; path: string; value: unknown }
-  | { op: "add"; path: string; value: unknown }
-  | { op: "remove"; path: string };
-
-/**
- * EditProposal — the atomic unit an AI emits for human verification.
- *
- * Tier-1: JSON Patch over the slide's index.json (fields, voiceover, transition, etc.)
- * Tier-2: full HTML swap of the slide's index.html (gated by lintHtml in P5)
- */
-export type EditProposal =
-  | {
-      id: string;
-      tier: 1;
-      target: Extract<EditTarget, { kind: "slide" }>;
-      patch: JsonPatchOp[];
-      rationale: string;
-    }
-  | {
-      id: string;
-      tier: 2;
-      target: Extract<EditTarget, { kind: "slide" }>;
-      html: string;
-      rationale: string;
-    }
-  | {
-      id: string;
-      tier: 3;
-      target: Extract<EditTarget, { kind: "root" }>;
-      op: "addSlide";
-      afterId: string;
-      newId: string;
-      html?: string;
-      rationale: string;
-    };
+export interface EditProposal {
+  id: string;
+  ops: EditOp[];
+  rationale: string;
+  slideId?: string;
+}

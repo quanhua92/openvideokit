@@ -1,15 +1,13 @@
 /**
  * AIDock — AI chat surface with real EditBus dispatch.
  *
- * P6 upgrades over P2 mock:
- *   - Accept dispatches real EditBus ops (not toast). Tier-1 patches
- *     translate via applyPatch; Tier-2 HTML swaps dispatch setSlideHtml.
- *   - Tier-2 proposals run lintHtml() before Accept is enabled. If the
- *     lint fails, the proposal auto-rejects with the fired rule surfaced.
- *   - ChatThread subscribes to EditBus events → human edits surface as
- *     dimmed system pings in the chat.
- *   - Free-text send routes through the provider (EchoProvider matches
- *     keywords; real providers would call their API).
+ *   - Accept dispatches every EditOp in the proposal through EditBus (the
+ *     same path a human edit takes) → undo/redo works uniformly.
+ *   - The provider streams from the backend LangGraph agent
+ *     (/api/projects/:id/ai/chat) via HttpSseProvider. No inference in the
+ *     browser. See docs/ai.md.
+ *   - ChatThread subscribes to EditBus events → human edits surface as dimmed
+ *     system pings in the chat.
  *   - Scenario picker (+ button) remains for quick access.
  */
 import { Plus, Send, Sparkles, User } from "lucide-react";
@@ -23,11 +21,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useAIProvider } from "@/shared/ai/AIProviderContext";
 import type { EditProposal } from "@/shared/ai/types";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
-import { addSlide, setSlideHtml } from "@/shared/edit/ops";
-import { lintHtml } from "@/shared/lib/lintHtml";
-import { translatePatch } from "./lib/applyPatch";
 
 interface ChatMessage {
   id: string;
@@ -74,15 +70,18 @@ const QUICK_PROMPTS = [
 ];
 
 export function AIDock({
+  projectId,
   slideId,
   slideIds,
   slides,
 }: {
+  projectId: string;
   slideId: string | null;
   slideIds: string[];
   slides: Record<string, { fields: Record<string, string> }>;
 }) {
   const { dispatch, subscribe } = useEditBus();
+  const { provider } = useAIProvider();
   const items = useAIStore((s) => s.items);
   const setItems = useAIStore((s) => s.setItems);
   const [streaming, setStreaming] = useState(false);
@@ -126,13 +125,12 @@ export function AIDock({
       setItems((prev) => [...prev, userMsg, assistantMsg]);
       setStreaming(true);
 
-      // Use the Echo provider directly (P6 mock — provider context wiring
-      // is structural; the dispatch path is what matters).
+      // Stream from the backend LangGraph agent via the provider.
       try {
-        const { EchoProvider } = await import("./providers/EchoProvider");
-        const events = EchoProvider.stream(
+        const events = provider.stream(
           [{ id: userMsg.id, role: "user", content: text }],
           {
+            projectId,
             activeSlideId: slideId,
             pins: [],
             project: { rootSlides: slideIds, slides },
@@ -146,11 +144,6 @@ export function AIDock({
               prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
             );
           } else if (evt.type === "proposal") {
-            const edit = evt.edit;
-            const html = "html" in edit ? edit.html : undefined;
-            const hasHtml = typeof html === "string";
-            const lintRes = hasHtml ? lintHtml(html) : null;
-            const lintOk = lintRes ? lintRes.ok : true;
             setItems((prev) =>
               prev.map((m) =>
                 m.id === assistantId
@@ -158,21 +151,11 @@ export function AIDock({
                       ...m,
                       content,
                       proposal: evt.edit,
-                      proposalState: lintOk ? "pending" : "auto-rejected",
+                      proposalState: "pending",
                     }
                   : m,
               ),
             );
-            if (!lintOk && lintRes) {
-              setItems((prev) => [
-                ...prev,
-                {
-                  id: `sys-${Date.now()}`,
-                  role: "system" as const,
-                  content: `Auto-rejected: ${lintRes.firedRule?.id} — ${lintRes.firedRule?.message}`,
-                },
-              ]);
-            }
           } else if (evt.type === "error") {
             content = evt.message;
             setItems((prev) =>
@@ -184,38 +167,15 @@ export function AIDock({
         setStreaming(false);
       }
     },
-    [streaming, slideId, slideIds, slides, setItems],
+    [streaming, projectId, slideId, slideIds, slides, provider, setItems],
   );
 
   const handleAccept = useCallback(
     (proposal: EditProposal) => {
-      if (!slideId) return;
-      if (proposal.tier === 1) {
-        const { ops, unsupported } = translatePatch(
-          proposal.target.slideId,
-          proposal.patch,
-        );
-        for (const op of ops) {
-          dispatch(op, "ai:echo");
-        }
-        if (unsupported.length > 0) {
-          toast.warning(`Skipped unsupported paths: ${unsupported.join(", ")}`);
-        }
-      } else if (proposal.tier === 2) {
-        dispatch(
-          setSlideHtml(proposal.target.slideId, proposal.html),
-          "ai:echo",
-        );
-      } else if (proposal.tier === 3) {
-        if (proposal.op === "addSlide") {
-          dispatch(
-            addSlide(proposal.newId, "default", proposal.afterId),
-            "ai:echo",
-          );
-          if (proposal.html) {
-            dispatch(setSlideHtml(proposal.newId, proposal.html), "ai:echo");
-          }
-        }
+      // Dispatch every op through the same EditBus a human edit uses.
+      // The agent already lint-gated and validated; Accept is the human review.
+      for (const op of proposal.ops) {
+        dispatch(op, "ai:langgraph");
       }
       setItems((prev) =>
         prev.map((m) =>
@@ -224,9 +184,9 @@ export function AIDock({
             : m,
         ),
       );
-      toast.success("Edit applied");
+      toast.success(`Applied ${proposal.ops.length} edit(s)`);
     },
-    [dispatch, slideId, setItems],
+    [dispatch, setItems],
   );
 
   const handleReject = useCallback(
@@ -252,7 +212,7 @@ export function AIDock({
           </h2>
         </div>
         <span className="font-mono text-[10px] text-muted-foreground">
-          echo · {slideId ?? "no slide"}
+          {provider.id} · {slideId ?? "no slide"}
         </span>
       </header>
 
@@ -347,10 +307,10 @@ function ProposalCard({
     <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-2">
       <div className="mb-1 flex items-center justify-between gap-2">
         <Badge variant="outline" className="text-[10px]">
-          Tier {proposal.tier}
+          {proposal.ops.length} op{proposal.ops.length === 1 ? "" : "s"}
         </Badge>
         <Badge variant="secondary" className="text-[10px]">
-          {"slideId" in proposal.target ? proposal.target.slideId : "project"}
+          {proposal.slideId ?? "project"}
         </Badge>
       </div>
       <p className="mb-2 text-[11px] text-foreground/80">
@@ -375,46 +335,84 @@ function ProposalCard({
         <div className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {state === "accepted" && "✓ Applied"}
           {state === "rejected" && "✗ Rejected"}
-          {state === "auto-rejected" && "✗ Auto-rejected (lint failed)"}
+          {state === "auto-rejected" && "✗ Auto-rejected"}
         </div>
       )}
     </div>
   );
 }
 
+/** Short human-readable summary of one EditOp (for the digest). */
+function opSummary(op: import("@/shared/edit/EditBus").EditOp): string {
+  switch (op.kind) {
+    case "setField":
+      return `${op.slideId}.${op.fieldId} = ${JSON.stringify(op.value).slice(0, 50)}`;
+    case "setVoiceover":
+      return `${op.slideId}.voiceover${op.text ? ` text=${JSON.stringify(op.text).slice(0, 40)}` : ""}`;
+    case "setDuration":
+      return `${op.slideId}.duration = ${op.duration}s`;
+    case "addSlide":
+      return `add ${op.newId}${op.afterId ? ` after ${op.afterId}` : ""}`;
+    case "removeSlide":
+      return `remove ${op.slideId}`;
+    case "duplicateSlide":
+      return `dup ${op.slideId} → ${op.newId}`;
+    case "reorderSlides":
+      return `reorder → ${op.order.join(", ")}`;
+    case "setSlideHtml":
+      return `${op.slideId}.html (<template>, ${op.html.length} chars)`;
+    case "setCaptionStyle":
+      return `captionStyle = ${op.style}`;
+    case "setCaptionSettings":
+      return `captionSettings ${JSON.stringify(op.settings).slice(0, 50)}`;
+    case "setAsset":
+      return `${op.slideId}.${op.fieldId} = ${op.ref.slice(0, 16)}…`;
+    case "setTransition":
+      return `${op.slideId}.transition`;
+    default:
+      return op.kind;
+  }
+}
+
 function DiffDigest({ proposal }: { proposal: EditProposal }) {
+  const hasHtml = proposal.ops.some((o) => o.kind === "setSlideHtml");
+  const htmlStr = hasHtml
+    ? (proposal.ops.find((o) => o.kind === "setSlideHtml") as { html: string })
+        .html
+    : "";
   const [expanded, setExpanded] = useState(false);
 
-  if (proposal.tier === 1) {
-    return (
+  return (
+    <div className="space-y-1">
       <pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
-        {proposal.patch.map((p) => (
-          <div key={p.path}>
-            <span className="text-destructive">- {p.path}</span>
-            {"\n"}
-            <span className="text-primary">
-              + {String("value" in p ? p.value : "").slice(0, 60)}
-            </span>
+        {proposal.ops.map((op) => (
+          <div key={opSummary(op)}>
+            <span className="text-primary">+ {opSummary(op)}</span>
           </div>
         ))}
       </pre>
-    );
-  }
+      {htmlStr && (
+        <HtmlPreview
+          html={htmlStr}
+          expanded={expanded}
+          setExpanded={setExpanded}
+        />
+      )}
+    </div>
+  );
+}
 
-  const htmlStr = "html" in proposal && proposal.html ? proposal.html : "";
-
-  if (!htmlStr) {
-    return (
-      <pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
-        {proposal.tier === 3 ? "Root operation" : ""}
-      </pre>
-    );
-  }
-
-  const isTruncated = htmlStr.length > 120;
-  const preview =
-    !expanded && isTruncated ? `${htmlStr.slice(0, 120)}…` : htmlStr;
-
+function HtmlPreview({
+  html,
+  expanded,
+  setExpanded,
+}: {
+  html: string;
+  expanded: boolean;
+  setExpanded: (v: boolean) => void;
+}) {
+  const isTruncated = html.length > 120;
+  const preview = !expanded && isTruncated ? `${html.slice(0, 120)}…` : html;
   return (
     <div className="relative">
       <pre
