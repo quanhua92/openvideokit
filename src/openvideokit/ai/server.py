@@ -94,7 +94,9 @@ async def run_agent(
     hit_limit = False
     try:
         async for ev in agent.astream_events(
-            {"messages": lc_messages}, version="v2"
+            {"messages": lc_messages},
+            version="v2",
+            config={"recursion_limit": config.OVK_AI_MAX_STEPS * 3},
         ):
             kind = ev["event"]
             name = ev.get("name", "")
