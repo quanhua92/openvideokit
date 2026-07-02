@@ -56,6 +56,7 @@ Then open `http://localhost:3000`.
 - **Python API** → `http://localhost:8000`
 - **Vite dev** → `http://localhost:3000` (proxies `/api` → `:8000`)
 - **AI connection test** → `uv run ovk llm test`
+- **Browse free models** → `uv run ovk llm free` (lists free OpenRouter models with context, reasoning, tools, uptime)
 
 ### Alternative: `scripts/dev.sh` (both servers in background)
 
@@ -78,6 +79,7 @@ the logs above if anything looks wrong.
 | Start dev stack | `./scripts/dev.sh` |
 | Stop | `./scripts/dev.sh --stop` |
 | AI connection test | `uv run ovk llm test` |
+| Browse free models | `uv run ovk llm free` |
 | Python lint | `uv run ruff check src scripts tests` |
 | Python unit tests | `uv run pytest tests/` |
 | Python AI tests | `uv run pytest tests/ai/` |
@@ -132,7 +134,7 @@ openvideokit/
 │   ├── stamp.py            # __OVK_*__ token stamping
 │   ├── seed.py             # Fixture project
 │   ├── chats.py            # JSONL chat persistence (see docs/chat.md)
-│   ├── cli.py              # `ovk serve` + `ovk llm test` (Typer)
+│   ├── cli.py              # `ovk serve` + `ovk llm test` + `ovk llm free` (Typer)
 │   └── ai/                 # LangGraph agent (see docs/ai.md)
 │       ├── config.py       # OPENAI_BASE_URL / OPENAI_API_KEY / OVK_AI_MODEL
 │       ├── ops.py          # EditOp mirror of ovk-web ops.ts

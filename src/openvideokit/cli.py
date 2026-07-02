@@ -1,7 +1,8 @@
 """`ovk` command-line entry (Typer).
 
-ovk serve          run the API server on :8000
-ovk llm test       smoke-test the AI provider connection
+ovk serve             run the API server on :8000
+ovk llm test          smoke-test the AI provider connection
+ovk llm free          list free models on OpenRouter (no key needed)
 ovk version
 ovk --help
 """
@@ -164,6 +165,199 @@ def llm_test(
             err=True,
         )
         raise typer.Exit(code=1) from e
+
+
+@llm_app.command("free")
+def llm_free(
+    limit: int = typer.Option(
+        20,
+        "--limit",
+        "-n",
+        help="Max models to show.",
+    ),
+    all_models: bool = typer.Option(
+        False,
+        "--all",
+        "-a",
+        help="Include non-text-output models (image, audio, video gen).",
+    ),
+) -> None:
+    """List currently free models on OpenRouter (no API key needed).
+
+    Fetches the live model catalog, filters for $0 prompt + $0 completion,
+    and fetches per-model endpoint stats (uptime, latency, throughput) in
+    parallel. Useful for finding a model id to pass to
+    ``ovk llm test --model <id>`` or to set as OVK_AI_MODEL.
+    """
+    import json
+    import urllib.request
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    from rich.console import Console
+    from rich.table import Table
+
+    typer.secho("─ OpenRouter free models ─", fg=typer.colors.CYAN, bold=True)
+    typer.echo("  fetching model catalog + endpoint stats...\r", nl=False)
+
+    url = "https://openrouter.ai/api/v1/models"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "ovk/cli"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            catalog = json.loads(resp.read())
+    except Exception as e:
+        typer.secho(f"\n✗ Failed to fetch: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from e
+
+    free: list[dict] = []
+    for m in catalog.get("data", []):
+        p = m.get("pricing", {})
+        if p.get("prompt") != "0" or p.get("completion") != "0":
+            continue
+        arch = m.get("architecture", {})
+        output = arch.get("output_modalities", [])
+        if not all_models and "text" not in output:
+            continue
+        free.append(m)
+
+    if not free:
+        typer.echo("No free models found.")
+        return
+
+    # Fetch endpoint stats (uptime; latency/throughput when available) per model.
+    def _fetch_stats(model_id: str) -> dict:
+        ep_url = f"https://openrouter.ai/api/v1/models/{model_id}/endpoints"
+        try:
+            req2 = urllib.request.Request(
+                ep_url, headers={"User-Agent": "ovk/cli"}
+            )
+            with urllib.request.urlopen(req2, timeout=10) as resp2:
+                data = json.loads(resp2.read())
+            endpoints = data.get("data", {}).get("endpoints", [])
+            # Best endpoint: online (status >= 0) with highest throughput
+            best_lat = None
+            best_thr = None
+            best_upt = None
+            for ep in endpoints:
+                if ep.get("status", -1) < 0:
+                    continue
+                lat = ep.get("latency_last_30m")
+                thr = ep.get("throughput_last_30m")
+                upt = ep.get("uptime_last_30m")
+                if lat and (best_lat is None or lat < best_lat):
+                    best_lat = lat
+                if thr and (best_thr is None or thr > best_thr):
+                    best_thr = thr
+                if upt and (best_upt is None or upt > best_upt):
+                    best_upt = upt
+            return {
+                "latency": best_lat,
+                "throughput": best_thr,
+                "uptime": best_upt,
+            }
+        except Exception:
+            return {"latency": None, "throughput": None, "uptime": None}
+
+    stats_map: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {
+            pool.submit(_fetch_stats, m["id"]): m["id"] for m in free
+        }
+        for fut in as_completed(futures):
+            mid = futures[fut]
+            stats_map[mid] = fut.result()
+
+    typer.echo(" " * 60 + "\r", nl=False)
+
+    def _ctx(n: int | None) -> str:
+        if not n:
+            return "?"
+        if n >= 1_000_000:
+            return f"{n // 1_000_000}M"
+        if n >= 1000:
+            return f"{n // 1000}K"
+        return str(n)
+
+    def _reasoning(m: dict) -> str:
+        r = m.get("reasoning") or {}
+        if r.get("mandatory"):
+            return "mand"
+        if r.get("default_enabled"):
+            return "yes"
+        if "reasoning" in (m.get("supported_parameters") or []):
+            return "opt"
+        return "—"
+
+    def _tools(m: dict) -> str:
+        return "yes" if "tools" in (m.get("supported_parameters") or []) else "—"
+
+    def _lat(stat: dict) -> str:
+        v = stat.get("latency")
+        return f"{v:.0f}ms" if v else "—"
+
+    def _thr(stat: dict) -> str:
+        v = stat.get("throughput")
+        return f"{v:.0f}" if v else "—"
+
+    def _upt(stat: dict) -> str:
+        v = stat.get("uptime")
+        return f"{v:.0f}%" if v else "—"
+
+    def _notes(m: dict) -> str:
+        parts: list[str] = []
+        arch = m.get("architecture", {})
+        mod = arch.get("modality", "")
+        if "image" in mod:
+            parts.append("vision")
+        if "audio" in mod:
+            parts.append("audio")
+        if "video" in mod:
+            parts.append("video")
+        if m.get("expiration_date"):
+            parts.append(f"exp {m['expiration_date'][:10]}")
+        return ", ".join(parts) if parts else ""
+
+    table = Table(show_header=True, header_style="bold cyan", show_lines=False)
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Model ID", style="white", no_wrap=False, overflow="fold")
+    table.add_column("Ctx", justify="right", width=6)
+    table.add_column("Think", justify="center", width=5)
+    table.add_column("Tools", justify="center", width=5)
+    table.add_column("Up%", justify="right", width=5)
+    table.add_column("Notes", style="dim")
+
+    shown = free[:limit] if not all_models else free
+    for i, m in enumerate(shown, 1):
+        stat = stats_map.get(m["id"], {})
+        ctx = _ctx(
+            m.get("context_length")
+            or m.get("top_provider", {}).get("context_length")
+        )
+        table.add_row(
+            str(i),
+            m["id"],
+            ctx,
+            _reasoning(m),
+            _tools(m),
+            _upt(stat),
+            _notes(m),
+        )
+
+    console = Console()
+    console.print(table)
+    total = len(free)
+    typer.echo(
+        f"\n  {total} free model(s)"
+        + (f", showing {len(shown)}." if len(shown) < total else ".")
+    )
+    typer.echo(
+        "  Latency/throughput not exposed by the public API — see live stats:"
+    )
+    typer.echo(
+        "  https://openrouter.ai/models?max_price=0.0&order=top-weekly"
+    )
+    typer.echo(
+        '  Test one: ovk llm test -m <model-id> -p "Why is the sky blue?"'
+    )
 
 
 app.add_typer(llm_app, name="llm")
