@@ -5,6 +5,8 @@ import { QueryProvider } from "@/app/providers/QueryProvider";
 import { RendererProvider } from "@/app/providers/RendererProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AIProviderProvider } from "@/shared/ai/AIProviderContext";
+import { createRegistry } from "@/features/ai/providers/registry";
 import { EditBusProvider } from "@/shared/edit/EditBusProvider";
 
 import "../styles.css";
@@ -12,6 +14,9 @@ import "../styles.css";
 export const Route = createRootRoute({
   component: RootComponent,
 });
+
+// One registry instance for the app lifetime (provider factories are cheap).
+const aiRegistry = createRegistry();
 
 function RootComponent() {
   // projectId is present only on /projects/$projectId* routes. The EditBus
@@ -24,12 +29,14 @@ function RootComponent() {
   return (
     <QueryProvider>
       <EditBusProvider projectId={projectId}>
-        <RendererProvider>
-          <TooltipProvider delayDuration={200}>
-            <AppShell />
-            <Toaster />
-          </TooltipProvider>
-        </RendererProvider>
+        <AIProviderProvider registry={aiRegistry}>
+          <RendererProvider>
+            <TooltipProvider delayDuration={200}>
+              <AppShell />
+              <Toaster />
+            </TooltipProvider>
+          </RendererProvider>
+        </AIProviderProvider>
       </EditBusProvider>
     </QueryProvider>
   );
