@@ -72,7 +72,7 @@ The agent reads config from env / `.env` (auto-loaded by `config.py`):
 | `OVK_AI_MODEL` | `gpt-5.4-nano` | Default chat model id |
 | `OVK_AI_TIER2_MODEL` | _= OVK_AI_MODEL_ | Reserved for `set_slide_html` coding-model routing |
 | `OVK_AI_TEMPERATURE` | `0.3` | Sampling temperature |
-| `OVK_AI_MAX_STEPS` | `8` | Cap on agent tool-calling steps per turn |
+| `OVK_AI_MAX_STEPS` | `10` | Cap on agent tool-calling steps per turn |
 | `OVK_AI_REASONING_EFFORT` | _(empty)_ | `low`/`medium`/`high` — reasoning models only (gpt-5, o1, o3, gpt-oss). Leave empty for non-reasoning models |
 
 Smoke-test the connection before using the dock:

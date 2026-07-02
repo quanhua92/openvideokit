@@ -25,10 +25,16 @@ API_LOG="/tmp/ovk-server.log"
 VITE_LOG="/tmp/ovk-vite.log"
 
 # ── Stop ─────────────────────────────────────────────────────────────────
+# Scoped to OUR ports only — never touch other vite/uvicorn processes on
+# this machine (only what's bound to API_PORT / DEV_PORT).
 if [[ "$MODE" == "--stop" ]]; then
   echo "Stopping OpenVideoKit servers..."
-  pkill -f "uvicorn openvideokit" 2>/dev/null && echo "  ✓ API stopped" || echo "  · API not running"
-  pkill -f "vite dev" 2>/dev/null && echo "  ✓ Vite stopped" || echo "  · Vite not running"
+  lsof -ti ":$API_PORT" 2>/dev/null | xargs kill 2>/dev/null \
+    && echo "  ✓ API stopped (port $API_PORT)" \
+    || echo "  · API not running on port $API_PORT"
+  lsof -ti ":$DEV_PORT" 2>/dev/null | xargs kill 2>/dev/null \
+    && echo "  ✓ Vite stopped (port $DEV_PORT)" \
+    || echo "  · Vite not running on port $DEV_PORT"
   exit 0
 fi
 

@@ -28,7 +28,7 @@ OVK_AI_TIER2_MODEL = os.environ.get("OVK_AI_TIER2_MODEL", OVK_AI_MODEL)
 OVK_AI_TEMPERATURE = float(os.environ.get("OVK_AI_TEMPERATURE", "0.3"))
 
 # Cap on agent tool-calling steps per turn (bounds cost + latency).
-OVK_AI_MAX_STEPS = int(os.environ.get("OVK_AI_MAX_STEPS", "8"))
+OVK_AI_MAX_STEPS = int(os.environ.get("OVK_AI_MAX_STEPS", "10"))
 
 # Reasoning effort for reasoning-capable models ("low" / "medium" / "high").
 # Empty = don't send (correct for non-reasoning models like gpt-4o-mini).
