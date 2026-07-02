@@ -100,20 +100,42 @@ def llm_test(
     typer.echo(f"\n  prompt: {prompt!r}")
 
     try:
-        from langchain_core.messages import HumanMessage
+        from openai import OpenAI
 
-        from .ai.llm import build_model
-        from .ai.server import _extract_text_and_thinking
+        from .ai.llm import _is_openrouter
 
-        model_obj = build_model(model=model_id, streaming=True, timeout=60)
+        client = OpenAI(
+            api_key=ai_config.OPENAI_API_KEY,
+            base_url=ai_config.OPENAI_BASE_URL,
+            timeout=60,
+        )
+        extra_body: dict | None = None
+        if _is_openrouter(ai_config.OPENAI_BASE_URL) and ai_config.OVK_AI_REASONING_EFFORT:
+            extra_body = {
+                "reasoning": {
+                    "enabled": True,
+                    "effort": ai_config.OVK_AI_REASONING_EFFORT,
+                }
+            }
+
         start = time.perf_counter()
         chunks = 0
         text = ""
         thinking = ""
         thinking_started = False
         reply_started = False
-        for chunk in model_obj.stream([HumanMessage(content=prompt)]):
-            piece_text, piece_thinking = _extract_text_and_thinking(chunk)
+
+        stream = client.chat.completions.create(
+            model=model_id,
+            messages=[{"role": "user", "content": prompt}],
+            stream=True,
+            temperature=ai_config.OVK_AI_TEMPERATURE,
+            extra_body=extra_body,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta
+            piece_text = delta.content or ""
+            piece_thinking = getattr(delta, "reasoning", None) or ""
             if piece_thinking:
                 if not thinking_started:
                     typer.secho(
@@ -128,14 +150,14 @@ def llm_test(
             if piece_text:
                 if not reply_started:
                     if thinking_started:
-                        typer.echo()  # newline after thinking line
+                        typer.echo()
                     typer.echo("  reply   : ", nl=False)
                     reply_started = True
                 typer.echo(piece_text, nl=False)
                 text += piece_text
             chunks += 1
         if thinking_started or reply_started:
-            typer.echo()  # final newline after streamed content
+            typer.echo()
         elapsed = time.perf_counter() - start
         if not text.strip():
             typer.secho("(empty reply)", fg=typer.colors.YELLOW)
