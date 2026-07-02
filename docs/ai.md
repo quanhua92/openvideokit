@@ -136,6 +136,13 @@ RFC §8's "editable markdown workspace files" is **deferred** — v1 uses `.py` 
 - **Tools**: `build_tools(ctx)` returns the 15 tools (5 read + 10 OVK), each with `ctx` bound via closure so they can read the snapshot. None of them write to disk — all mutations are EditOp proposals.
 - **State**: the default ReAct state (`messages`). Tool results carry an `_ovk_ops` marker when they want to emit a proposal; `server.py`'s `_maybe_proposal` decodes it. No custom `StateGraph` channel needed in v1.
 - **Streaming**: `server.py` uses langgraph's `astream_events(version="v2")` to capture (a) LLM token deltas → `token` events, (b) tool starts/ends → `tool_start`/`tool_end` events, (c) EditOp-returning tool results → `proposal` events. Loop bounded by `OVK_AI_MAX_STEPS`.
+- **Step-limit wrap-up**: when the agent hits `OVK_AI_MAX_STEPS`, `server.py`
+  breaks out of the agent loop and runs one final no-tools round: the full
+  conversation trail (user message + all AI responses + all tool results) is
+  sent to the model with a system message asking it to produce a structured
+  summary (Findings / Plan / Next step) ending with a "Reply **continue**"
+  prompt. This turns a dead-end into an actionable checkpoint the user can
+  resume from.
 
 ---
 
@@ -212,13 +219,26 @@ OPENAI_API_KEY         = os.environ.get("OPENAI_API_KEY", "")        # required 
 OVK_AI_MODEL           = os.environ.get("OVK_AI_MODEL", "gpt-5.4-nano")
 OVK_AI_TIER2_MODEL     = os.environ.get("OVK_AI_TIER2_MODEL", OVK_AI_MODEL)
 OVK_AI_TEMPERATURE     = float(os.environ.get("OVK_AI_TEMPERATURE", "0.3"))
-OVK_AI_MAX_STEPS       = int(os.environ.get("OVK_AI_MAX_STEPS", "10"))
+OVK_AI_MAX_STEPS       = int(os.environ.get("OVK_AI_MAX_STEPS", "50"))
 OVK_AI_REASONING_EFFORT = os.environ.get("OVK_AI_REASONING_EFFORT", "")  # low/medium/high; reasoning models only
 ```
 
 `OVK_AI_REASONING_EFFORT` enables extended thinking on reasoning-capable models (`gpt-5`, `o1`, `o3`, `gpt-oss`, …). **Leave empty for non-reasoning models** (e.g. `gpt-4o-mini`) — passing it to a model that doesn't support it raises. `ovk llm test` prints the effective value for verification.
 
 Standard env names (`OPENAI_BASE_URL`/`OPENAI_API_KEY`) so any OpenAI-compatible endpoint works without custom config — OpenRouter, Ollama, vLLM, LM Studio.
+
+### OpenRouter reasoning tokens
+
+When `OPENAI_BASE_URL` contains `openrouter.ai`, reasoning is configured via
+`extra_body={"reasoning": {"enabled": true, "effort": ...}}` (OpenRouter's
+format) instead of `reasoning_effort` (OpenAI-native). langchain-openai's
+chunk converter strips `delta.reasoning` from streaming responses, so
+`ai/llm.py` applies a monkey-patch to `_convert_delta_to_message_chunk`
+that copies `delta.reasoning` into `additional_kwargs["reasoning_content"]`,
+where `_extract_text_and_thinking` in `server.py` picks it up and emits it
+as a `ThinkingEvent` in the SSE stream. The CLI (`ovk llm test`) bypasses
+langchain entirely and uses the raw `openai` SDK, which preserves
+`delta.reasoning` natively.
 
 ---
 
@@ -243,7 +263,6 @@ Standard env names (`OPENAI_BASE_URL`/`OPENAI_API_KEY`) so any OpenAI-compatible
 ---
 
 ## 11. Explicitly Dropped
-
 | Dropped | Reason |
 |---|---|
 | Generic `write_file` / `edit_file` tools | Backdoor around EditBus → breaks undo. |
@@ -340,3 +359,19 @@ Reconcile this doc against shipped code; record deviations.
 - RFC §8 markdown prompt files migration.
 - "Auto-apply" session mode (currently always-Approve).
 - A standalone `regenerate_audio` tool (currently TTS only fires via `set_voiceover`).
+
+---
+
+## 16. CLI Diagnostics
+
+| Command | Description |
+|---|---|
+| `ovk llm test` | Smoke-test the AI provider: streams the reply + thinking tokens (dimmed). |
+| `ovk llm test -m <model-id>` | Override `OVK_AI_MODEL` for one run (e.g. test a free OpenRouter model). |
+| `ovk llm test -p "..."` | Custom prompt. |
+| `ovk llm free` | List currently free models on OpenRouter (context, reasoning, tools, uptime). |
+
+The CLI uses the raw `openai` SDK (not langchain) so it captures
+`delta.reasoning` natively — thinking tokens stream inline, dimmed,
+prefixed with `thinking ▸`. The summary line includes thinking char count
+when present.
