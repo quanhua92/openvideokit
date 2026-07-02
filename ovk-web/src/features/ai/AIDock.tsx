@@ -24,6 +24,7 @@ import {
 import { useAIProvider } from "@/shared/ai/AIProviderContext";
 import type { EditProposal } from "@/shared/ai/types";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
+import { Markdown } from "./components/Markdown";
 
 /** One tool invocation tracked on an assistant message (activity log). */
 interface ToolCallEntry {
@@ -338,8 +339,12 @@ function MessageBubble({
         {message.toolCalls && message.toolCalls.length > 0 && (
           <ToolActivity calls={message.toolCalls} />
         )}
-        <div className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs">
-          {message.content || "…"}
+        <div className="rounded-lg border border-border bg-card px-3 py-1.5">
+          {message.content ? (
+            <Markdown>{message.content}</Markdown>
+          ) : (
+            <span className="text-xs text-muted-foreground">…</span>
+          )}
         </div>
         {message.proposal && (
           <ProposalCard
@@ -357,7 +362,6 @@ function MessageBubble({
 /** Collapsible reasoning trace — dimmed, monospace, hidden by default. */
 function ThinkingBlock({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const preview = open ? text : text.slice(0, 0);
   return (
     <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/30">
       <button
@@ -369,9 +373,9 @@ function ThinkingBlock({ text }: { text: string }) {
         Thinking{open ? " ▾" : " ▸"}
       </button>
       {open && (
-        <pre className="overflow-x-auto whitespace-pre-wrap border-t border-dashed border-muted-foreground/20 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground/80">
-          {preview}
-        </pre>
+        <div className="whitespace-pre-wrap border-t border-dashed border-muted-foreground/20 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground/80">
+          <Markdown>{text}</Markdown>
+        </div>
       )}
     </div>
   );
