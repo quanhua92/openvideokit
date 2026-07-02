@@ -12,6 +12,16 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 | `OVK_JOBS_DIR` | `{OVK_DATA_DIR}/jobs` | Where render job directories + output MP4s are written |
 | `OVK_MAX_CONCURRENT_RENDERS` | `1` | Max parallel render subprocesses (ThreadPoolExecutor workers) |
 | `OVK_RENDER_HF_WORKERS` | `3` | Chrome workers per render (passed to `hyperframes render --workers`) |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint (OpenRouter, Ollama, vLLM, LM Studio) |
+| `OPENAI_API_KEY` | _(empty)_ | Required to use AI |
+| `OVK_AI_MODEL` | `gpt-5.4-nano` | Default AI chat model id |
+| `OVK_AI_TIER2_MODEL` | _= OVK_AI_MODEL_ | Reserved for `set_slide_html` coding-model routing |
+| `OVK_AI_TEMPERATURE` | `0.3` | AI sampling temperature |
+| `OVK_AI_MAX_STEPS` | `8` | Cap on agent tool-calling steps per turn |
+
+All vars are auto-loaded from a root `.env` (gitignored) via `python-dotenv`; real
+env vars always win. See `.env.example`. Smoke-test the AI connection with
+`uv run ovk llm test`.
 
 `dev.sh` sets `OVK_DATA_DIR=$PROJECT_DIR/data` (gitignored).
 
@@ -50,6 +60,39 @@ See [export.md](./export.md) for the full pipeline architecture.
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/projects/{id}/events` | SSE stream — pushes `{projectId, rev}` on every mutation + 15s keepalive |
+
+### AI chat
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/projects/{id}/ai/chat` | Run one LangGraph agent turn; stream `AIStreamEvent`s as SSE |
+
+#### POST `/api/projects/{id}/ai/chat`
+
+Runs the agent statelessly for one turn. The agent explores the project with
+read-only tools and proposes edits as `EditOp` lists — it never writes the
+document. The frontend `AIDock` dispatches accepted ops through `EditBus` (AI
+flow == human flow). See [../ai.md](../ai.md).
+
+Request:
+```json
+{
+  "messages": [{"role": "user", "content": "Change slide-0's title to be punchier"}],
+  "activeSlideId": "slide-0",
+  "pins": []
+}
+```
+
+Response (`text/event-stream`), each `data:` line is one `AIStreamEvent`:
+```
+data: {"type":"open"}
+data: {"type":"token","text":"Sure —"}
+data: {"type":"tool_start","tool":"set_field","args":{...}}
+data: {"type":"proposal","edit":{"id":"prop-...","ops":[{"kind":"setField","slideId":"slide-0","fieldId":"title","value":"..."}],"rationale":"...","slideId":"slide-0"}}
+data: {"type":"done"}
+```
+
+Missing `OPENAI_API_KEY` → a graceful `error` event (no crash).
 
 ### TTS + Audio
 

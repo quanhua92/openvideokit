@@ -1,10 +1,12 @@
 # OpenVideoKit
 
-> Scene-based video editor — Python SSR + `<hyperframes-player>` + edge-tts + MP4 export.
+> Scene-based video editor — Python SSR + `<hyperframes-player>` + edge-tts + MP4 export + LangGraph AI co-pilot.
 
 OpenVideoKit is a video templating pipeline: edit slides in a web UI → Python SSR
 stamps values into self-contained GSAP compositions → `<hyperframes-player>` renders
-them live → edge-tts generates voiceover audio → export to MP4 via HyperFrames.
+them live → edge-tts generates voiceover audio → export to MP4 via HyperFrames. A
+LangGraph AI agent proposes edits (the same `EditOp`s a human dispatches) that the
+user accepts or rejects — undo/redo works uniformly.
 
 ```
  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
@@ -16,6 +18,7 @@ them live → edge-tts generates voiceover audio → export to MP4 via HyperFram
  │ EditBus      │    │ PUT/SSE/rev  │    │ audio-{hash} │
  │ Playhead     │    │ edge-tts     │    │ jobs/        │
  │ Captions     │    │ Render MP4   │    │ jobs.json    │
+ │ AIDock       │    │ LangGraph AI │    │              │
  └──────────────┘    └──────────────┘    └──────────────┘
 ```
 
@@ -25,6 +28,7 @@ them live → edge-tts generates voiceover audio → export to MP4 via HyperFram
 git clone <this-repo>
 cd openvideokit
 uv sync --extra dev              # install Python deps
+cp .env.example .env             # then edit .env (set OPENAI_API_KEY for AI)
 cd ovk-web && pnpm install && cd ..  # install frontend deps
 ./scripts/dev.sh                 # start both servers (background)
 ```
@@ -35,6 +39,7 @@ Open `http://localhost:3000` in a browser.
 - **Vite dev** → `http://localhost:3000` (proxies `/api` → `:8000`)
 - **Logs** → `tail -f /tmp/ovk-server.log | tail -f /tmp/ovk-vite.log`
 - **Stop** → `./scripts/dev.sh --stop`
+- **AI connection test** → `uv run ovk llm test`
 
 ## Commands
 
@@ -42,8 +47,10 @@ Open `http://localhost:3000` in a browser.
 |---|---|
 | Start dev stack | `./scripts/dev.sh` |
 | Stop | `./scripts/dev.sh --stop` |
+| AI connection test | `uv run ovk llm test` |
 | Python lint | `uv run ruff check src scripts tests` |
 | Python unit tests | `uv run pytest tests/` |
+| Python AI tests | `uv run pytest tests/ai/` |
 | Python E2E test | `uv run --extra dev python scripts/test-e2e.py` |
 | Frontend dev | `cd ovk-web && pnpm dev` |
 | Frontend test | `cd ovk-web && pnpm test` |
@@ -56,6 +63,12 @@ Open `http://localhost:3000` in a browser.
   `fcntl.flock`, and a `watchdog` file watcher.
 - **Frontend** (`ovk-web/`): React 19 SPA with `<hyperframes-player>`, EditBus for
   mutations, Zustand playhead, TanStack Query + optimistic locking (content-hash rev).
+- **AI** (`src/openvideokit/ai/`): a LangGraph agent that explores the project with
+  read-only tools and proposes edits as `EditOp` lists over SSE. The frontend `AIDock`
+  dispatches each op through the same `EditBus` a human edit uses on Accept — so
+  undo/redo, lint gates, and SSE sync are preserved (AI flow == human flow). Default
+  model `gpt-5.4-nano`; any OpenAI-compatible endpoint via `OPENAI_BASE_URL`
+  (OpenAI / OpenRouter / Ollama / vLLM / LM Studio). See [docs/ai.md](docs/ai.md).
 - **TTS**: edge-tts generates content-addressed `audio-{hash}.mp3` per slide.
   Manual Generate button (no auto-fire). Voiceover data lives in `audio.json`,
   separate from `index.json`.
@@ -68,7 +81,8 @@ Open `http://localhost:3000` in a browser.
   separate overlay system. Settings persist in `root.captions` via EditBus.
 
 See [docs/web/](docs/web/) for detailed architecture, API reference, export
-pipeline, and concurrency model.
+pipeline, and concurrency model, and [docs/ai.md](docs/ai.md) for the AI
+implementation contract.
 
 ## Project structure
 
@@ -76,21 +90,28 @@ pipeline, and concurrency model.
 openvideokit/
 ├── src/openvideokit/       # Python SSR server
 │   ├── app.py              # FastAPI + lifespan (store, executor, watcher)
-│   ├── routes.py           # /api endpoints (projects, TTS, export, SSE)
+│   ├── routes.py           # /api endpoints (projects, TTS, export, SSE, AI chat)
 │   ├── store.py            # Disk-backed store + rev + flock
 │   ├── composition.py      # Self-contained GSAP composition builder
 │   ├── captions.py         # Caption layer: timing + HTML + GSAP + CSS
 │   ├── rendering.py        # Export pipeline: executor, jobs, voiceover concat
 │   ├── voiceover.py        # edge-tts pipeline + content-addressed cache
-│   ├── config.py           # Env vars (host, port, data dir, render settings)
+│   ├── config.py           # Env vars + .env auto-load (python-dotenv)
 │   ├── events.py           # SSE pub/sub (thread-safe)
 │   ├── watcher.py          # watchdog file watcher
 │   ├── stamp.py            # __OVK_*__ token stamping
 │   ├── seed.py             # Fixture project
-│   └── cli.py              # `ovk serve` (Typer)
+│   ├── cli.py              # `ovk serve` + `ovk llm test` (Typer)
+│   └── ai/                 # LangGraph agent (see docs/ai.md)
+│       ├── config.py       # OPENAI_BASE_URL / OPENAI_API_KEY / OVK_AI_MODEL
+│       ├── ops.py          # EditOp mirror of ovk-web ops.ts
+│       ├── graph.py        # create_agent ReAct loop
+│       ├── server.py       # run_agent → SSE stream
+│       ├── prompts/        # 8 modular .py prompt sections
+│       └── tools/          # 4 read-only + 10 OVK EditOp-emitter tools
 ├── ovk-web/                # React SPA
 ├── tests/                  # Python unit tests (pytest)
 ├── scripts/                # dev.sh, test-e2e.py
-├── docs/web/               # Architecture + API + export docs
+├── docs/                   # ai.md + web/ + rfc/
 └── legacy/                 # Frozen MVP (not imported)
 ```

@@ -83,7 +83,7 @@ graph TD
     TL -- "addSlide, reorderSlides" --> EB
     Prop -- "setField, setTransition" --> EB
     HE -- "setSlideHtml" --> EB
-    AI -- "JSON Patch / Macros" --> EB
+    AI -- "EditOp proposals (on Accept)" --> EB
 
     EB -- "Mutates via pure reducer" --> TQ
     EB -- "Captures pre-edit inverse" --> Hist
@@ -120,8 +120,14 @@ User types in Properties Panel
 
 ### External mutation (AI agent, another client)
 
+The LangGraph AI agent (`src/openvideokit/ai/`, see [docs/ai.md](../ai.md)) does
+**not** mutate the store directly. It streams `EditOp` proposals over SSE; the
+user Accepts them in the `AIDock`, which dispatches through the same `EditBus` a
+human edit uses (AI flow == human flow). A *different* client (or a second tab)
+mutating the store is the classic external-mutation path:
+
 ```
-Background agent mutates the store
+Another client PUTs (or AI dispatches an accepted op) → local PUT
   → events.broadcast(projectId, rev)
   → SSE push to all connected clients
   → useProjectSync invalidates query
