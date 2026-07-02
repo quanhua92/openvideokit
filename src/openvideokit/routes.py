@@ -11,7 +11,7 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
-from . import events, rendering, store
+from . import chats, events, rendering, store
 from .composition import build_root_composition, build_slide_composition
 from .store import ConflictError, compute_rev
 from .voiceover import generate_audio
@@ -272,3 +272,43 @@ async def ai_chat(project_id: str, body: dict) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ── Chat persistence (JSONL per project) ─────────────────────────────────
+# See docs/chat.md.
+
+
+@router.get("/projects/{project_id}/chats")
+def list_chats(project_id: str) -> list[dict]:
+    """List chat sessions newest-first: [{id, created_at}]."""
+    _require(project_id)
+    return chats.list_chats(project_id)
+
+
+@router.post("/projects/{project_id}/chats", status_code=201)
+def create_chat(project_id: str) -> dict:
+    """Create a new empty chat; return {id, created_at}."""
+    _require(project_id)
+    return chats.create_chat(project_id)
+
+
+@router.get("/projects/{project_id}/chats/{chat_id}")
+def get_chat(project_id: str, chat_id: str) -> dict:
+    """Return {id, created_at, messages} with proposal states reconciled."""
+    _require(project_id)
+    chat = chats.read_chat(project_id, chat_id)
+    if chat is None:
+        raise HTTPException(status_code=404, detail=f"chat '{chat_id}' not found")
+    return chat
+
+
+@router.post("/projects/{project_id}/chats/{chat_id}/messages", status_code=201)
+def append_chat_message(project_id: str, chat_id: str, body: dict) -> dict:
+    """Append one record (message or resolution) to the chat JSONL."""
+    _require(project_id)
+    if not chats.read_chat(project_id, chat_id):
+        raise HTTPException(status_code=404, detail=f"chat '{chat_id}' not found")
+    rec = dict(body)
+    rec.setdefault("type", "message")
+    chats.append_record(project_id, chat_id, rec)
+    return {"ok": True}
