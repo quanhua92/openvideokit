@@ -30,16 +30,46 @@ cd openvideokit
 uv sync --extra dev              # install Python deps
 cp .env.example .env             # then edit .env (set OPENAI_API_KEY for AI)
 cd ovk-web && pnpm install && cd ..  # install frontend deps
-./scripts/dev.sh                 # start both servers (background)
 ```
 
-Open `http://localhost:3000` in a browser.
+### Run the dev stack — two terminals (recommended)
+
+`scripts/dev.sh` backgrounds both servers with `nohup`, so import errors, port
+clashes, and missing-env failures are hidden in `/tmp/*.log` and the script
+reports success even when a server has died. **Run each server in its own
+foreground terminal instead** — you get live logs and `Ctrl-C` stops cleanly.
+
+**Terminal 1 — Python API** (port 8000):
+
+```bash
+uv run python -m uvicorn openvideokit.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**Terminal 2 — Vite dev** (port 3000, proxies `/api` → `:8000):
+
+```bash
+cd ovk-web && pnpm dev -- --port 3000 --host
+```
+
+Then open `http://localhost:3000`.
 
 - **Python API** → `http://localhost:8000`
 - **Vite dev** → `http://localhost:3000` (proxies `/api` → `:8000`)
-- **Logs** → `tail -f /tmp/ovk-server.log | tail -f /tmp/ovk-vite.log`
-- **Stop** → `./scripts/dev.sh --stop`
 - **AI connection test** → `uv run ovk llm test`
+
+### Alternative: `scripts/dev.sh` (both servers in background)
+
+If you prefer one command and don't need live logs:
+
+```bash
+./scripts/dev.sh                 # start both servers (background)
+./scripts/dev.sh --stop          # stop both
+tail -f /tmp/ovk-server.log      # API log
+tail -f /tmp/ovk-vite.log        # Vite log
+```
+
+Note: the script returns immediately and servers keep running detached — check
+the logs above if anything looks wrong.
 
 ## Commands
 
