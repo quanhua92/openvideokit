@@ -84,14 +84,14 @@ describe("reapplyLocalEdits", () => {
   it("preserves a user voiceover change", () => {
     const base = clone(fixtureBundle);
     const local = clone(base);
-    local.slides["slide-1"].voiceover.text = "New narration";
+    local.slides["slide-1"].voiceover!.text = "New narration";
 
     const server = clone(base);
     server.slides["slide-1"].fields.title = "Server title";
 
     const merged = reapplyLocalEdits(base, local, server);
 
-    expect(merged.slides["slide-1"].voiceover.text).toBe("New narration");
+    expect(merged.slides["slide-1"].voiceover?.text).toBe("New narration");
     expect(merged.slides["slide-1"].fields.title).toBe("Server title");
   });
 

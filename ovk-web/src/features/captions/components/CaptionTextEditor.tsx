@@ -42,20 +42,22 @@ export function CaptionTextEditor({
   const { dispatch } = useEditBus();
   const requestRegenerate = useAudioUrls((s) => s.requestRegenerate);
   const generating = useAudioUrls((s) => s.generatingSlideId === slideId);
-  const [text, setText] = useState(slide.voiceover.text);
+  const [text, setText] = useState(slide.voiceover?.text ?? "");
   const [dirty, setDirty] = useState(false);
   const [showParams, setShowParams] = useState(false);
 
   // Reset when switching slides
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only slide.id
   useEffect(() => {
-    setText(slide.voiceover.text);
+    setText(slide.voiceover?.text ?? "");
     setDirty(false);
   }, [slide.id]);
 
   const sentences = splitSentences(text);
   const wordCount = sentences.reduce((sum, s) => sum + splitWords(s).length, 0);
-  const vo = slide.voiceover;
+  // voiceover is optional until the first TTS generation; default to a stub so
+  // the param helpers below don't crash on a freshly-added slide.
+  const vo = slide.voiceover ?? { text: "", voice: "en-US-AriaNeural" };
 
   const param = (key: "rate" | "pitch" | "volume", placeholder: string) => ({
     value: vo[key] ?? "",

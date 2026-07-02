@@ -34,7 +34,8 @@ export const SlideIndexSchema = z.object({
   transition: TransitionSchema.optional(),
   fields: z.record(z.string(), z.string()),
   assets: z.record(z.string(), z.string().regex(/^sha256:[a-f0-9]{64}$/)),
-  voiceover: SlideVoiceoverSchema,
+  // Optional: absent until the first TTS generation writes audio.json.
+  voiceover: SlideVoiceoverSchema.optional(),
 });
 export type SlideIndex = z.infer<typeof SlideIndexSchema>;
 

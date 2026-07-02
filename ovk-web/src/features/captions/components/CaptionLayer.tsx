@@ -40,7 +40,8 @@ export function CaptionLayer({
   const { custom } = useCaptionSettings();
 
   const timings = useMemo(() => {
-    const sentences = splitSentences(slide.voiceover.text);
+    const voText = slide.voiceover?.text ?? "";
+    const sentences = splitSentences(voText);
     if (sentences.length === 0 || slide.duration <= 0) return [];
     const perSentence = sentences.map((s) => s.length);
     const total = perSentence.reduce((a, b) => a + b, 0) || 1;
@@ -53,7 +54,7 @@ export function CaptionLayer({
       cursor += sentenceDur;
     });
     return all;
-  }, [slide.voiceover.text, slide.duration]);
+  }, [slide.voiceover?.text, slide.duration]);
 
   useEffect(() => {
     let raf = 0;

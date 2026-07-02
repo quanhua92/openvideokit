@@ -98,7 +98,8 @@ async function postTtsSlide(
   projectId: string,
   slideId: string,
   slide: {
-    voiceover: {
+    // Optional until the first TTS generation; default to a stub below.
+    voiceover?: {
       text: string;
       voice: string;
       rate?: string;
@@ -109,7 +110,7 @@ async function postTtsSlide(
   dispatch: ReturnType<typeof useEditBus>["dispatch"],
   setAudioUrls: (urls: Record<string, string>) => void,
 ): Promise<void> {
-  const vo = slide.voiceover;
+  const vo = slide.voiceover ?? { text: "", voice: "en-US-AriaNeural" };
   const res = await fetch(
     `${apiBaseUrl}/projects/${encodeURIComponent(projectId)}/tts`,
     {

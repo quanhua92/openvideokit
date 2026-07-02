@@ -138,7 +138,10 @@ export function applyOp(project: ProjectBundle, op: EditOp): ProjectBundle {
     case "setVoiceover": {
       const slide = project.slides[op.slideId];
       if (!slide) return project;
-      const vo = slide.voiceover;
+      const vo = slide.voiceover ?? {
+        text: "",
+        voice: "en-US-AriaNeural",
+      };
       return {
         ...project,
         slides: {

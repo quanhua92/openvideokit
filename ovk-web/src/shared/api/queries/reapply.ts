@@ -59,8 +59,9 @@ export function reapplyLocalEdits(
     if (localSlide.duration !== baseSlide.duration)
       serverSlide.duration = localSlide.duration;
     if (
+      localSlide.voiceover &&
       JSON.stringify(localSlide.voiceover) !==
-      JSON.stringify(baseSlide.voiceover)
+        JSON.stringify(baseSlide.voiceover)
     )
       serverSlide.voiceover = { ...localSlide.voiceover };
     if (JSON.stringify(localSlide.assets) !== JSON.stringify(baseSlide.assets))
