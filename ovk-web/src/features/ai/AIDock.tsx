@@ -80,9 +80,21 @@ export function AIDock({
     });
   }, [subscribe, setItems]);
 
-  // Auto-scroll to bottom on every render (messages change infrequently).
+  // Auto-scroll to bottom — only if the user is already near the bottom,
+  // so we don't fight manual scrolling. Uses "auto" (instant) to avoid
+  // competing smooth-scroll animations during rapid token updates.
+  const isNearBottomRef = useRef(true);
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isNearBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }, []);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "auto" });
+    }
   });
 
   const handleSend = useCallback(
@@ -270,7 +282,11 @@ export function AIDock({
         </span>
       </header>
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
         <div className="space-y-3 p-3">
           {items.map((m) => {
             if (m.role === "system") {
@@ -373,8 +389,8 @@ function ThinkingBlock({ text }: { text: string }) {
         Thinking{open ? " ▾" : " ▸"}
       </button>
       {open && (
-        <div className="whitespace-pre-wrap border-t border-dashed border-muted-foreground/20 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground/80">
-          <Markdown>{text}</Markdown>
+        <div className="max-h-40 overflow-y-auto whitespace-pre-wrap border-t border-dashed border-muted-foreground/20 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground/80">
+          {text}
         </div>
       )}
     </div>
