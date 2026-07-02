@@ -6,14 +6,16 @@
  *   - The provider streams from the backend LangGraph agent
  *     (/api/projects/:id/ai/chat) via HttpSseProvider. No inference in the
  *     browser. See docs/ai.md.
+ *   - The thread is persisted to the backend JSONL store via useChat (see
+ *     docs/chat.md) — it survives F5, and proposal accept/reject is fed back
+ *     to the model on the next turn (folded into assistant content).
  *   - ChatThread subscribes to EditBus events → human edits surface as dimmed
- *     system pings in the chat.
- *   - Scenario picker (+ button) remains for quick access.
+ *     ephemeral system pings in the chat (not persisted).
+ *   - The (+) button offers "New chat" + quick prompts.
  */
 import { Plus, Send, Sparkles, User, Wrench } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { create } from "zustand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,63 +28,7 @@ import type { EditProposal } from "@/shared/ai/types";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
 import { useAudioUrls } from "@/shared/store/audioUrls";
 import { Markdown } from "./components/Markdown";
-
-/** One tool invocation tracked on an assistant message (activity log). */
-interface ToolCallEntry {
-  id: string;
-  tool: string;
-  args: Record<string, unknown>;
-  /** Present once tool_end arrives. */
-  result?: string;
-  ok?: boolean;
-  done: boolean;
-}
-
-/** One proposal attached to a message, with its own accept/reject state. */
-interface ProposalEntry {
-  proposal: EditProposal;
-  state: "pending" | "accepted" | "rejected" | "auto-rejected";
-}
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  /** Reasoning-model thinking tokens (gpt-5 / o1 / gpt-oss …). */
-  thinking?: string;
-  /** Tool invocations, in order — shown as activity chips. */
-  toolCalls?: ToolCallEntry[];
-  /** One or more proposals (a single agent turn can emit several). */
-  proposals?: ProposalEntry[];
-}
-
-interface SystemPing {
-  id: string;
-  role: "system";
-  content: string;
-}
-
-type ThreadItem = ChatMessage | SystemPing;
-
-const useAIStore = create<{
-  items: ThreadItem[];
-  setItems: (
-    updater: ThreadItem[] | ((prev: ThreadItem[]) => ThreadItem[]),
-  ) => void;
-}>((set) => ({
-  items: [
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hi! I can edit slides. Try a quick prompt below or type your own.",
-    },
-  ],
-  setItems: (updater) =>
-    set((state) => ({
-      items: typeof updater === "function" ? updater(state.items) : updater,
-    })),
-}));
+import { type ChatMessage, type ToolCallEntry, useChat } from "./hooks/useChat";
 
 const QUICK_PROMPTS = [
   "Change the title to be punchier",
@@ -105,8 +51,15 @@ export function AIDock({
 }) {
   const { dispatch, subscribe } = useEditBus();
   const { provider } = useAIProvider();
-  const items = useAIStore((s) => s.items);
-  const setItems = useAIStore((s) => s.setItems);
+  const {
+    items,
+    setItems,
+    loading,
+    persistMessage,
+    resolveProposal,
+    newChat,
+    buildLlmHistory,
+  } = useChat(projectId);
   const [streaming, setStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -117,10 +70,11 @@ export function AIDock({
       if (event.actor.startsWith("ai:")) return; // skip AI's own dispatches
       const label = opLabel(event.op);
       if (!label) return;
-      const ping: SystemPing = {
+      const ping: ChatMessage = {
         id: event.id,
         role: "system",
         content: label,
+        ephemeral: true,
       };
       setItems((prev) => [...prev, ping]);
     });
@@ -146,21 +100,14 @@ export function AIDock({
         content: "",
       };
       setItems((prev) => [...prev, userMsg, assistantMsg]);
+      // Persist the user message immediately (durable before the slow stream).
+      void persistMessage(userMsg);
       setStreaming(true);
 
-      // The agent is stateless per request — send the full conversation
-      // history each turn so it has context. Read the latest items straight
-      // from the store (the useCallback closure would otherwise be stale).
-      const priorItems = useAIStore.getState().items;
-      const history = priorItems
-        .filter(
-          (m): m is ChatMessage =>
-            (m.role === "user" || m.role === "assistant") && m.id !== "welcome",
-        )
-        .filter((m) => m.content?.trim())
-        .map((m) => ({ id: m.id, role: m.role, content: m.content }));
+      // The agent is stateless per request — send the full lean history
+      // (with proposal outcomes folded in) plus the new user message.
       const outgoing = [
-        ...history,
+        ...buildLlmHistory(),
         { id: userMsg.id, role: "user" as const, content: text },
       ];
 
@@ -257,9 +204,25 @@ export function AIDock({
         );
       } finally {
         setStreaming(false);
+        // Persist the finalized assistant message once (full richness).
+        setItems((prev) => {
+          const am = prev.find((m) => m.id === assistantId);
+          if (am) void persistMessage(am);
+          return prev;
+        });
       }
     },
-    [streaming, projectId, slideId, slideIds, slides, provider, setItems],
+    [
+      streaming,
+      projectId,
+      slideId,
+      slideIds,
+      slides,
+      provider,
+      setItems,
+      persistMessage,
+      buildLlmHistory,
+    ],
   );
 
   const handleAccept = useCallback(
@@ -280,41 +243,17 @@ export function AIDock({
         const requestRegenerate = useAudioUrls.getState().requestRegenerate;
         for (const sid of regenSlides) requestRegenerate(sid);
       }
-      setItems((prev) =>
-        prev.map((m) => {
-          if (m.role === "system") return m;
-          if (!(m as ChatMessage).proposals) return m;
-          const am = m as ChatMessage;
-          return {
-            ...am,
-            proposals: am.proposals!.map((p) =>
-              p.proposal.id === proposal.id ? { ...p, state: "accepted" } : p,
-            ),
-          };
-        }),
-      );
+      void resolveProposal(proposal.id, "accepted");
       toast.success(`Applied ${proposal.ops.length} edit(s)`);
     },
-    [dispatch, setItems],
+    [dispatch, resolveProposal],
   );
 
   const handleReject = useCallback(
     (proposalId: string) => {
-      setItems((prev) =>
-        prev.map((m) => {
-          if (m.role === "system") return m;
-          const am = m as ChatMessage;
-          if (!am.proposals) return m;
-          return {
-            ...am,
-            proposals: am.proposals.map((p) =>
-              p.proposal.id === proposalId ? { ...p, state: "rejected" } : p,
-            ),
-          };
-        }),
-      );
+      void resolveProposal(proposalId, "rejected");
     },
-    [setItems],
+    [resolveProposal],
   );
 
   return (
@@ -350,7 +289,11 @@ export function AIDock({
         </div>
       </div>
 
-      <Composer onSend={handleSend} disabled={streaming} />
+      <Composer
+        onSend={handleSend}
+        disabled={streaming || loading}
+        onNewChat={newChat}
+      />
     </div>
   );
 }
@@ -392,21 +335,25 @@ function MessageBubble({
             <span className="text-xs text-muted-foreground">…</span>
           )}
         </div>
-        {message.proposals && message.proposals.length > 0 && (
-          <div className="space-y-2">
-            {message.proposals.map((p, i) => (
-              <ProposalCard
-                key={p.proposal.id}
-                index={i + 1}
-                total={message.proposals!.length}
-                proposal={p.proposal}
-                state={p.state}
-                onAccept={() => onAccept(p.proposal)}
-                onReject={() => onReject(p.proposal.id)}
-              />
-            ))}
-          </div>
-        )}
+        {(() => {
+          const proposals = message.proposals;
+          if (!proposals || !proposals.length) return null;
+          return (
+            <div className="space-y-2">
+              {proposals.map((p, i) => (
+                <ProposalCard
+                  key={p.proposal.id}
+                  index={i + 1}
+                  total={proposals.length}
+                  proposal={p.proposal}
+                  state={p.state}
+                  onAccept={() => onAccept(p.proposal)}
+                  onReject={() => onReject(p.proposal.id)}
+                />
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -673,9 +620,11 @@ function HtmlPreview({
 function Composer({
   onSend,
   disabled,
+  onNewChat,
 }: {
   onSend: (text: string) => void;
   disabled: boolean;
+  onNewChat: () => void;
 }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -713,6 +662,18 @@ function Composer({
         </PopoverTrigger>
         <PopoverContent align="start" className="w-64">
           <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => {
+                onNewChat();
+                setText("");
+                setOpen(false);
+              }}
+              className="block w-full rounded px-2 py-1.5 text-left text-xs font-medium text-primary hover:bg-accent"
+            >
+              + New chat
+            </button>
+            <div className="mx-2 my-1 border-t border-border" />
             <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Quick prompts
             </p>
