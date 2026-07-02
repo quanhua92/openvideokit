@@ -205,13 +205,16 @@ documented list; copy it to `/.env` (gitignored) and fill in `OPENAI_API_KEY`.
 `ai/config.py`:
 
 ```python
-OPENAI_BASE_URL    = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-OPENAI_API_KEY     = os.environ.get("OPENAI_API_KEY", "")        # required to use AI
-OVK_AI_MODEL       = os.environ.get("OVK_AI_MODEL", "gpt-5.4-nano")
-OVK_AI_TIER2_MODEL = os.environ.get("OVK_AI_TIER2_MODEL", OVK_AI_MODEL)
-OVK_AI_TEMPERATURE = float(os.environ.get("OVK_AI_TEMPERATURE", "0.3"))
-OVK_AI_MAX_STEPS   = int(os.environ.get("OVK_AI_MAX_STEPS", "8"))
+OPENAI_BASE_URL        = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+OPENAI_API_KEY         = os.environ.get("OPENAI_API_KEY", "")        # required to use AI
+OVK_AI_MODEL           = os.environ.get("OVK_AI_MODEL", "gpt-5.4-nano")
+OVK_AI_TIER2_MODEL     = os.environ.get("OVK_AI_TIER2_MODEL", OVK_AI_MODEL)
+OVK_AI_TEMPERATURE     = float(os.environ.get("OVK_AI_TEMPERATURE", "0.3"))
+OVK_AI_MAX_STEPS       = int(os.environ.get("OVK_AI_MAX_STEPS", "8"))
+OVK_AI_REASONING_EFFORT = os.environ.get("OVK_AI_REASONING_EFFORT", "")  # low/medium/high; reasoning models only
 ```
+
+`OVK_AI_REASONING_EFFORT` enables extended thinking on reasoning-capable models (`gpt-5`, `o1`, `o3`, `gpt-oss`, …). **Leave empty for non-reasoning models** (e.g. `gpt-4o-mini`) — passing it to a model that doesn't support it raises. `ovk llm test` prints the effective value for verification.
 
 Standard env names (`OPENAI_BASE_URL`/`OPENAI_API_KEY`) so any OpenAI-compatible endpoint works without custom config — OpenRouter, Ollama, vLLM, LM Studio.
 

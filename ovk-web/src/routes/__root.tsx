@@ -5,8 +5,8 @@ import { QueryProvider } from "@/app/providers/QueryProvider";
 import { RendererProvider } from "@/app/providers/RendererProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AIProviderProvider } from "@/shared/ai/AIProviderContext";
 import { createRegistry } from "@/features/ai/providers/registry";
+import { AIProviderProvider } from "@/shared/ai/AIProviderContext";
 import { EditBusProvider } from "@/shared/edit/EditBusProvider";
 
 import "../styles.css";

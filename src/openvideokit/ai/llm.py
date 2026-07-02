@@ -17,15 +17,21 @@ def build_model(*, streaming: bool = True, timeout: float | None = None) -> Chat
 
     ``timeout`` bounds a single request (None = provider default); the CLI
     diagnostic passes a finite timeout so it can't hang on unreachable hosts.
+
+    ``reasoning_effort`` is forwarded only when ``OVK_AI_REASONING_EFFORT`` is
+    set — passing it to a non-reasoning model raises, so it's opt-in.
     """
-    return ChatOpenAI(
-        model=config.OVK_AI_MODEL,
-        api_key=config.OPENAI_API_KEY,
-        base_url=config.OPENAI_BASE_URL,
-        temperature=config.OVK_AI_TEMPERATURE,
-        streaming=streaming,
-        timeout=timeout,
-    )
+    kwargs: dict = {
+        "model": config.OVK_AI_MODEL,
+        "api_key": config.OPENAI_API_KEY,
+        "base_url": config.OPENAI_BASE_URL,
+        "temperature": config.OVK_AI_TEMPERATURE,
+        "streaming": streaming,
+        "timeout": timeout,
+    }
+    if config.OVK_AI_REASONING_EFFORT:
+        kwargs["reasoning_effort"] = config.OVK_AI_REASONING_EFFORT
+    return ChatOpenAI(**kwargs)
 
 
 def build_tier2_model(*, streaming: bool = True) -> ChatOpenAI:
@@ -40,4 +46,5 @@ def build_tier2_model(*, streaming: bool = True) -> ChatOpenAI:
         base_url=config.OPENAI_BASE_URL,
         temperature=config.OVK_AI_TEMPERATURE,
         streaming=streaming,
+        reasoning_effort=config.OVK_AI_REASONING_EFFORT or None,
     )

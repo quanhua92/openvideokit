@@ -75,9 +75,10 @@ def llm_test(
     from .ai import config as ai_config
 
     typer.secho("─ AI connection test ─", fg=typer.colors.CYAN, bold=True)
-    typer.echo(f"  OPENAI_BASE_URL : {ai_config.OPENAI_BASE_URL}")
-    typer.echo(f"  OVK_AI_MODEL    : {ai_config.OVK_AI_MODEL}")
-    typer.echo(f"  OPENAI_API_KEY  : {_mask(ai_config.OPENAI_API_KEY)}")
+    typer.echo(f"  OPENAI_BASE_URL      : {ai_config.OPENAI_BASE_URL}")
+    typer.echo(f"  OVK_AI_MODEL         : {ai_config.OVK_AI_MODEL}")
+    typer.echo(f"  OVK_AI_REASONING     : {ai_config.OVK_AI_REASONING_EFFORT or '(off)'}")
+    typer.echo(f"  OPENAI_API_KEY       : {_mask(ai_config.OPENAI_API_KEY)}")
 
     if not ai_config.OPENAI_API_KEY:
         typer.secho(

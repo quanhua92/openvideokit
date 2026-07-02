@@ -27,7 +27,7 @@ full documented list. Groups:
 | Group | Vars | Where |
 |---|---|---|
 | Server | `OVK_HOST`, `OVK_PORT`, `OVK_DATA_DIR`, `OVK_JOBS_DIR`, `OVK_MAX_CONCURRENT_RENDERS`, `OVK_RENDER_HF_WORKERS` | `config.py` |
-| AI (LangGraph agent) | `OPENAI_BASE_URL`, `OPENAI_API_KEY` (required for AI), `OVK_AI_MODEL` (default `gpt-5.4-nano`), `OVK_AI_TIER2_MODEL`, `OVK_AI_TEMPERATURE`, `OVK_AI_MAX_STEPS` | `ai/config.py` (see `docs/ai.md`) |
+| AI (LangGraph agent) | `OPENAI_BASE_URL`, `OPENAI_API_KEY` (required for AI), `OVK_AI_MODEL` (default `gpt-5.4-nano`), `OVK_AI_TIER2_MODEL`, `OVK_AI_TEMPERATURE`, `OVK_AI_MAX_STEPS`, `OVK_AI_REASONING_EFFORT` (low/medium/high; reasoning models only) | `ai/config.py` (see `docs/ai.md`) |
 | Frontend (Vite) | `VITE_API_BASE_URL` | `ovk-web/src/shared/config.ts` |
 
 `OPENAI_BASE_URL`/`OPENAI_API_KEY` accept any OpenAI-compatible endpoint

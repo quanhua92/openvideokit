@@ -30,6 +30,11 @@ OVK_AI_TEMPERATURE = float(os.environ.get("OVK_AI_TEMPERATURE", "0.3"))
 # Cap on agent tool-calling steps per turn (bounds cost + latency).
 OVK_AI_MAX_STEPS = int(os.environ.get("OVK_AI_MAX_STEPS", "8"))
 
+# Reasoning effort for reasoning-capable models ("low" / "medium" / "high").
+# Empty = don't send (correct for non-reasoning models like gpt-4o-mini).
+# Only set this if OVK_AI_MODEL is a reasoning model (gpt-5, o1, o3, gpt-oss, …).
+OVK_AI_REASONING_EFFORT = os.environ.get("OVK_AI_REASONING_EFFORT", "")
+
 
 def is_configured() -> bool:
     """True iff an API key is present (i.e. AI is usable)."""

@@ -18,6 +18,7 @@ All endpoints are under `/api`, served by the Python FastAPI backend (`src/openv
 | `OVK_AI_TIER2_MODEL` | _= OVK_AI_MODEL_ | Reserved for `set_slide_html` coding-model routing |
 | `OVK_AI_TEMPERATURE` | `0.3` | AI sampling temperature |
 | `OVK_AI_MAX_STEPS` | `8` | Cap on agent tool-calling steps per turn |
+| `OVK_AI_REASONING_EFFORT` | _(empty)_ | `low`/`medium`/`high` — reasoning models only (gpt-5, o1, o3, gpt-oss, …). Empty for non-reasoning models |
 
 All vars are auto-loaded from a root `.env` (gitignored) via `python-dotenv`; real
 env vars always win. See `.env.example`. Smoke-test the AI connection with
