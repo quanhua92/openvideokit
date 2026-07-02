@@ -15,6 +15,11 @@ class TokenEvent(TypedDict):
     text: str
 
 
+class ThinkingEvent(TypedDict):
+    type: Literal["thinking"]
+    text: str
+
+
 class ToolStartEvent(TypedDict):
     type: Literal["tool_start"]
     tool: str
@@ -43,7 +48,13 @@ class ErrorEvent(TypedDict):
 
 
 AIStreamEvent = (
-    TokenEvent | ToolStartEvent | ToolEndEvent | ProposalEvent | DoneEvent | ErrorEvent
+    TokenEvent
+    | ThinkingEvent
+    | ToolStartEvent
+    | ToolEndEvent
+    | ProposalEvent
+    | DoneEvent
+    | ErrorEvent
 )
 
 

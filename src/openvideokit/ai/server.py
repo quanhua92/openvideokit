@@ -30,6 +30,7 @@ from .events import (
     DoneEvent,
     ErrorEvent,
     ProposalEvent,
+    ThinkingEvent,
     TokenEvent,
     ToolEndEvent,
     ToolStartEvent,
@@ -95,12 +96,14 @@ async def run_agent(
             name = ev.get("name", "")
             data = ev.get("data", {})
 
-            # Token streaming from the chat model.
+            # Token streaming from the chat model. Reasoning models (gpt-5,
+            # o1/o3, gpt-oss, …) emit a separate "thinking"/"reasoning" stream
+            # before the answer — split it out so the UI can render it dimmed.
             if kind == "on_chat_model_stream":
                 chunk = data.get("chunk")
-                text = getattr(chunk, "content", "") if chunk else ""
-                if isinstance(text, list):  # content blocks
-                    text = "".join(b.get("text", "") for b in text if isinstance(b, dict))
+                text, thinking = _extract_text_and_thinking(chunk)
+                if thinking:
+                    yield event_to_sse(ThinkingEvent(type="thinking", text=thinking))  # type: ignore[misc]
                 if text:
                     yield event_to_sse(TokenEvent(type="token", text=text))  # type: ignore[misc]
 
@@ -191,6 +194,56 @@ def _safe_args(input_: Any) -> dict[str, Any]:
     if isinstance(input_, dict):
         return input_
     return {}
+
+
+def _extract_text_and_thinking(chunk: Any) -> tuple[str, str]:
+    """Split a langchain streaming chunk into (answer_text, thinking_text).
+
+    Reasoning models (gpt-5, o1/o3, gpt-oss, …) emit reasoning/thinking content
+    alongside or before the answer. langchain/openai surfaces it in a few shapes:
+
+      - content as a list of blocks, with blocks of type "reasoning"/"thinking"
+        (and "text"/"output_text" for the answer)
+      - content as a plain string (non-reasoning models)
+      - reasoning tucked into additional_kwargs["reasoning_content"] /
+        additional_kwargs["reasoning"] (OpenRouter / OpenAI o-series deltas)
+
+    Returns (text, thinking) — either may be empty for a given chunk.
+    """
+    content = getattr(chunk, "content", "")
+    text = ""
+    thinking = ""
+
+    if isinstance(content, list):
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            btype = block.get("type", "text")
+            if btype in ("reasoning", "thinking"):
+                thinking += (
+                    block.get("reasoning")
+                    or block.get("thinking")
+                    or block.get("text")
+                    or ""
+                )
+            elif btype in ("text", "output_text"):
+                text += block.get("text", "")
+    elif isinstance(content, str):
+        text = content
+
+    # Some providers (OpenRouter, OpenAI o-series) put reasoning in
+    # additional_kwargs rather than a content block.
+    ak = getattr(chunk, "additional_kwargs", {}) or {}
+    rc = ak.get("reasoning_content")
+    if isinstance(rc, str) and rc:
+        thinking += rc
+    r = ak.get("reasoning")
+    if isinstance(r, str) and r:
+        thinking += r
+    elif isinstance(r, dict):
+        thinking += r.get("content") or r.get("text") or ""
+
+    return text, thinking
 
 
 def _truncate(value: Any, limit: int = 400) -> str:

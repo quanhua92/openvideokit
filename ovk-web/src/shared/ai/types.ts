@@ -35,6 +35,7 @@ export type ContextPin =
 export type AIStreamEvent =
   | { type: "open" }
   | { type: "token"; text: string }
+  | { type: "thinking"; text: string }
   | { type: "tool_start"; tool: string; args: Record<string, unknown> }
   | { type: "tool_end"; tool: string; ok: boolean; result: string }
   | { type: "proposal"; edit: EditProposal }

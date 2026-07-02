@@ -10,7 +10,7 @@
  *     system pings in the chat.
  *   - Scenario picker (+ button) remains for quick access.
  */
-import { Plus, Send, Sparkles, User } from "lucide-react";
+import { Plus, Send, Sparkles, User, Wrench } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { create } from "zustand";
@@ -25,10 +25,25 @@ import { useAIProvider } from "@/shared/ai/AIProviderContext";
 import type { EditProposal } from "@/shared/ai/types";
 import { useEditBus } from "@/shared/edit/EditBusProvider";
 
+/** One tool invocation tracked on an assistant message (activity log). */
+interface ToolCallEntry {
+  id: string;
+  tool: string;
+  args: Record<string, unknown>;
+  /** Present once tool_end arrives. */
+  result?: string;
+  ok?: boolean;
+  done: boolean;
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  /** Reasoning-model thinking tokens (gpt-5 / o1 / gpt-oss …). */
+  thinking?: string;
+  /** Tool invocations, in order — shown as activity chips. */
+  toolCalls?: ToolCallEntry[];
   proposal?: EditProposal;
   proposalState?: "pending" | "accepted" | "rejected" | "auto-rejected";
 }
@@ -142,6 +157,54 @@ export function AIDock({
             content += evt.text;
             setItems((prev) =>
               prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
+            );
+          } else if (evt.type === "thinking") {
+            setItems((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId) return m;
+                const am = m as ChatMessage;
+                return { ...am, thinking: (am.thinking ?? "") + evt.text };
+              }),
+            );
+          } else if (evt.type === "tool_start") {
+            // Append a new in-flight tool entry; tool_end fills its result.
+            setItems((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId) return m;
+                const am = m as ChatMessage;
+                return {
+                  ...am,
+                  toolCalls: [
+                    ...(am.toolCalls ?? []),
+                    {
+                      id: `tc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      tool: evt.tool,
+                      args: evt.args,
+                      done: false,
+                    },
+                  ],
+                };
+              }),
+            );
+          } else if (evt.type === "tool_end") {
+            setItems((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId) return m;
+                const am = m as ChatMessage;
+                const calls = [...(am.toolCalls ?? [])];
+                for (let i = calls.length - 1; i >= 0; i--) {
+                  if (!calls[i].done && calls[i].tool === evt.tool) {
+                    calls[i] = {
+                      ...calls[i],
+                      result: evt.result,
+                      ok: evt.ok,
+                      done: true,
+                    };
+                    break;
+                  }
+                }
+                return { ...am, toolCalls: calls };
+              }),
             );
           } else if (evt.type === "proposal") {
             setItems((prev) =>
@@ -271,6 +334,10 @@ function MessageBubble({
     <div className="flex justify-start gap-1.5">
       <Sparkles className="mt-0.5 size-3.5 shrink-0 text-primary" />
       <div className="w-full max-w-[90%] space-y-2">
+        {message.thinking && <ThinkingBlock text={message.thinking} />}
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <ToolActivity calls={message.toolCalls} />
+        )}
         <div className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs">
           {message.content || "…"}
         </div>
@@ -285,6 +352,92 @@ function MessageBubble({
       </div>
     </div>
   );
+}
+
+/** Collapsible reasoning trace — dimmed, monospace, hidden by default. */
+function ThinkingBlock({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const preview = open ? text : text.slice(0, 0);
+  return (
+    <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:bg-muted/50"
+      >
+        <Sparkles className="size-3" />
+        Thinking{open ? " ▾" : " ▸"}
+      </button>
+      {open && (
+        <pre className="overflow-x-auto whitespace-pre-wrap border-t border-dashed border-muted-foreground/20 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground/80">
+          {preview}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/** Inline activity log of tool invocations (args + result, collapsible). */
+function ToolActivity({ calls }: { calls: ToolCallEntry[] }) {
+  const [openMap, setOpenMap] = useState<Record<number, boolean>>({});
+  return (
+    <div className="space-y-1">
+      {calls.map((c, i) => {
+        const open = openMap[i] ?? false;
+        return (
+          <div
+            key={c.id}
+            className="rounded-md border border-border bg-muted/40"
+          >
+            <button
+              type="button"
+              onClick={() => setOpenMap((p) => ({ ...p, [i]: !open }))}
+              className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-[10px] hover:bg-muted/70"
+            >
+              <Wrench className="size-3 shrink-0 text-muted-foreground" />
+              <span className="font-mono text-muted-foreground">{c.tool}</span>
+              <span className="truncate text-muted-foreground/70">
+                {summarizeArgs(c.args)}
+              </span>
+              <span className="ml-auto shrink-0 font-medium">
+                {!c.done ? (
+                  <span className="text-primary">…</span>
+                ) : c.ok ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    ✓
+                  </span>
+                ) : (
+                  <span className="text-destructive">✗</span>
+                )}
+              </span>
+            </button>
+            {open && c.result && (
+              <pre className="max-h-40 overflow-auto border-t border-border px-2 py-1.5 font-mono text-[10px] leading-snug text-muted-foreground/80">
+                {c.result.slice(0, 600)}
+                {c.result.length > 600 ? "\n…[truncated]" : ""}
+              </pre>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Short `key=value` summary of tool args for the chip line. */
+function summarizeArgs(args: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(args)) {
+    if (v === undefined || v === null || v === "") continue;
+    const s =
+      typeof v === "string"
+        ? v
+        : Array.isArray(v)
+          ? `[${v.length}]`
+          : JSON.stringify(v);
+    parts.push(`${k}=${s.length > 24 ? `${s.slice(0, 24)}…` : s}`);
+  }
+  return parts.join(", ");
 }
 
 function SystemPingBubble({ text }: { text: string }) {

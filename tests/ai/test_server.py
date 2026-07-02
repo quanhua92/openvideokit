@@ -156,3 +156,38 @@ class TestErrorClassifier:
         msg, level = self._classify(RuntimeError("boom"))
         assert level == "error"
         assert "RuntimeError" in msg and "boom" in msg
+
+
+class TestTextThinkingSplit:
+    """_extract_text_and_thinking separates reasoning from answer text."""
+
+    def _extract(self, content, additional_kwargs=None):
+        from types import SimpleNamespace
+
+        from openvideokit.ai.server import _extract_text_and_thinking
+
+        return _extract_text_and_thinking(
+            SimpleNamespace(content=content, additional_kwargs=additional_kwargs or {})
+        )
+
+    def test_plain_string_is_all_text(self):
+        t, th = self._extract("hello")
+        assert t == "hello" and th == ""
+
+    def test_reasoning_block_separated_from_text_block(self):
+        t, th = self._extract(
+            [
+                {"type": "reasoning", "reasoning": "hmm"},
+                {"type": "text", "text": "ans"},
+            ]
+        )
+        assert t == "ans" and th == "hmm"
+
+    def test_thinking_block_alias(self):
+        t, th = self._extract([{"type": "thinking", "text": "deep"}])
+        assert th == "deep" and t == ""
+
+    def test_additional_kwargs_reasoning_content(self):
+        # OpenRouter / OpenAI o-series deltas carry reasoning here
+        t, th = self._extract("", {"reasoning_content": "rc"})
+        assert th == "rc" and t == ""
