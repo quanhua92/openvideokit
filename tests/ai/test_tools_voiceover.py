@@ -45,6 +45,9 @@ class TestSetVoiceover:
         assert decoded is not None
         kinds = [o["kind"] for o in decoded["_ovk_ops"]]
         assert "setVoiceover" in kinds and "setDuration" in kinds
+        vo = [o for o in decoded["_ovk_ops"] if o["kind"] == "setVoiceover"][0]
+        assert vo["text"] == "New narration."
+        assert vo["voice"] == "en-US-AriaNeural"
         dur = [o for o in decoded["_ovk_ops"] if o["kind"] == "setDuration"][0]
         assert dur["duration"] == 2.75  # measured from fake TTS
 
@@ -78,3 +81,26 @@ class TestSetVoiceover:
         # slide-0 already has voice en-US-AriaNeural; omit voice arg
         _tool(ctx).invoke({"slide_id": "slide-0", "text": "hi"})
         assert fake_generate[0]["slides"][0]["voice"] == "en-US-AriaNeural"
+
+    def test_optional_params_forwarded(self, ctx, fake_generate):
+        out = _tool(ctx).invoke(
+            {
+                "slide_id": "slide-0",
+                "text": "hi",
+                "rate": "+10%",
+                "pitch": "+2Hz",
+                "volume": "-20%",
+            }
+        )
+        # Forwarded to the TTS payload...
+        payload = fake_generate[0]["slides"][0]
+        assert payload["rate"] == "+10%"
+        assert payload["pitch"] == "+2Hz"
+        assert payload["volume"] == "-20%"
+        # ...and into the emitted setVoiceover op.
+        vo = [
+            o for o in is_ops_result(out)["_ovk_ops"] if o["kind"] == "setVoiceover"
+        ][0]
+        assert vo["rate"] == "+10%"
+        assert vo["pitch"] == "+2Hz"
+        assert vo["volume"] == "-20%"

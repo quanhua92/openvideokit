@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from openvideokit.ai.graph import build_agent
 from openvideokit.ai.tools import build_tools
 
@@ -24,7 +26,6 @@ class TestBuildTools:
     def test_ctx_is_bound(self, ctx):
         # Each tool should close over ctx — invoking with valid args should work
         t = next(t for t in build_tools(ctx) if t.name == "list_slides")
-        import json
         rows = json.loads(t.invoke({}))
         assert any(r["id"] == "slide-0" for r in rows)
 

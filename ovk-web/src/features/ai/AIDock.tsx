@@ -126,6 +126,7 @@ export function AIDock({
       setStreaming(true);
 
       // Stream from the backend LangGraph agent via the provider.
+      let content = "";
       try {
         const events = provider.stream(
           [{ id: userMsg.id, role: "user", content: text }],
@@ -136,7 +137,6 @@ export function AIDock({
             project: { rootSlides: slideIds, slides },
           },
         );
-        let content = "";
         for await (const evt of events) {
           if (evt.type === "token") {
             content += evt.text;
@@ -163,6 +163,11 @@ export function AIDock({
             );
           }
         }
+      } catch (err) {
+        content = err instanceof Error ? err.message : "AI request failed";
+        setItems((prev) =>
+          prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
+        );
       } finally {
         setStreaming(false);
       }
@@ -386,7 +391,7 @@ function DiffDigest({ proposal }: { proposal: EditProposal }) {
     <div className="space-y-1">
       <pre className="overflow-x-auto rounded bg-muted/50 p-1.5 text-[10px] leading-snug">
         {proposal.ops.map((op) => (
-          <div key={opSummary(op)}>
+          <div key={JSON.stringify(op)}>
             <span className="text-primary">+ {opSummary(op)}</span>
           </div>
         ))}

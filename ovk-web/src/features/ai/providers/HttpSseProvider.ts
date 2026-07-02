@@ -49,6 +49,7 @@ function parseBlock(block: string): AIStreamEvent | null {
   try {
     return JSON.parse(payload) as AIStreamEvent;
   } catch {
+    console.warn("[HttpSseProvider] Failed to parse SSE payload:", payload);
     return null;
   }
 }
@@ -62,17 +63,26 @@ export const HttpSseProvider: AIProvider = {
       activeSlideId: ctx.activeSlideId,
       pins: ctx.pins,
     };
-    const res = await fetch(
-      `${apiBaseUrl}/projects/${encodeURIComponent(ctx.projectId)}/ai/chat`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
+    let res: Response;
+    try {
+      res = await fetch(
+        `${apiBaseUrl}/projects/${encodeURIComponent(ctx.projectId)}/ai/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      },
-    );
+      );
+    } catch (err) {
+      yield {
+        type: "error",
+        message: `AI request failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+      return;
+    }
     if (!res.ok || !res.body) {
       yield {
         type: "error",

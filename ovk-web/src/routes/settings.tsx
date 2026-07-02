@@ -203,7 +203,10 @@ function AICard() {
 function useStateAIProvider(): [ProviderId, (id: ProviderId) => void] {
   const [id, setId] = useStateInternal<ProviderId>(() => {
     if (typeof localStorage === "undefined") return "http";
-    return (localStorage.getItem("ovk:ai:provider") as ProviderId) ?? "http";
+    const stored = localStorage.getItem("ovk:ai:provider") as ProviderId | null;
+    // Validate so stale localStorage from the retired EchoProvider era
+    // ("echo"/"openai"/"anthropic"/"ollama") doesn't leave nothing selected.
+    return stored && PROVIDER_IDS.includes(stored) ? stored : "http";
   });
   const set = (next: ProviderId) => {
     if (typeof localStorage !== "undefined") {

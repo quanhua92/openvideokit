@@ -12,14 +12,19 @@ from langchain_openai import ChatOpenAI
 from . import config
 
 
-def build_model(*, streaming: bool = True) -> ChatOpenAI:
-    """The default (Tier-1) chat model."""
+def build_model(*, streaming: bool = True, timeout: float | None = None) -> ChatOpenAI:
+    """The default (Tier-1) chat model.
+
+    ``timeout`` bounds a single request (None = provider default); the CLI
+    diagnostic passes a finite timeout so it can't hang on unreachable hosts.
+    """
     return ChatOpenAI(
         model=config.OVK_AI_MODEL,
         api_key=config.OPENAI_API_KEY,
         base_url=config.OPENAI_BASE_URL,
         temperature=config.OVK_AI_TEMPERATURE,
         streaming=streaming,
+        timeout=timeout,
     )
 
 

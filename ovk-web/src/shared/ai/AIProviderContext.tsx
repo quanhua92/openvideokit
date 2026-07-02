@@ -34,7 +34,13 @@ export function AIProviderProvider({
 }) {
   const [providerId, setProviderIdState] = useState<ProviderId>(() => {
     if (typeof localStorage === "undefined") return "http";
-    return (localStorage.getItem(STORAGE_KEY) as ProviderId) ?? "http";
+    const stored = localStorage.getItem(STORAGE_KEY);
+    // Validate against known ids so stale localStorage from the retired
+    // EchoProvider era doesn't leak an invalid providerId into context.
+    const valid: ProviderId[] = ["http"];
+    return stored && valid.includes(stored as ProviderId)
+      ? (stored as ProviderId)
+      : "http";
   });
 
   const provider = useMemo(() => {

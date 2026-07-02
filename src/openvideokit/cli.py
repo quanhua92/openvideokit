@@ -50,11 +50,12 @@ llm_app = typer.Typer(
 
 
 def _mask(value: str, visible: int = 4) -> str:
+    """Show only the last few chars of a secret — never the prefix or length."""
     if not value:
         return "(not set)"
     if len(value) <= visible:
         return "*" * len(value)
-    return f"{value[:visible]}…{value[-2:]} ({len(value)} chars)"
+    return f"***{value[-visible:]}"
 
 
 @llm_app.command("test")
@@ -94,7 +95,7 @@ def llm_test(
 
         from .ai.llm import build_model
 
-        model = build_model(streaming=True)
+        model = build_model(streaming=True, timeout=60)
         start = time.perf_counter()
         chunks = 0
         text = ""
@@ -118,6 +119,14 @@ def llm_test(
         )
     except typer.Exit:
         raise
+    except ImportError as e:
+        typer.echo()  # finish the reply line
+        typer.secho(
+            f"\n✗ Missing dependency: {e}. Run `uv sync` to install the AI deps.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1) from e
     except Exception as e:  # noqa: BLE001 — surface any failure clearly
         typer.echo()  # finish the reply line
         typer.secho(f"\n✗ {type(e).__name__}: {e}", fg=typer.colors.RED, err=True)

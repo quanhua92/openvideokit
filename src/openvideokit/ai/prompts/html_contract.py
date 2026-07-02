@@ -1,4 +1,4 @@
-"""Section: the bare-<template> HTML contract (R1–R4)."""
+"""Section: the bare-<template> HTML contract (R1–R5)."""
 
 from __future__ import annotations
 

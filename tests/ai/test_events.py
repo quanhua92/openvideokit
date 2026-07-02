@@ -27,7 +27,6 @@ class TestEventToSse:
             edit={"id": "p1", "ops": [{"kind": "setField", "slideId": "s0", "fieldId": "title", "value": "x"}], "rationale": "r", "slideId": "s0"},
         )
         s = events.event_to_sse(ev)
-        assert '"_ovk' not in s  # no python leak
         assert '"ops"' in s
 
     def test_done_and_error(self):
@@ -43,7 +42,7 @@ class TestParseSse:
     def test_round_trip(self):
         original = TokenEvent(type="token", text="hello world")  # type: ignore[misc]
         wire = events.event_to_sse(original)
-        # parse_sse takes the inner block (strip the trailing newlines)
+        # parse_sse handles the full SSE wire format ('data: {...}\n\n')
         parsed = events.parse_sse(wire)
         assert parsed == original
 

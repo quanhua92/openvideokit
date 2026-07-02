@@ -62,6 +62,28 @@ class TestDuplicateSlide:
         }
 
 
+class TestSetTransition:
+    def test_shape(self):
+        assert ops.set_transition("slide-0", {"type": "fade"}) == {
+            "kind": "setTransition",
+            "slideId": "slide-0",
+            "transition": {"type": "fade"},
+        }
+
+    def test_none_transition(self):
+        assert ops.set_transition("slide-0", None)["transition"] is None
+
+
+class TestSetAsset:
+    def test_shape(self):
+        assert ops.set_asset("slide-0", "image", "ref-1") == {
+            "kind": "setAsset",
+            "slideId": "slide-0",
+            "fieldId": "image",
+            "ref": "ref-1",
+        }
+
+
 class TestSetVoiceover:
     def test_all_fields_optional(self):
         op = ops.set_voiceover("slide-0")

@@ -250,10 +250,22 @@ async def ai_chat(project_id: str, body: dict) -> StreamingResponse:
     )
 
     async def stream():
-        # Leading open + trailing done/error are emitted by run_agent itself.
+        # 'open' is emitted here; trailing done/error come from run_agent.
         yield "data: " + json.dumps({"type": "open"}) + "\n\n"
-        async for sse_line in run_agent(messages, ctx):
-            yield sse_line
+        try:
+            async for sse_line in run_agent(messages, ctx):
+                yield sse_line
+        except Exception:
+            # run_agent has its own try/except, but build_model/build_agent or
+            # message conversion could raise before it — don't let the stream
+            # die without a terminal event.
+            yield (
+                "data: "
+                + json.dumps(
+                    {"type": "error", "message": "agent stream terminated unexpectedly"}
+                )
+                + "\n\n"
+            )
 
     return StreamingResponse(
         stream(),
