@@ -220,3 +220,43 @@ def get_export_log(project_id: str, job_id: str) -> dict:
     if jp not in (project_id, "(unknown — pre-restart)"):
         raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
     return {"log": rendering.read_job_log(job_id)}
+
+
+# ── AI chat (LangGraph agent → SSE stream) ───────────────────────────────
+
+
+@router.post("/projects/{project_id}/ai/chat")
+async def ai_chat(project_id: str, body: dict) -> StreamingResponse:
+    """Run one AI agent turn; stream AIStreamEvents as SSE.
+
+    Body: ``{messages: [{role, content}], activeSlideId?: str, pins?: [{kind, value}]}``.
+    The agent runs stateless per request and never writes the document — it
+    emits EditOp proposals the frontend EditBus dispatches on Accept.
+    """
+    project = _require(project_id)
+    messages = body.get("messages") or []
+    if not messages:
+        raise HTTPException(status_code=400, detail="'messages' is required")
+
+    from .ai.context import OVKContext, Pin
+    from .ai.server import run_agent
+
+    pins = [Pin(kind=p.get("kind", "slide"), value=p.get("value", "")) for p in (body.get("pins") or [])]
+    ctx = OVKContext(
+        project_id=project_id,
+        project=project,
+        active_slide_id=body.get("activeSlideId"),
+        pins=pins,
+    )
+
+    async def stream():
+        # Leading open + trailing done/error are emitted by run_agent itself.
+        yield "data: " + json.dumps({"type": "open"}) + "\n\n"
+        async for sse_line in run_agent(messages, ctx):
+            yield sse_line
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
