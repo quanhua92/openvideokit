@@ -8,9 +8,28 @@ OpenRouter-specific ``reasoning`` field) so they surface in the stream.
 
 from __future__ import annotations
 
+# ── Monkey-patch: preserve OpenRouter reasoning tokens ──────────────────
+# langchain-openai's _convert_delta_to_message_chunk drops delta.reasoning
+# (an OpenRouter extension). We wrap it to copy reasoning into
+# additional_kwargs["reasoning_content"], which _extract_text_and_thinking
+# in server.py already reads.
+import langchain_openai.chat_models.base as _lc_base  # noqa: E402
 from langchain_openai import ChatOpenAI
 
 from . import config
+
+_orig_convert = _lc_base._convert_delta_to_message_chunk
+
+
+def _patched_convert(_dict, default_class):  # type: ignore[no-untyped-def]
+    chunk = _orig_convert(_dict, default_class)
+    reasoning = _dict.get("reasoning")
+    if reasoning and isinstance(reasoning, str):
+        chunk.additional_kwargs["reasoning_content"] = reasoning
+    return chunk
+
+
+_lc_base._convert_delta_to_message_chunk = _patched_convert
 
 
 def _is_openrouter(url: str) -> bool:
