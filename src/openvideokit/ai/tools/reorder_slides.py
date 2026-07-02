@@ -34,6 +34,12 @@ def build(ctx):
                 "ERROR: order must be a permutation of the current slide ids. "
                 f"missing={sorted(missing)} extra={sorted(extra)}"
             )
+        if len(order) != len(ctx.slide_ids):
+            # Same set but wrong length ⇒ duplicates (e.g. a slide listed twice).
+            return (
+                "ERROR: order contains duplicate ids — each slide must appear "
+                "exactly once."
+            )
         op = reorder_slides(order)
         return ops_result([op], rationale="Reordered slides.")
 

@@ -80,7 +80,7 @@ def ctx_on_disk(tmp_path, monkeypatch) -> OVKContext:
 
     monkeypatch.setattr(ovk_config, "DATA_DIR", str(tmp_path))
     monkeypatch.setattr(store, "_DATA_PATH", tmp_path)
-    store._STORE = {}
+    monkeypatch.setattr(store, "_STORE", {})
     store.init_store()  # writes proj-1 to disk
     project = store.get_project("proj-1") or fixture_project()
     return OVKContext(project_id="proj-1", project=project, active_slide_id="slide-0")

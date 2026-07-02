@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import re
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
@@ -259,6 +261,7 @@ async def ai_chat(project_id: str, body: dict) -> StreamingResponse:
             # run_agent has its own try/except, but build_model/build_agent or
             # message conversion could raise before it — don't let the stream
             # die without a terminal event.
+            logging.getLogger(__name__).exception("ai_chat stream failed unexpectedly")
             yield (
                 "data: "
                 + json.dumps(
@@ -276,6 +279,14 @@ async def ai_chat(project_id: str, body: dict) -> StreamingResponse:
 
 # ── Chat persistence (JSONL per project) ─────────────────────────────────
 # See docs/chat.md.
+
+_CHAT_ID_RE = re.compile(r"^[0-9a-fA-F-]{36}$")  # UUID format — blocks path traversal
+
+
+def _require_chat_id(chat_id: str) -> None:
+    """Reject chat ids that aren't a bare UUID (prevents path traversal)."""
+    if not _CHAT_ID_RE.match(chat_id):
+        raise HTTPException(status_code=400, detail="invalid chat_id")
 
 
 @router.get("/projects/{project_id}/chats")
@@ -296,6 +307,7 @@ def create_chat(project_id: str) -> dict:
 def get_chat(project_id: str, chat_id: str) -> dict:
     """Return {id, created_at, messages} with proposal states reconciled."""
     _require(project_id)
+    _require_chat_id(chat_id)
     chat = chats.read_chat(project_id, chat_id)
     if chat is None:
         raise HTTPException(status_code=404, detail=f"chat '{chat_id}' not found")
@@ -306,6 +318,7 @@ def get_chat(project_id: str, chat_id: str) -> dict:
 def append_chat_message(project_id: str, chat_id: str, body: dict) -> dict:
     """Append one record (message or resolution) to the chat JSONL."""
     _require(project_id)
+    _require_chat_id(chat_id)
     if not chats.read_chat(project_id, chat_id):
         raise HTTPException(status_code=404, detail=f"chat '{chat_id}' not found")
     rec = dict(body)

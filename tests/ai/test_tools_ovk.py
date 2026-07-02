@@ -69,6 +69,10 @@ class TestAddSlide:
         assert op["afterId"] == "slide-0"
         assert op["newId"].startswith("slide-")
 
+    def test_unknown_after_id_rejected(self, ctx):
+        out = _tool(ctx, "add_slide").invoke({"after_id": "nope"})
+        assert out.startswith("ERROR:")
+
     def test_with_html_and_fields(self, ctx):
         html = '<template><div data-composition-id="__OVK_SLIDE_ID__"><h1>__OVK_TITLE__</h1></div></template>'
         out = _tool(ctx, "add_slide").invoke(
@@ -142,6 +146,7 @@ class TestRemoveSlide:
         proj["root"]["slides"] = ["slide-0"]
         ctx = OVKContext(project_id="proj-1", project=proj)
         out = _tool(ctx, "remove_slide").invoke({"slide_id": "slide-0"})
+        assert out.startswith("ERROR:")
         assert "last" in out.lower()
 
 
@@ -152,6 +157,10 @@ class TestDuplicateSlide:
         assert op["kind"] == "duplicateSlide"
         assert op["slideId"] == "slide-0"
         assert op["newId"].startswith("slide-")
+
+    def test_unknown_rejected(self, ctx):
+        out = _tool(ctx, "duplicate_slide").invoke({"slide_id": "nope"})
+        assert out.startswith("ERROR:")
 
 
 class TestReorderSlides:
@@ -169,6 +178,14 @@ class TestReorderSlides:
             {"order": ["slide-0", "slide-1", "slide-2", "slide-3"]}
         )
         assert out.startswith("ERROR:")
+
+    def test_duplicate_id_rejected(self, ctx):
+        # Same set as current ids but with a duplicate → must be rejected.
+        out = _tool(ctx, "reorder_slides").invoke(
+            {"order": ["slide-0", "slide-1", "slide-2", "slide-0"]}
+        )
+        assert out.startswith("ERROR:")
+        assert "duplicate" in out.lower()
 
 
 class TestSetSlideHtml:
