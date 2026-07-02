@@ -95,6 +95,25 @@ data: {"type":"done"}
 
 Missing `OPENAI_API_KEY` → a graceful `error` event (no crash).
 
+### Chat persistence
+
+Append-only JSONL chat sessions per project. See [../chat.md](../chat.md) for
+the full contract (record types, write pattern, proposal-outcome flow).
+
+| Method | Path | Status | Purpose |
+|---|---|---|---|
+| `GET` | `/api/projects/{id}/chats` | 200 | List chats newest-first `[{id, created_at}]` |
+| `POST` | `/api/projects/{id}/chats` | 201 | Create an empty chat → `{id, created_at}` |
+| `GET` | `/api/projects/{id}/chats/{chatId}` | 200 | `{id, created_at, messages}` (proposal states reconciled) |
+| `POST` | `/api/projects/{id}/chats/{chatId}/messages` | 201 | Append one record (message or resolution) → `{ok:true}` |
+
+Storage: `data/{project_id}/chats/{chat_id}.jsonl`, one JSON object per line.
+Three record types (discriminated by `type`): `meta` (header, `{id,
+created_at}`), `message` (`{role, content, thinking?, toolCalls?,
+proposals?, created_at}`), and `resolution` (`{proposalId, state}` — a
+proposal accept/reject, reconciled onto messages on read). Malformed lines are
+skipped on GET; unknown chat → 404.
+
 ### TTS + Audio
 
 | Method | Path | Purpose |
@@ -147,6 +166,8 @@ Every bundle carries a `rev` — SHA-256 hash of `{root, slides (without voiceov
 │   ├── project.json              ← root (canvas, theme, captions, slides[])
 │   ├── .lock                     ← flock sidecar (cross-process write coordination)
 │   ├── jobs.json                 ← export job metadata (max 50, survives restarts)
+│   ├── chats/                    ← AI chat sessions (JSONL, append-only)
+│   │   └── {chat_id}.jsonl       ← one record per line (meta/message/resolution)
 │   └── slides/
 │       ├── slide-0/
 │       │   ├── index.json        ← {duration, fields, assets} — NO voiceover

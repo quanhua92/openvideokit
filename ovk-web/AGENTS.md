@@ -82,6 +82,8 @@ ovk-web/
 │   │   │   ├── AIDock.tsx            # Chat surface — streams from the backend agent, dispatches accepted ops via EditBus
 │   │   │   ├── components/
 │   │   │   │   └── Markdown.tsx      # react-markdown renderer for assistant content
+│   │   │   ├── hooks/
+│   │   │   │   └── useChat.ts        # chat persistence (load newest, append msg/resolution, New chat); see docs/chat.md
 │   │   │   └── providers/
 │   │   │       ├── HttpSseProvider.ts # Real provider — POST /api/projects/:id/ai/chat SSE
 │   │   │       └── registry.ts       # http provider factory + labels

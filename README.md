@@ -90,7 +90,7 @@ implementation contract.
 openvideokit/
 ├── src/openvideokit/       # Python SSR server
 │   ├── app.py              # FastAPI + lifespan (store, executor, watcher)
-│   ├── routes.py           # /api endpoints (projects, TTS, export, SSE, AI chat)
+│   ├── routes.py           # /api endpoints (projects, TTS, export, SSE, AI chat, chats)
 │   ├── store.py            # Disk-backed store + rev + flock
 │   ├── composition.py      # Self-contained GSAP composition builder
 │   ├── captions.py         # Caption layer: timing + HTML + GSAP + CSS
@@ -101,6 +101,7 @@ openvideokit/
 │   ├── watcher.py          # watchdog file watcher
 │   ├── stamp.py            # __OVK_*__ token stamping
 │   ├── seed.py             # Fixture project
+│   ├── chats.py            # JSONL chat persistence (see docs/chat.md)
 │   ├── cli.py              # `ovk serve` + `ovk llm test` (Typer)
 │   └── ai/                 # LangGraph agent (see docs/ai.md)
 │       ├── config.py       # OPENAI_BASE_URL / OPENAI_API_KEY / OVK_AI_MODEL
