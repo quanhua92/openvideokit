@@ -124,12 +124,15 @@ class TestEnqueueRender:
 
         jdir = Path(rendering._JOBS[job_id]["output"]).parent
         assert jdir.is_dir()
+        # Materialize directly (the async worker would race the assertion).
+        assert rendering._materialize(project, "proj-1", jdir, jdir / "render.log", job_id)
         assert (jdir / "index.html").is_file()
 
     def test_index_html_is_self_contained(self, tmp_jobs_dir):
         project = fixture_project()
         job_id = rendering.enqueue_render(project, "proj-1")
         jdir = Path(rendering._JOBS[job_id]["output"]).parent
+        rendering._materialize(project, "proj-1", jdir, jdir / "render.log", job_id)
         html = (jdir / "index.html").read_text()
         assert "window.__timelines" in html
         assert "data-composition-id" in html
@@ -140,6 +143,7 @@ class TestEnqueueRender:
         project = fixture_project()
         job_id = rendering.enqueue_render(project, "proj-1")
         jdir = Path(rendering._JOBS[job_id]["output"]).parent
+        rendering._materialize(project, "proj-1", jdir, jdir / "render.log", job_id)
         assert not (jdir / "voiceover.mp3").exists()
         # HTML should NOT have audio tag
         html = (jdir / "index.html").read_text()

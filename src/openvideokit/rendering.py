@@ -225,6 +225,31 @@ def enqueue_render(project: dict, project_id: str) -> str:
 # ── Worker ───────────────────────────────────────────────────────────────
 
 
+def _materialize(
+    project: dict, project_id: str, jdir: Path, log_path: Path, name: str = ""
+) -> bool:
+    """Build the composition HTML + optional voiceover track into ``jdir``.
+
+    Returns True on success, False on failure (error written to ``log_path``).
+    Extracted from ``_run_render_job`` so it's unit-testable without the
+    async executor (the worker thread would otherwise race the test assertions).
+    """
+    try:
+        label = f"export-{name}" if name else "export"
+        html = build_root_composition(project, name=label)
+        voiceover_path = jdir / "voiceover.mp3"
+        has_vo = _build_voiceover_track(project, project_id, voiceover_path)
+        if has_vo:
+            total = _total_duration(project)
+            html = _inject_voiceover_audio(html, total)
+        (jdir / "index.html").write_text(html, encoding="utf-8")
+        return True
+    except Exception as exc:
+        with contextlib.suppress(Exception):
+            log_path.write_text(f"Materialization failed: {exc}\n", encoding="utf-8")
+        return False
+
+
 def _run_render_job(job_id: str, project: dict) -> None:
     """Worker function — runs on a dedicated thread.
 
@@ -249,22 +274,11 @@ def _run_render_job(job_id: str, project: dict) -> None:
     jdir = _job_dir(job_id)
     output_path = Path(job["output"])
     log_path = Path(job["log"])
-    index_path = jdir / "index.html"
 
     # ── Phase 1: Materialise ────────────────────────────────────────────
     log.info("render %s materializing composition + voiceover", job_id)
-    try:
-        html = build_root_composition(project, name=f"export-{job_id}")
-        voiceover_path = jdir / "voiceover.mp3"
-        has_vo = _build_voiceover_track(project, job["project_id"], voiceover_path)
-        if has_vo:
-            total = _total_duration(project)
-            html = _inject_voiceover_audio(html, total)
-        index_path.write_text(html, encoding="utf-8")
-    except Exception as exc:
-        with contextlib.suppress(Exception):
-            log_path.write_text(f"Materialization failed: {exc}\n", encoding="utf-8")
-        _finish(job_id, FAILED, error=f"Materialization failed: {exc}")
+    if not _materialize(project, job["project_id"], jdir, log_path, job_id):
+        _finish(job_id, FAILED, error="Materialization failed (see render.log)")
         return
 
     # Check cancel after materialization
