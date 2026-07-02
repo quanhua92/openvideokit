@@ -1,12 +1,19 @@
 """Runtime configuration for the ovk server.
 
 All values are overridable via env vars so the same code runs in dev and prod.
+A root ``.env`` is auto-loaded (via python-dotenv) at import time, so values
+defined there behave exactly like real environment variables.
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
+# Load .env from the project root before any env var is read. Must run first.
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 HOST = os.environ.get("OVK_HOST", "127.0.0.1")
 PORT = int(os.environ.get("OVK_PORT", "8000"))
