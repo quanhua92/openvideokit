@@ -141,10 +141,50 @@ async def run_agent(
 
         yield event_to_sse(DoneEvent(type="done"))  # type: ignore[misc]
     except Exception as e:  # noqa: BLE001 — surface any failure to the client
-        _logger.exception("agent run failed")
+        message, level = _classify_agent_error(e)
+        if level == "warning":
+            # Transient/expected provider errors (429, timeout, network) — don't
+            # spam the log with a full traceback; a one-line WARNING is enough.
+            _logger.warning("agent run failed: %s: %s", type(e).__name__, e)
+        else:
+            _logger.exception("agent run failed")
         yield event_to_sse(
-            ErrorEvent(type="error", message=f"{type(e).__name__}: {e}")  # type: ignore[misc]
+            ErrorEvent(type="error", message=message)  # type: ignore[misc]
         )
+
+
+def _classify_agent_error(e: Exception) -> tuple[str, str]:
+    """Map an agent exception to a (user_message, log_level) pair.
+
+    Transient/expected provider errors (rate-limit, timeout, connection) get a
+    friendly message + ``warning`` (no traceback). Real config/code issues
+    (auth, bad request, unknown) get ``error`` and a full traceback upstream.
+    """
+    try:
+        import openai
+    except ImportError:  # pragma: no cover — openai is a hard dep via langchain-openai
+        openai = None  # type: ignore[assignment]
+
+    if openai and isinstance(e, openai.RateLimitError):
+        return (
+            "The AI provider is rate-limited (429). Wait a moment and try again.",
+            "warning",
+        )
+    if openai and isinstance(e, openai.AuthenticationError):
+        return ("AI authentication failed — check OPENAI_API_KEY in .env.", "error")
+    if openai and isinstance(e, openai.APITimeoutError):
+        return ("The AI provider timed out. Try again.", "warning")
+    if openai and isinstance(e, openai.APIConnectionError):
+        return (
+            "Could not reach the AI provider — check OPENAI_BASE_URL and network.",
+            "warning",
+        )
+    if openai and isinstance(e, openai.BadRequestError):
+        return (f"The AI provider rejected the request: {e}", "error")
+    if openai and isinstance(e, openai.APIError):
+        # Generic 5xx / other API errors — often transient upstream issues.
+        return (f"AI provider error: {e}", "warning")
+    return (f"{type(e).__name__}: {e}", "error")
 
 
 def _safe_args(input_: Any) -> dict[str, Any]:

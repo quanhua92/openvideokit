@@ -107,3 +107,52 @@ class TestExceptionHandling:
         events = _parse_events(lines)
         assert any(e["type"] == "error" for e in events)
         assert "upstream 500" in events[-1]["message"]
+
+
+class TestErrorClassifier:
+    """_classify_agent_error maps provider errors to friendly messages + level."""
+
+    def _classify(self, exc):
+        from openvideokit.ai.server import _classify_agent_error
+
+        return _classify_agent_error(exc)
+
+    def test_rate_limit_is_warning_with_friendly_message(self):
+        from unittest.mock import MagicMock
+
+        import openai
+
+        msg, level = self._classify(MagicMock(spec=openai.RateLimitError))
+        assert level == "warning"
+        assert "rate-limited" in msg.lower()
+
+    def test_auth_is_error(self):
+        from unittest.mock import MagicMock
+
+        import openai
+
+        msg, level = self._classify(MagicMock(spec=openai.AuthenticationError))
+        assert level == "error"
+        assert "OPENAI_API_KEY" in msg
+
+    def test_timeout_is_warning(self):
+        from unittest.mock import MagicMock
+
+        import openai
+
+        msg, level = self._classify(MagicMock(spec=openai.APITimeoutError))
+        assert level == "warning"
+        assert "timed out" in msg.lower()
+
+    def test_generic_api_error_is_warning(self):
+        from unittest.mock import MagicMock
+
+        import openai
+
+        msg, level = self._classify(MagicMock(spec=openai.InternalServerError))
+        assert level == "warning"
+
+    def test_unknown_exception_is_error_with_traceback(self):
+        msg, level = self._classify(RuntimeError("boom"))
+        assert level == "error"
+        assert "RuntimeError" in msg and "boom" in msg
