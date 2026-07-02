@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | Draft — awaiting decisions on open questions in §15 |
+| **Status** | Amended 2026-07-02 — implementation on the `ai` branch runs inference in the local Python server (see §1, §2.1, §7, §8, §15). Full implementation contract: [`docs/ai.md`](../ai.md). |
 | **Author** | OpenVideoKit team |
-| **Date** | 2026-06-28 |
+| **Date** | 2026-06-28 (amended 2026-07-02) |
 | **Depends on** | [RFC 0001 — Product & Architecture](./0001-product-architecture.md) (document model, workspace, `SlideRenderer`) |
 | **Discussion** | `docs/rfc/` |
 
@@ -13,8 +13,18 @@
 ## 1. Summary
 
 OpenVideoKit's AI is a **staged, two-tier assistant that runs entirely on the
-client**, behind the user's own API key. It is **free by default** and the
-cloud control plane never participates in inference.
+user's own machine**, behind the user's own API key. It is **free by default**
+and the cloud control plane never participates in inference.
+
+> **Amendment (2026-07-02):** "on the user's own machine" is realized as the
+> **local Python server** (`src/openvideokit/ai/`, a LangGraph agent) — not the
+> browser. Inference runs in the local `openvideokit` process via an
+> OpenAI-compatible endpoint the user configures with `OPENAI_BASE_URL` /
+> `OPENAI_API_KEY`. The key lives in local env/config; nothing leaves the
+> machine; the cloud control plane still proxies nothing and pays $0. The
+> browser-side `EchoProvider` mock is retired once the real provider is wired
+> (see [`docs/ai.md`](../ai.md) §10). The spirit of "client-side only / BYO key
+> / $0 to cloud" is unchanged.
 
 - **Tier 1 — Data/content (small model):** fills the project's `index.json`
   data layer over a curated template — storyboard, field values, voiceover
@@ -25,10 +35,10 @@ cloud control plane never participates in inference.
   refines a slide's `index.html` for polish, forking the file. This is where
   AI's *actual* advantage in this stack lives — writing rich GSAP/CSS.
 
-Inference is **OpenRouter by default** (user's own key, preferring free
-models), with **system-Ollama as an optional offline fallback**. Prompt
-templates live as **files in the workspace** — versioned, editable, and
-iterable by the AI itself.
+Inference targets any **OpenAI-compatible endpoint** via `OPENAI_BASE_URL`
+(OpenAI, OpenRouter, Ollama, vLLM, LM Studio). Prompt sections are **modular
+`.py` modules** under `src/openvideokit/ai/prompts/` for v1 (editable markdown
+workspace files remain a future option — see §8).
 
 ### 1.1 The core design principle
 
@@ -61,15 +71,24 @@ The two-tier staged model resolves both:
   are not enough. This preserves "minimal cost" while still fully unlocking
   AI's HTML advantage.
 
-### 2.1 Why client-side only (decision record)
+### 2.1 Why on-device only (decision record, amended 2026-07-02)
 
-- **Security:** the user's API key never leaves their device (lives in the OS
-  keychain / app config).
+- **Security:** the user's API key never leaves their device (lives in local
+  env / config consumed by the local `openvideokit` Python process — not the
+  OS keychain as originally written, but equivalently local).
 - **Cost:** the platform pays **$0** for inference — it proxies nothing.
 - **Simplicity:** no AI orchestration service in the cloud control plane; the
   control plane (RFC 0001 §13) stays a content + search + billing backend.
 - **OSS promise:** local/BYO-key AI is free forever, matching the stance in
   [RFC 0004](./0004-credits-and-billing.md).
+
+> **What changed from the original Draft:** the original wording said
+> "browser / OS keychain". The implementation runs in the **local Python
+> server** (the `openvideokit` desktop process) instead. This is still
+> on-device — no inference, no key, no proxying in the cloud control plane.
+> See [`docs/ai.md`](../ai.md) §1 for the rationale (undo/redo lives in the
+> frontend `EditBus`; the Python agent emits `EditOp` proposals the frontend
+> dispatches, so AI flow == human flow).
 
 ---
 
@@ -175,40 +194,62 @@ stays reusable.
 ## 7. Inference Topology
 
 ```
-                  user config (OpenRouter key in OS keychain)
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-       OpenRouter (default)            system Ollama
-       prefer free models              (if installed → offline fallback)
-              │                               │
-              └───────────────┬───────────────┘
-                              ▼
-                   AI client (Python, in the local app)
-                              │
-                   Tier 1 → index.json   |   Tier 2 → index.html
+              user config: OPENAI_BASE_URL + OPENAI_API_KEY (local env/config)
+                               │
+               ┌───────────────┴───────────────┐
+               ▼                               ▼
+     any OpenAI-compatible endpoint      (same surface also covers
+     (OpenAI / OpenRouter / vLLM /         OpenRouter "prefer free"
+      LM Studio / Ollama :11434/v1)         models + local Ollama)
+               │                               │
+               └───────────────┬───────────────┘
+                               ▼
+                   LangGraph agent (Python, in the local
+                   `openvideokit` server process — src/openvideokit/ai/)
+                               │
+                   Tier 1 → index.json EditOps   |   Tier 2 → index.html EditOps
+                               │
+                   streamed as proposals over SSE → frontend EditBus dispatch
+                   (AI flow == human flow; undo/redo preserved)
 ```
 
-- **OpenRouter is the default.** The app ships preferring free model variants
-  so a brand-new user with a free-tier key pays $0.
-- **Ollama is auto-detected** if installed on the system; if present, it is
-  offered as an offline fallback. If absent, OpenRouter-only. The app does
-  **not** bundle Ollama or model weights (keeps the install light).
+- **One OpenAI-compatible surface.** `OPENAI_BASE_URL` points at any compliant
+  endpoint. OpenRouter (`https://openrouter.ai/api/v1`) and Ollama
+  (`http://localhost:11434/v1`) are just two values of the same env var — no
+  separate code path. Prefer free OpenRouter variants so the default cost is $0.
+- **Ollama is auto-detectable** by pointing `OPENAI_BASE_URL` at it; if
+  present, it's an offline fallback. The app does **not** bundle Ollama or
+  model weights (keeps the install light).
 - **The cloud control plane is not in this diagram.** It never sees a key,
   never proxies a generation, never runs inference.
+- **Default model** is `gpt-5.4-nano` (overridable via `OVK_AI_MODEL`);
+  `OVK_AI_TIER2_MODEL` is reserved for a per-tool coding model (v1 uses one
+  model — see [`docs/ai.md`](../ai.md) §15).
 
 ### 7.1 First-run experience
 
-A brand-new user must supply an OpenRouter key before AI works. The app
-defaults to a **free** model id for Tier 1, so once the key is entered, Tier 1
-runs at $0 cost. The user can upgrade/replace models per tier in settings.
-(No bundled local model; no zero-config AI.)
+A brand-new user must supply an OpenAI-compatible key (`OPENAI_API_KEY`) and,
+if not using OpenAI itself, a `OPENAI_BASE_URL` before AI works. The app
+defaults to a **free/cheap model** id for Tier 1, so once the key is entered,
+Tier 1 runs at $0 cost. The user can upgrade/replace models per tier in
+settings. (No bundled local model; no zero-config AI.)
 
 ---
 
-## 8. Prompt Templates as Workspace Files
+## 8. Prompt Templates
 
-Prompts are **files**, not hardcoded constants:
+> **Amendment (2026-07-02):** v1 ships prompts as **modular `.py` modules**
+> under `src/openvideokit/ai/prompts/` (`role.py`, `model.py`, `tools.py`,
+> `caption_rules.py`, `html_contract.py`, `voice_rules.py`, `safety.py`,
+> `project_context.py`). Each module exports a `SECTION` string (static) or a
+> `render(ctx)` function (dynamic); an assembler composes them. The
+> `tools.py` section is **auto-generated from the tool registry** so the
+> prompt never drifts from the actual tool set. This was chosen over markdown
+> files for v1 because it serves modularity/maintainability (the AI system's
+> stated specialty) and needs no template engine.
+
+**Original §8 intent (deferred, not abandoned):** prompts as reviewable,
+editable, AI-iterable **workspace files**:
 
 ```
 project/
@@ -225,6 +266,11 @@ project/
   it. Reviewable by diff.
 - **Shipped with templates** so prompt improvements don't require an app
   release.
+
+**Migration path:** because each `.py` section is an isolated string/function,
+moving the text into data files later (with the `.py` modules becoming thin
+loaders) is straightforward. The v1 → v2 migration is tracked in
+[`docs/ai.md`](../ai.md) §15.
 
 ---
 
@@ -254,14 +300,15 @@ project/
 
 ## 11. Model Catalog & Configuration
 
-| Tier | Default (prefer free) | Purpose |
+| Tier | Default (prefer free/cheap) | Purpose |
 |---|---|---|
-| Tier 1 | `google/gemma-3-27b-it:free` (or Gemma 3 12B) | data / content |
-| Tier 2 | user-configured coding model (e.g., Qwen2.5-Coder, DeepSeek-Coder, Claude Haiku) | slide HTML / animation |
+| Tier 1 | `OVK_AI_MODEL` (ships `gpt-5.4-nano`) — or a free OpenRouter id | data / content |
+| Tier 2 | `OVK_AI_TIER2_MODEL` (defaults to Tier 1) — user-configured coding model (Qwen2.5-Coder, DeepSeek-Coder, Claude Haiku, …) | slide HTML / animation |
 
-The app ships sensible defaults; the user overrides per tier in settings.
-OpenRouter model ids are configurable so users can pick any model their key
-entitles them to.
+The app ships sensible defaults; the user overrides per tier in settings or via
+env. Any OpenAI-compatible endpoint works by setting `OPENAI_BASE_URL`
+(OpenAI, OpenRouter, Ollama, vLLM, LM Studio) — model ids are whatever the
+chosen endpoint accepts.
 
 ---
 
@@ -307,13 +354,13 @@ The platform never proxies inference, so the platform's inference cost is
 
 ## 15. Open Questions
 
-| # | Question | Owner |
-|---|---|---|
-| Q1 | Default Tier-2 coding model id to ship — Qwen2.5-Coder vs DeepSeek-Coder vs Claude Haiku? | product |
-| Q2 | Should Tier-2 require explicit user confirm before forking a slide's HTML (vs applying immediately with undo)? | product |
-| Q3 | Should prompt files live per-project (`prompts/`) or per-template, or both (template ships defaults, project can override)? | client |
-| Q4 | JSON-schema-guided decoding — does OpenRouter's `response_format`/tool-use reliably constrain the chosen free models, or do we need a JSON-repair library + retry? | client |
-| Q5 | Should Tier-1 ever call Tier-2 automatically (e.g., "this layout needs a custom transition"), or is Tier-2 strictly user-initiated? | product |
+| # | Question | Owner | Status |
+|---|---|---|---|
+| Q1 | Default Tier-2 coding model id to ship — Qwen2.5-Coder vs DeepSeek-Coder vs Claude Haiku? | product | **Open** — v1 ships `gpt-5.4-nano` for both tiers via `OVK_AI_MODEL`; per-tool routing deferred (`docs/ai.md` §15). |
+| Q2 | Should Tier-2 require explicit user confirm before forking a slide's HTML (vs applying immediately with undo)? | product | **Closed 2026-07-02** — yes, always require Accept. Every AI mutation (Tier-1 included) shows a ProposalCard; undo stays trivial. |
+| Q3 | Should prompt files live per-project (`prompts/`) or per-template, or both (template ships defaults, project can override)? | client | **Deferred** — v1 uses modular `.py` prompt modules (§8); markdown workspace files are the future direction. |
+| Q4 | JSON-schema-guided decoding — does OpenRouter's `response_format`/tool-use reliably constrain the chosen free models, or do we need a JSON-repair library + retry? | client | **Mitigated** — v1 uses tool-calling (structured args) + per-tool validation; bounded-retry over JSON patches is deferred (`docs/ai.md` §15). |
+| Q5 | Should Tier-1 ever call Tier-2 automatically (e.g., "this layout needs a custom transition"), or is Tier-2 strictly user-initiated? | product | **Closed 2026-07-02** — the agent *may* call Tier-2 tools autonomously, but every proposal (including Tier-2) still requires Accept, so it is effectively user-gated. |
 
 ---
 

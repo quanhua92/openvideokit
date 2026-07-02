@@ -12,8 +12,27 @@ OpenVideoKit is a deterministic video templating pipeline built on top of [Hyper
 
 ```bash
 uv sync --extra dev          # install all deps
+cp .env.example .env         # then edit .env (set OPENAI_API_KEY for AI)
 uv run openvideokit          # serve on http://0.0.0.0:8765
 ```
+
+## Environment variables
+
+All runtime config is env-driven. A root `.env` (gitignored) is **auto-loaded**
+by `src/openvideokit/config.py` via `python-dotenv` at import time —
+`load_dotenv()` is a silent no-op if `.env` is absent, so the server boots fine
+either way; real env vars always override `.env`. See `.env.example` for the
+full documented list. Groups:
+
+| Group | Vars | Where |
+|---|---|---|
+| Server | `OVK_HOST`, `OVK_PORT`, `OVK_DATA_DIR`, `OVK_JOBS_DIR`, `OVK_MAX_CONCURRENT_RENDERS`, `OVK_RENDER_HF_WORKERS` | `config.py` |
+| AI (LangGraph agent) | `OPENAI_BASE_URL`, `OPENAI_API_KEY` (required for AI), `OVK_AI_MODEL` (default `gpt-5.4-nano`), `OVK_AI_TIER2_MODEL`, `OVK_AI_TEMPERATURE`, `OVK_AI_MAX_STEPS` | `ai/config.py` (see `docs/ai.md`) |
+| Frontend (Vite) | `VITE_API_BASE_URL` | `ovk-web/src/shared/config.ts` |
+
+`OPENAI_BASE_URL`/`OPENAI_API_KEY` accept any OpenAI-compatible endpoint
+(OpenAI, OpenRouter `https://openrouter.ai/api/v1`, Ollama
+`http://localhost:11434/v1`, vLLM, LM Studio).
 
 ## Commands
 
