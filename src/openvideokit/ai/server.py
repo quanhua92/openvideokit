@@ -165,10 +165,13 @@ async def run_agent(
             )
             closer = SystemMessage(
                 content=(
-                    "You've reached the tool-call limit for this turn. Stop calling "
-                    "tools and give the user a brief final answer: summarize what you "
-                    "did, and if any change wasn't applied, say so. Do not propose "
-                    "further edits right now."
+                    "You've reached the tool-call limit. You can no longer call tools.\n\n"
+                    "Based on everything you've gathered so far, write a concise summary:\n"
+                    "1. **Findings**: What you learned about the project (slide structure, "
+                    "field values, HTML, etc.).\n"
+                    "2. **Plan**: What edits you were trying to make and why.\n"
+                    "3. **Next step**: The specific action you would take next.\n\n"
+                    "End with: \"Reply **continue** to let me try again with more steps.\""
                 )
             )
             try:
@@ -183,7 +186,7 @@ async def run_agent(
                         type="tool_end",
                         tool="wrap_up",
                         ok=True,
-                        result="final answer after step limit",
+                        result="summary after step limit",
                     )
                 )
             except Exception as e:  # noqa: BLE001
