@@ -278,16 +278,18 @@ def build_caption_timeline_js(
             wid = f"#cap-{slide_idx}-{w['i']}"
             w_start = w["start"]
             w_end = w["end"]
+            # Cap tween duration to 40% of word duration (avoids overlap on short words)
+            t_dur = min(0.15, w["dur"] * 0.4) if w["dur"] > 0 else 0.15
             # Tween to active state
             lines.append(
                 f"{indent}tl.to('{wid}', "
-                f"{{ {active_props}, duration: 0.15, ease: 'power2.out' }}, "
+                f"{{ {active_props}, duration: {t_dur:.3f}, ease: 'power2.out' }}, "
                 f"{w_start:.3f});"
             )
             # Tween back to dim state
             lines.append(
                 f"{indent}tl.to('{wid}', "
-                f"{{ {dim_props}, duration: 0.15, ease: 'power2.in' }}, "
+                f"{{ {dim_props}, duration: {t_dur:.3f}, ease: 'power2.in' }}, "
                 f"{w_end:.3f});"
             )
 

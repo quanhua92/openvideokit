@@ -5,7 +5,9 @@
  * reload. The local Zustand store provides instant UI feedback for the
  * control values themselves.
  */
+
 import { RotateCcw } from "lucide-react";
+import { useCallback, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,9 +47,21 @@ export function CaptionControls() {
   const { dispatch } = useEditBus();
 
   /** Dispatch full settings to EditBus (persists to project bundle). */
-  const persist = (next: typeof custom, p: CaptionStyle = preset) => {
-    dispatch(setCaptionSettings({ preset: p, ...next }));
-  };
+  const persist = useCallback(
+    (next: typeof custom, p: CaptionStyle = preset) => {
+      dispatch(setCaptionSettings({ preset: p, ...next }));
+    },
+    [dispatch, preset],
+  );
+
+  /** Debounced persist for slider drags (prevents server spam). */
+  const debouncedPersist = useMemo(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (next: typeof custom, p: CaptionStyle = preset) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => persist(next, p), 250);
+    };
+  }, [persist, preset]);
 
   const handlePreset = (p: CaptionStyle) => {
     applyPreset(p);
@@ -56,7 +70,7 @@ export function CaptionControls() {
 
   const handlePatch = (partial: Partial<typeof custom>) => {
     patch(partial);
-    persist(useCaptionSettings.getState().custom);
+    debouncedPersist(useCaptionSettings.getState().custom);
   };
 
   const handleReset = () => {

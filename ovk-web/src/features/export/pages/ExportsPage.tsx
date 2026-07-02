@@ -252,7 +252,9 @@ function JobCard({
         </Button>
       </div>
 
-      {showLog && <LogViewer projectId={projectId} jobId={job.id} />}
+      {showLog && (
+        <LogViewer projectId={projectId} jobId={job.id} isActive={isActive} />
+      )}
     </div>
   );
 }
@@ -271,11 +273,19 @@ function StatusIcon({ status }: { status: RenderStatus }) {
   }
 }
 
-function LogViewer({ projectId, jobId }: { projectId: string; jobId: string }) {
+function LogViewer({
+  projectId,
+  jobId,
+  isActive,
+}: {
+  projectId: string;
+  jobId: string;
+  isActive: boolean;
+}) {
   const { data: log, isLoading } = useQuery({
     queryKey: ["exportLog", jobId],
     queryFn: () => client.getExportLog(projectId, jobId),
-    refetchInterval: 3000,
+    refetchInterval: isActive ? 3000 : false,
   });
 
   return (

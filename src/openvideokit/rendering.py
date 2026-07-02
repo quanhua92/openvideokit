@@ -24,7 +24,6 @@ import copy
 import json
 import logging
 import re
-import shutil
 import subprocess
 import tempfile
 import threading
@@ -96,7 +95,7 @@ def _jobs_meta_path(project_id: str) -> Path:
 
 
 def _persist_job(job: dict[str, Any]) -> None:
-    """Upsert a job into the project's jobs.json (atomic write)."""
+    """Upsert a job into the project's jobs.json (atomic write, locked)."""
     from .store import _atomic_write
 
     project_id = job.get("project_id", "")
@@ -111,31 +110,32 @@ def _persist_job(job: dict[str, Any]) -> None:
             pub["size"] = opath.stat().st_size
 
     path = _jobs_meta_path(project_id)
-    try:
-        existing: list[dict] = []
-        if path.is_file():
-            raw = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(raw, list):
-                existing = raw
-        # Upsert by id
-        found = False
-        for i, e in enumerate(existing):
-            if e.get("id") == pub["id"]:
-                existing[i] = pub
-                found = True
-                break
-        if not found:
-            existing.append(pub)
-        existing.sort(key=lambda j: j.get("started_at", 0), reverse=True)
-        # Keep last 50
-        existing = existing[:50]
-        _atomic_write(path, json.dumps(existing, ensure_ascii=False, indent=2))
-    except Exception:
-        log.warning("failed to persist job %s to disk", pub.get("id"), exc_info=True)
+    with _lock:
+        try:
+            existing: list[dict] = []
+            if path.is_file():
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(raw, list):
+                    existing = raw
+            # Upsert by id
+            found = False
+            for i, e in enumerate(existing):
+                if e.get("id") == pub["id"]:
+                    existing[i] = pub
+                    found = True
+                    break
+            if not found:
+                existing.append(pub)
+            existing.sort(key=lambda j: j.get("started_at", 0), reverse=True)
+            # Keep last 50
+            existing = existing[:50]
+            _atomic_write(path, json.dumps(existing, ensure_ascii=False, indent=2))
+        except Exception:
+            log.warning("failed to persist job %s to disk", pub.get("id"), exc_info=True)
 
 
 def _load_disk_jobs(project_id: str) -> list[dict[str, Any]]:
-    """Load historical jobs from the project's jobs.json.
+    """Load historical jobs from the project's jobs.json (locked).
 
     Reconciles stale ``queued``/``running`` states: if the server crashed
     mid-render, the in-memory ``_JOBS`` dict is gone and the disk entry
@@ -143,37 +143,38 @@ def _load_disk_jobs(project_id: str) -> list[dict[str, Any]]:
     otherwise → ``failed``.
     """
     path = _jobs_meta_path(project_id)
-    if not path.is_file():
-        return []
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(raw, list):
+    with _lock:
+        if not path.is_file():
             return []
-    except Exception:
-        return []
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(raw, list):
+                return []
+        except Exception:
+            return []
 
-    # Reconcile stale active states (server crashed/restarted mid-render)
-    changed = False
-    for job in raw:
-        if job.get("status") in (QUEUED, RUNNING):
-            output_path = Path(job.get("output", ""))
-            if output_path.is_file():
-                job["status"] = DONE
-            else:
-                job["status"] = FAILED
-                job["error"] = job.get("error") or "Interrupted (server restarted)"
-            if "ended_at" not in job or job["ended_at"] is None:
-                job["ended_at"] = output_path.stat().st_mtime if output_path.is_file() else time.time()
-            changed = True
+        # Reconcile stale active states (server crashed/restarted mid-render)
+        changed = False
+        for job in raw:
+            if job.get("status") in (QUEUED, RUNNING):
+                output_path = Path(job.get("output", ""))
+                if output_path.is_file():
+                    job["status"] = DONE
+                else:
+                    job["status"] = FAILED
+                    job["error"] = job.get("error") or "Interrupted (server restarted)"
+                if "ended_at" not in job or job["ended_at"] is None:
+                    job["ended_at"] = output_path.stat().st_mtime if output_path.is_file() else time.time()
+                changed = True
 
-    # Persist reconciled statuses back to disk (one-shot, fire-and-forget)
-    if changed:
-        from .store import _atomic_write
+        # Persist reconciled statuses back to disk
+        if changed:
+            from .store import _atomic_write
 
-        with contextlib.suppress(Exception):
-            _atomic_write(path, json.dumps(raw, ensure_ascii=False, indent=2))
+            with contextlib.suppress(Exception):
+                _atomic_write(path, json.dumps(raw, ensure_ascii=False, indent=2))
 
-    return raw
+        return raw
 
 
 # ── Enqueue ──────────────────────────────────────────────────────────────
@@ -262,7 +263,7 @@ def _run_render_job(job_id: str, project: dict) -> None:
         index_path.write_text(html, encoding="utf-8")
     except Exception as exc:
         with contextlib.suppress(Exception):
-            shutil.rmtree(jdir, ignore_errors=True)
+            log_path.write_text(f"Materialization failed: {exc}\n", encoding="utf-8")
         _finish(job_id, FAILED, error=f"Materialization failed: {exc}")
         return
 

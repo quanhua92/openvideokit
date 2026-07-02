@@ -34,6 +34,12 @@ export function StageCanvas({
   const audioUrls = useAudioUrls((s) => s.urls);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Reset loading state when composition version changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — re-run on version change
+  useEffect(() => {
+    setReady(0);
+  }, [version]);
+
   // Push playhead → player.currentTime (master clock → slave renderer).
   useEffect(() => {
     const player = playerRef.current;

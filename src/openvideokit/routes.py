@@ -185,16 +185,24 @@ def get_export_job(project_id: str, job_id: str) -> dict:
 
 @router.post("/projects/{project_id}/export/jobs/{job_id}/cancel")
 def cancel_export(project_id: str, job_id: str) -> dict:
-    job = rendering.cancel_job(job_id)
+    job = rendering.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
-    return job
+    jp = job.get("project_id", "")
+    if jp not in (project_id, "(unknown — pre-restart)"):
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    return rendering.cancel_job(job_id)
 
 
 @router.get("/projects/{project_id}/export/jobs/{job_id}/download")
 def download_export(project_id: str, job_id: str) -> FileResponse:
     job = rendering.get_job(job_id)
-    if job is None or job.get("status") != "done":
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    jp = job.get("project_id", "")
+    if jp not in (project_id, "(unknown — pre-restart)"):
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    if job.get("status") != "done":
         raise HTTPException(status_code=404, detail="mp4 not ready")
     return FileResponse(
         job["output"],
@@ -207,5 +215,8 @@ def download_export(project_id: str, job_id: str) -> FileResponse:
 def get_export_log(project_id: str, job_id: str) -> dict:
     job = rendering.get_job(job_id)
     if job is None:
+        raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
+    jp = job.get("project_id", "")
+    if jp not in (project_id, "(unknown — pre-restart)"):
         raise HTTPException(status_code=404, detail=f"job '{job_id}' not found")
     return {"log": rendering.read_job_log(job_id)}
