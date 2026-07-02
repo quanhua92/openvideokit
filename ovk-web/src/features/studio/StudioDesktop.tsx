@@ -85,14 +85,18 @@ export function StudioDesktop({ data }: { data: StudioData }) {
                   </div>
                 </div>
               )}
-              {activeTab === "ai" && (
+              <div
+                className={
+                  activeTab === "ai" ? "h-full" : "hidden h-0 overflow-hidden"
+                }
+              >
                 <AIDock
                   projectId={projectId}
                   slideId={activeSlide.slideId}
                   slideIds={project.root.slides}
                   slides={project.slides}
                 />
-              )}
+              </div>
               {activeTab === "project" && <ProjectPanel project={project} />}
             </div>
 

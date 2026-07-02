@@ -128,14 +128,18 @@ export function StudioMobile({ data }: { data: StudioData }) {
                   </div>
                 </div>
               )}
-              {active === "ai" && (
+              <div
+                className={
+                  active === "ai" ? "h-full" : "hidden h-0 overflow-hidden"
+                }
+              >
                 <AIDock
                   projectId={projectId}
                   slideId={activeSlide.slideId}
                   slideIds={project.root.slides}
                   slides={project.slides}
                 />
-              )}
+              </div>
               {active === "project" && <ProjectPanel project={project} />}
             </div>
           </div>
